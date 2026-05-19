@@ -162,9 +162,15 @@
       render();
     });
 
-    const toggleAdmin = () => {
+    const toggleAdmin = async () => {
       if (state.signedIn && !state.admin && !firebaseDisabled) {
-        refreshRoleStatus();
+        setCloudStatus(`Checking admin access for UID: ${firebaseState.user?.uid || "unknown"}`);
+        try {
+          await refreshRoleStatus();
+        } catch (error) {
+          console.warn("Admin role refresh failed.", error);
+          setCloudStatus(`Role setup needed. UID: ${firebaseState.user?.uid || "unknown"}`);
+        }
         return;
       }
       if (state.signedIn && (!firebaseDisabled || state.admin)) {
