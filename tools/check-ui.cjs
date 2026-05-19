@@ -33,6 +33,10 @@ async function run() {
   await page.click('button[data-view="programs"]');
   const programsEmptyState = await page.locator("#programDirectory .empty-state").textContent();
 
+  await page.click('button[data-view="history"]');
+  const healthStats = await page.locator(".health-stat").count();
+  const healthIssues = await page.locator(".health-issue").count();
+
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("http://127.0.0.1:5173/?nofirebase=1", { waitUntil: "networkidle" });
   await page.evaluate(() => {
@@ -51,6 +55,8 @@ async function run() {
     adminState,
     coursesEmptyState,
     programsEmptyState,
+    healthStats,
+    healthIssues,
     errors,
   };
 

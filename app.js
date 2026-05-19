@@ -75,6 +75,7 @@
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
     addProgram: document.querySelector("#addProgram"),
     editProgramButton: document.querySelector("#editProgramButton"),
+    removeBlankCourses: document.querySelector("#removeBlankCourses"),
     sectionFilter: document.querySelector("#sectionFilter"),
     programFilter: document.querySelector("#programFilter"),
     programSummary: document.querySelector("#programSummary"),
@@ -85,6 +86,7 @@
     requiredCount: document.querySelector("#requiredCount"),
     programDirectory: document.querySelector("#programDirectory"),
     versionTimeline: document.querySelector("#versionTimeline"),
+    dataHealth: document.querySelector("#dataHealth"),
     programTabs: document.querySelectorAll("[data-program-tab]"),
     attachmentUpload: document.querySelector("#attachmentUpload"),
     attachmentList: document.querySelector("#attachmentList"),
@@ -207,6 +209,7 @@
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram.addEventListener("click", () => openProgramEditor());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
+    els.removeBlankCourses.addEventListener("click", removeBlankCourses);
     els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
 
     els.programTabs.forEach((tab) => {
@@ -236,6 +239,7 @@
     renderCurriculum();
     renderPrograms();
     renderHistory();
+    renderDataHealth();
   }
 
   function renderChrome() {
@@ -364,6 +368,25 @@
       await deleteDoc(doc(firebaseState.db, "courses", course._docId));
     }
 
+    render();
+  }
+
+  async function removeBlankCourses() {
+    if (!state.admin) return;
+    const blankCourses = archiveHealthReport().blankCourses;
+    if (!blankCourses.length) return;
+    if (!confirm(`Remove ${blankCourses.length} blank course record(s)?`)) return;
+
+    state.courses = state.courses.filter((course) => !isBlankCourse(course));
+
+    if (canWriteCloud()) {
+      const { deleteDoc, doc } = firebaseState.modules;
+      await Promise.all(blankCourses
+        .filter((course) => course._docId)
+        .map((course) => deleteDoc(doc(firebaseState.db, "courses", course._docId))));
+    }
+
+    setCloudStatus(`Removed ${blankCourses.length} blank course record(s)`);
     render();
   }
 
@@ -569,6 +592,63 @@
         </div>
       </article>
     `).join("") || `<div class="empty-state">No version history found.</div>`;
+  }
+
+  function renderDataHealth() {
+    const report = archiveHealthReport();
+    els.removeBlankCourses.disabled = !state.admin || !report.blankCourses.length;
+
+    const issues = [
+      {
+        title: "Blank course records",
+        count: report.blankCourses.length,
+        detail: report.blankCourses.length
+          ? report.blankCourses.map((course) => course._docId || "unknown-doc").join(", ")
+          : "No blank course records found.",
+      },
+      {
+        title: "Duplicate course IDs",
+        count: report.duplicateCourseIds.length,
+        detail: report.duplicateCourseIds.length
+          ? report.duplicateCourseIds.map((item) => `${item.id} (${item.count})`).join(", ")
+          : "No duplicate course IDs found.",
+      },
+      {
+        title: "Curriculum rows without a matching course",
+        count: report.orphanCurriculumRows.length,
+        detail: report.orphanCurriculumRows.length
+          ? report.orphanCurriculumRows.slice(0, 8).map((row) => row.courseId || stripCredit(row.courseLabel) || row._docId).join(", ")
+          : "Every curriculum row points to a known course.",
+      },
+    ];
+
+    els.dataHealth.innerHTML = `
+      <div class="health-grid" aria-label="Archive counts">
+        ${[
+          ["Courses", state.courses.length],
+          ["Programs", programs().length],
+          ["Curriculum Rows", state.curriculum.length],
+          ["Sections", sections().length],
+          ["Attachments", attachmentState.records.length],
+        ].map(([label, value]) => `
+          <div class="health-stat">
+            <strong>${escapeHtml(value)}</strong>
+            <span>${escapeHtml(label)}</span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="health-issues">
+        ${issues.map((issue) => `
+          <article class="health-issue ${issue.count ? "has-warning" : ""}">
+            <div>
+              <strong>${escapeHtml(issue.count)}</strong>
+              <span>${escapeHtml(issue.title)}</span>
+            </div>
+            <p>${escapeHtml(issue.detail)}</p>
+          </article>
+        `).join("")}
+      </div>
+    `;
   }
 
   function hydrateSelectors() {
@@ -1301,6 +1381,40 @@
 
   function courseSections(course) {
     return Array.from(new Set(curriculumRowsForCourse(course).map((row) => row.section).filter(Boolean)));
+  }
+
+  function archiveHealthReport() {
+    const courseIds = new Map();
+    const courseNames = new Set();
+
+    state.courses.forEach((course) => {
+      const id = String(course.id || "").trim();
+      const name = String(course.name || "").trim();
+      if (id) courseIds.set(id, (courseIds.get(id) || 0) + 1);
+      if (name) courseNames.add(name);
+    });
+
+    const duplicateCourseIds = Array.from(courseIds.entries())
+      .filter(([, count]) => count > 1)
+      .map(([id, count]) => ({ id, count }));
+
+    const orphanCurriculumRows = state.curriculum.filter((row) => {
+      const id = String(row.courseId || "").trim();
+      const name = stripCredit(row.courseLabel).trim();
+      return (id || name) && !courseIds.has(id) && !courseNames.has(name);
+    });
+
+    return {
+      blankCourses: state.courses.filter(isBlankCourse),
+      duplicateCourseIds,
+      orphanCurriculumRows,
+    };
+  }
+
+  function isBlankCourse(course) {
+    return !String(course.id || "").trim()
+      && !String(course.name || "").trim()
+      && !String(course.comment || "").trim();
   }
 
   function sections() {

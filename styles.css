@@ -855,6 +855,78 @@ body:not(.is-admin) .admin-only {
   line-height: 1.5;
 }
 
+.data-health {
+  padding: 18px;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.health-stat,
+.health-issue {
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.78);
+}
+
+.health-stat {
+  padding: 14px;
+}
+
+.health-stat strong,
+.health-stat span,
+.health-issue strong,
+.health-issue span {
+  display: block;
+}
+
+.health-stat strong,
+.health-issue strong {
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.health-stat span,
+.health-issue span {
+  color: var(--eden-muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.health-issues {
+  display: grid;
+  gap: 10px;
+}
+
+.health-issue {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.health-issue.has-warning {
+  border-color: rgba(159, 45, 32, 0.38);
+  background: rgba(255, 246, 239, 0.88);
+}
+
+.health-issue.has-warning strong {
+  color: #9f2d20;
+}
+
+.health-issue p {
+  margin: 0;
+  color: var(--eden-muted);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 mark {
   padding: 0 2px;
   border-radius: 3px;
@@ -1083,6 +1155,7 @@ mark {
   .panel-footer,
   .program-heading,
   .required-header,
+  .health-issue,
   .section-heading {
     align-items: stretch;
     flex-direction: column;
