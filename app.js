@@ -163,6 +163,10 @@
     });
 
     const toggleAdmin = () => {
+      if (state.signedIn && !state.admin && !firebaseDisabled) {
+        refreshRoleStatus();
+        return;
+      }
       if (state.signedIn && (!firebaseDisabled || state.admin)) {
         lockAdmin();
         return;
@@ -821,17 +825,11 @@
         render();
 
         try {
-          const [adminSnap, profileSnap] = await Promise.all([
-            firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid)),
-            firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "users", user.uid)),
-          ]);
-          firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
-          state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
-          setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Cloud viewer: ${user.email}`);
+          await refreshRoleStatus();
           startFirestoreListeners();
         } catch (error) {
           console.warn("Signed in, but role/profile lookup failed.", error);
-          setCloudStatus(`Signed in; Firestore setup needed`);
+          setCloudStatus(`Role setup needed. UID: ${user.uid}`);
         }
         render();
       });
@@ -883,6 +881,23 @@
     firebaseState.user = null;
     firebaseState.profile = null;
     sessionStorage.removeItem(adminKey);
+    render();
+  }
+
+  async function refreshRoleStatus() {
+    if (!firebaseState.ready || !firebaseState.user) return;
+    const { doc, getDoc } = firebaseState.modules;
+    const [adminSnap, profileSnap] = await Promise.all([
+      getDoc(doc(firebaseState.db, "admins", firebaseState.user.uid)),
+      getDoc(doc(firebaseState.db, "users", firebaseState.user.uid)),
+    ]);
+    firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
+    state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
+    if (state.admin) {
+      setCloudStatus(`Cloud admin: ${firebaseState.user.email}`);
+    } else {
+      setCloudStatus(`Viewer. Add admins/${firebaseState.user.uid} for admin access.`);
+    }
     render();
   }
 
