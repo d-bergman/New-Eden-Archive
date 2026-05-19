@@ -1,12 +1,23 @@
 (function () {
   const source = window.NEW_EDEN_DATA || {};
+  const firebaseConfig = window.NEW_EDEN_FIREBASE_CONFIG;
+  const firebaseVersion = "12.13.0";
+  const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const snapshotKey = "new-eden-archive-local-snapshot";
   const adminKey = "new-eden-admin-preview";
   const saved = readSnapshot();
+  const firebaseState = {
+    ready: false,
+    user: null,
+    modules: null,
+    app: null,
+    auth: null,
+    db: null,
+  };
 
   const state = {
-    courses: saved?.courses || structuredClone(source.courses || []),
-    curriculum: saved?.curriculum || structuredClone(source.curriculum || []),
+    courses: normalizeCourses(saved?.courses || structuredClone(source.courses || [])),
+    curriculum: normalizeCurriculum(saved?.curriculum || structuredClone(source.curriculum || [])),
     versionHistory: saved?.versionHistory || structuredClone(source.versionHistory || []),
     search: "",
     view: "overview",
@@ -24,9 +35,12 @@
     adminState: document.querySelector("#adminState"),
     adminToggle: document.querySelector("#adminToggle"),
     adminDialog: document.querySelector("#adminDialog"),
+    adminEmail: document.querySelector("#adminEmail"),
     adminPassword: document.querySelector("#adminPassword"),
     confirmAdmin: document.querySelector("#confirmAdmin"),
     saveSnapshot: document.querySelector("#saveSnapshot"),
+    firebaseStatus: document.querySelector("#firebaseStatus"),
+    syncFirebase: document.querySelector("#syncFirebase"),
     overviewCreditFilter: document.querySelector("#overviewCreditFilter"),
     overviewCourses: document.querySelector("#overviewCourses"),
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
@@ -60,6 +74,7 @@
       state.selectedProgram = programs().find((program) => program.section === "Traditional Naturopathy")?.name || programs()[0]?.name || "";
     }
     render();
+    initFirebase();
   }
 
   function bindEvents() {
@@ -107,11 +122,10 @@
 
     const toggleAdmin = () => {
       if (state.admin) {
-        state.admin = false;
-        sessionStorage.removeItem(adminKey);
-        render();
+        lockAdmin();
         return;
       }
+      els.adminEmail.value = firebaseState.user?.email || "";
       els.adminPassword.value = "";
       els.adminDialog.showModal();
       setTimeout(() => els.adminPassword.focus(), 0);
@@ -122,17 +136,10 @@
 
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
-      if (els.adminPassword.value === "neweden") {
-        state.admin = true;
-        sessionStorage.setItem(adminKey, "true");
-        els.adminDialog.close();
-        render();
-      } else {
-        els.adminPassword.setCustomValidity("Incorrect preview password.");
-        els.adminPassword.reportValidity();
-        els.adminPassword.setCustomValidity("");
-      }
+      signInAdmin();
     });
+
+    els.syncFirebase.addEventListener("click", seedFirestore);
 
     els.saveSnapshot.addEventListener("click", () => {
       localStorage.setItem(snapshotKey, JSON.stringify({
@@ -164,6 +171,7 @@
     els.adminState.textContent = state.admin ? "Admin Unlocked" : "Admin Locked";
     els.adminToggle.querySelector("span").textContent = state.admin ? "Lock Admin" : "Admin";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
+    els.syncFirebase.disabled = !firebaseState.ready || !firebaseState.user;
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
     els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.view}View`));
@@ -279,7 +287,8 @@
     els.curriculumRows.querySelectorAll("[data-remove-curriculum]").forEach((button) => {
       button.addEventListener("click", () => {
         if (!state.admin) return;
-        state.curriculum.splice(Number(button.dataset.removeCurriculum), 1);
+        const removed = state.curriculum.splice(Number(button.dataset.removeCurriculum), 1)[0];
+        removeCurriculumRow(removed);
         render();
       });
     });
@@ -352,8 +361,10 @@
       field("name", "Course Name", course.name),
       field("comment", "Comment", course.comment, "textarea"),
     ], (values) => {
+      values._docId = course._docId || values.id || slugify(values.name);
       if (index == null) state.courses.push(values);
       else state.courses[index] = values;
+      persistCourse(values);
       render();
     });
   }
@@ -373,6 +384,7 @@
       field("courseLabel", "Course", row.courseLabel, "select", state.courses.map(courseLabel)),
       field("comment", "Comment", row.comment, "textarea"),
     ], (values) => {
+      values._docId = row._docId || curriculumDocId(values, index ?? state.curriculum.length);
       const matchingCourse = state.courses.find((course) => courseLabel(course) === values.courseLabel || course.id === values.courseId);
       if (matchingCourse) {
         values.courseId = matchingCourse.id;
@@ -382,6 +394,7 @@
       if (index == null) state.curriculum.push(values);
       else state.curriculum[index] = values;
       state.selectedProgram = values.program;
+      persistCurriculumRow(values);
       render();
     });
   }
@@ -405,16 +418,214 @@
     }).join("");
     els.editDialog.showModal();
 
-    els.editForm.onsubmit = (event) => {
+    els.editForm.onsubmit = async (event) => {
       event.preventDefault();
       const formData = new FormData(els.editForm);
-      onSave(Object.fromEntries(formData.entries()));
+      await onSave(Object.fromEntries(formData.entries()));
       els.editDialog.close();
     };
   }
 
   function field(name, label, value, type = "text", options = []) {
     return { name, label, value, type, options };
+  }
+
+  async function initFirebase() {
+    if (firebaseDisabled) {
+      setCloudStatus("Cloud disabled for test");
+      return;
+    }
+    if (!firebaseConfig) {
+      setCloudStatus("Cloud config missing");
+      return;
+    }
+
+    try {
+      setCloudStatus("Cloud connecting");
+      const [appModule, authModule, firestoreModule] = await Promise.all([
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-app.js`),
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-auth.js`),
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-firestore.js`),
+      ]);
+
+      firebaseState.modules = { ...appModule, ...authModule, ...firestoreModule };
+      firebaseState.app = appModule.initializeApp(firebaseConfig);
+      firebaseState.auth = authModule.getAuth(firebaseState.app);
+      firebaseState.db = firestoreModule.getFirestore(firebaseState.app);
+      firebaseState.ready = true;
+      setCloudStatus("Cloud ready");
+
+      authModule.onAuthStateChanged(firebaseState.auth, async (user) => {
+        firebaseState.user = user;
+        sessionStorage.removeItem(adminKey);
+        if (!user) {
+          state.admin = false;
+          setCloudStatus("Cloud ready");
+          render();
+          return;
+        }
+
+        const adminSnap = await firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid));
+        state.admin = adminSnap.exists();
+        setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Signed in, admin doc needed: ${user.uid}`);
+        if (state.admin) await loadFirestoreData();
+        render();
+      });
+    } catch (error) {
+      console.warn("Firebase unavailable; using local workbook data.", error);
+      setCloudStatus("Cloud offline");
+    }
+  }
+
+  async function signInAdmin() {
+    const email = els.adminEmail.value.trim();
+    const password = els.adminPassword.value;
+
+    if (firebaseState.ready && email) {
+      try {
+        await firebaseState.modules.signInWithEmailAndPassword(firebaseState.auth, email, password);
+        els.adminDialog.close();
+        return;
+      } catch (error) {
+        els.adminPassword.setCustomValidity(firebaseErrorMessage(error));
+        els.adminPassword.reportValidity();
+        els.adminPassword.setCustomValidity("");
+        return;
+      }
+    }
+
+    if (password === "neweden") {
+      state.admin = true;
+      sessionStorage.setItem(adminKey, "true");
+      els.adminDialog.close();
+      render();
+      return;
+    }
+
+    els.adminPassword.setCustomValidity("Enter a Firebase email/password or use the local preview password.");
+    els.adminPassword.reportValidity();
+    els.adminPassword.setCustomValidity("");
+  }
+
+  async function lockAdmin() {
+    if (firebaseState.user && firebaseState.ready) {
+      await firebaseState.modules.signOut(firebaseState.auth);
+    }
+    state.admin = false;
+    firebaseState.user = null;
+    sessionStorage.removeItem(adminKey);
+    render();
+  }
+
+  async function loadFirestoreData() {
+    if (!firebaseState.ready) return;
+    const { collection, getDocs, orderBy, query } = firebaseState.modules;
+    const db = firebaseState.db;
+    const [courseSnap, curriculumSnap, versionSnap] = await Promise.all([
+      getDocs(query(collection(db, "courses"), orderBy("name"))),
+      getDocs(collection(db, "curriculumRows")),
+      getDocs(collection(db, "versionHistory")),
+    ]);
+
+    if (courseSnap.size) {
+      state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    }
+    if (curriculumSnap.size) {
+      state.curriculum = normalizeCurriculum(curriculumSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    }
+    if (versionSnap.size) {
+      state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
+    }
+  }
+
+  async function seedFirestore() {
+    if (!firebaseState.ready || !firebaseState.user || !state.admin) return;
+    if (!confirm("Upload the current workbook data to Firestore? This will overwrite matching course and curriculum documents.")) return;
+
+    const { writeBatch, doc, serverTimestamp } = firebaseState.modules;
+    const db = firebaseState.db;
+    const batches = [];
+    let batch = writeBatch(db);
+    let writes = 0;
+
+    const queueSet = (ref, data) => {
+      batch.set(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+      writes += 1;
+      if (writes % 450 === 0) {
+        batches.push(batch.commit());
+        batch = writeBatch(db);
+      }
+    };
+
+    state.courses.forEach((course) => queueSet(doc(db, "courses", course._docId), firestoreCourse(course)));
+    state.curriculum.forEach((row) => queueSet(doc(db, "curriculumRows", row._docId), firestoreCurriculumRow(row)));
+    state.versionHistory.forEach((item, index) => queueSet(doc(db, "versionHistory", slugify(`${item.version || "version"}-${index}`)), item));
+
+    batches.push(batch.commit());
+    setCloudStatus("Cloud seeding");
+    await Promise.all(batches);
+    setCloudStatus(`Cloud seeded ${writes} records`);
+  }
+
+  async function persistCourse(course) {
+    if (!canWriteCloud()) return;
+    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
+    await setDoc(doc(firebaseState.db, "courses", course._docId || course.id), {
+      ...firestoreCourse(course),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+
+  async function persistCurriculumRow(row) {
+    if (!canWriteCloud()) return;
+    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
+    row._docId = row._docId || curriculumDocId(row, state.curriculum.indexOf(row));
+    await setDoc(doc(firebaseState.db, "curriculumRows", row._docId), {
+      ...firestoreCurriculumRow(row),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+
+  async function removeCurriculumRow(row) {
+    if (!canWriteCloud() || !row?._docId) return;
+    const { deleteDoc, doc } = firebaseState.modules;
+    await deleteDoc(doc(firebaseState.db, "curriculumRows", row._docId));
+  }
+
+  function canWriteCloud() {
+    return firebaseState.ready && firebaseState.user && state.admin;
+  }
+
+  function setCloudStatus(message) {
+    if (els.firebaseStatus) els.firebaseStatus.textContent = message;
+  }
+
+  function firebaseErrorMessage(error) {
+    if (error?.code === "auth/invalid-credential") return "Firebase rejected that email/password.";
+    if (error?.code === "permission-denied") return "Firestore denied that action. Check the admins UID document.";
+    return error?.message || "Firebase sign-in failed.";
+  }
+
+  function firestoreCourse(course) {
+    return {
+      id: course.id || "",
+      credit: course.credit || "",
+      name: course.name || "",
+      comment: course.comment || "",
+      status: course.status || "Active",
+    };
+  }
+
+  function firestoreCurriculumRow(row) {
+    return {
+      section: row.section || "",
+      program: row.program || "",
+      courseLabel: row.courseLabel || "",
+      courseId: row.courseId || "",
+      credit: row.credit || "",
+      comment: row.comment || "",
+      status: row.status || "Active",
+    };
   }
 
   function filteredCourses() {
@@ -469,6 +680,42 @@
     const sourceText = programShortName(programName) || section || "Program";
     const letters = sourceText.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean);
     return letters.slice(0, 3).map((word) => word[0]).join("").toUpperCase() || "NEA";
+  }
+
+  function normalizeCourses(courses) {
+    return courses.map((course) => ({
+      _docId: course._docId || course.id || slugify(course.name),
+      id: course.id || "",
+      credit: course.credit || "",
+      name: course.name || "",
+      comment: course.comment || "",
+      status: course.status || "Active",
+    }));
+  }
+
+  function normalizeCurriculum(rows) {
+    return rows.map((row, index) => ({
+      _docId: row._docId || curriculumDocId(row, index),
+      section: row.section || "",
+      program: row.program || "",
+      courseLabel: row.courseLabel || "",
+      courseId: row.courseId || "",
+      credit: row.credit || "",
+      comment: row.comment || "",
+      status: row.status || "Active",
+    }));
+  }
+
+  function curriculumDocId(row, index) {
+    return slugify(`${row.section || "section"}-${row.program || "program"}-${row.courseId || row.courseLabel || "course"}-${index}`);
+  }
+
+  function slugify(value) {
+    return String(value || "record")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || "record";
   }
 
   function matchesSearch(item) {

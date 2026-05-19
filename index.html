@@ -73,6 +73,11 @@
               <i class="bi bi-lock"></i>
               <span id="adminState">Admin Locked</span>
             </button>
+            <span class="cloud-status d-none d-md-inline" id="firebaseStatus">Cloud pending</span>
+            <button class="btn btn-outline-eden btn-sm admin-only" id="syncFirebase" type="button">
+              <i class="bi bi-cloud-arrow-up"></i>
+              Seed Firebase
+            </button>
             <button class="btn icon-btn" type="button" aria-label="Help">
               <i class="bi bi-question-circle"></i>
             </button>
@@ -339,12 +344,16 @@
     <dialog class="modal-native" id="adminDialog">
       <form method="dialog" class="modal-card">
         <h2>Admin Sign In</h2>
-        <p>This prototype uses a local preview password until Firebase Auth is connected.</p>
+        <p>Use your Firebase admin account. The local preview password is still available while setup is in progress.</p>
         <label class="form-label">
-          Preview password
+          Email
+          <input class="form-control" id="adminEmail" type="email" autocomplete="username" />
+        </label>
+        <label class="form-label">
+          Password
           <input class="form-control" id="adminPassword" type="password" autocomplete="current-password" />
         </label>
-        <p class="form-note">Temporary password: <strong>neweden</strong></p>
+        <p class="form-note">Local preview password: <strong>neweden</strong></p>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmAdmin" value="default">Unlock</button>
@@ -367,6 +376,7 @@
       src="assets/vendor/bootstrap/bootstrap.bundle.min.js"
     ></script>
     <script src="new-eden-data.generated.js"></script>
+    <script src="firebase-config.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

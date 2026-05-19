@@ -197,6 +197,12 @@ textarea {
   font-weight: 750;
 }
 
+.cloud-status {
+  color: var(--eden-muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
 .user-chip {
   display: flex;
   align-items: center;

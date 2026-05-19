@@ -10,7 +10,7 @@ async function run() {
     if (message.type() === "error") errors.push(message.text());
   });
 
-  await page.goto("http://127.0.0.1:5173/", { waitUntil: "networkidle" });
+  await page.goto("http://127.0.0.1:5173/?nofirebase=1", { waitUntil: "networkidle" });
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -37,7 +37,7 @@ async function run() {
   const programSections = await page.locator(".directory-section").count();
 
   await page.setViewportSize({ width: 390, height: 900 });
-  await page.goto("http://127.0.0.1:5173/", { waitUntil: "networkidle" });
+  await page.goto("http://127.0.0.1:5173/?nofirebase=1", { waitUntil: "networkidle" });
   await page.evaluate(() => {
     localStorage.clear();
     sessionStorage.clear();

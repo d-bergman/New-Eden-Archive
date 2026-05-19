@@ -61,3 +61,20 @@ Suggested collections:
 - `admins`
 
 The included Firestore rules allow public reads and admin-only writes, where admins are represented by documents in `admins/{uid}`.
+
+## Firebase Admin Setup
+
+1. In Firebase Console, enable **Authentication → Email/Password**.
+2. Create your admin user under **Authentication → Users**.
+3. Copy that user's UID.
+4. In Firestore, create `admins/{uid}` using that exact UID as the document ID.
+5. Add fields such as:
+
+```json
+{
+  "role": "owner",
+  "name": "Darren"
+}
+```
+
+After that, sign in through the app. Use **Seed Firebase** once to upload the workbook-derived course, curriculum, and version-history data.
