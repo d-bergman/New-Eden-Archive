@@ -568,15 +568,24 @@
           return;
         }
 
-        const [adminSnap, profileSnap] = await Promise.all([
-          firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid)),
-          firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "users", user.uid)),
-        ]);
-        firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
         state.signedIn = true;
-        state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
-        setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Cloud viewer: ${user.email}`);
-        startFirestoreListeners();
+        state.admin = false;
+        els.signInMessage.textContent = "Signed in.";
+        render();
+
+        try {
+          const [adminSnap, profileSnap] = await Promise.all([
+            firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid)),
+            firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "users", user.uid)),
+          ]);
+          firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
+          state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
+          setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Cloud viewer: ${user.email}`);
+          startFirestoreListeners();
+        } catch (error) {
+          console.warn("Signed in, but role/profile lookup failed.", error);
+          setCloudStatus(`Signed in; Firestore setup needed`);
+        }
         render();
       });
     } catch (error) {
