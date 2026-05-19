@@ -10,5 +10,9 @@
   },
   "devDependencies": {
     "playwright": "^1.57.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1"
   }
 }

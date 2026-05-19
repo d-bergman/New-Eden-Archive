@@ -4,216 +4,368 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Eden Archive</title>
+    <link
+      href="assets/vendor/bootstrap/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="assets/vendor/bootstrap-icons/bootstrap-icons.min.css"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Primary navigation">
-        <div class="brand-block">
-          <div class="brand-mark" aria-hidden="true">NE</div>
+    <div class="archive-shell">
+      <aside class="archive-sidebar" aria-label="Primary navigation">
+        <div class="brand-lockup">
+          <div class="brand-seal" aria-hidden="true">
+            <i class="bi bi-flower1"></i>
+          </div>
           <div>
-            <p class="eyebrow">School Archive</p>
-            <h1>New Eden</h1>
+            <div class="brand-name">New Eden</div>
+            <div class="brand-subtitle">School of Natural Health<br />& Herbal Studies</div>
           </div>
         </div>
-        <nav class="nav-list">
-          <button class="nav-item active" data-view="overview">Overview</button>
-          <button class="nav-item" data-view="courses">Courses</button>
-          <button class="nav-item" data-view="curriculums">Curriculums</button>
-          <button class="nav-item" data-view="programs">Programs</button>
-          <button class="nav-item" data-view="history">Version History</button>
+
+        <nav class="nav flex-column archive-nav">
+          <button class="nav-link active" data-view="overview">
+            <i class="bi bi-house-door"></i>
+            <span>Overview</span>
+          </button>
+          <button class="nav-link" data-view="courses">
+            <i class="bi bi-book"></i>
+            <span>Courses</span>
+          </button>
+          <button class="nav-link" data-view="curriculums">
+            <i class="bi bi-clipboard2-data"></i>
+            <span>Curriculums</span>
+          </button>
+          <button class="nav-link" data-view="programs">
+            <i class="bi bi-mortarboard"></i>
+            <span>Programs</span>
+          </button>
+          <button class="nav-link" data-view="history">
+            <i class="bi bi-clock-history"></i>
+            <span>Version History</span>
+          </button>
         </nav>
-        <div class="admin-card">
-          <p class="eyebrow">Admin</p>
-          <strong id="adminState">Admin Locked</strong>
-          <span>Sign in to edit courses and curriculum rows.</span>
-          <button class="button primary full" id="adminToggle">Unlock Admin</button>
+
+        <button class="nav-link admin-nav-link" id="adminToggle">
+          <i class="bi bi-gear"></i>
+          <span>Admin</span>
+          <i class="bi bi-chevron-down ms-auto"></i>
+        </button>
+
+        <div class="botanical-card d-none d-xl-block" aria-hidden="true">
+          <i class="bi bi-flower2"></i>
+          <p>Vis medicatrix naturae</p>
+          <span>The healing power of nature</span>
         </div>
       </aside>
 
-      <main class="workspace">
-        <header class="topbar">
-          <div>
-            <p class="eyebrow">Course & Curriculum Management</p>
-            <h2>New Eden Archive</h2>
-          </div>
-          <div class="topbar-actions">
-            <label class="search-box">
-              <span>Search</span>
-              <input id="globalSearch" type="search" placeholder="Search courses, programs, sections..." />
-            </label>
-            <button class="button ghost" id="saveSnapshot">Save Local Snapshot</button>
+      <main class="archive-main">
+        <header class="utility-bar">
+          <button class="btn icon-btn" type="button" aria-label="Toggle navigation">
+            <i class="bi bi-list"></i>
+          </button>
+          <div class="ms-auto d-flex align-items-center gap-3">
+            <button class="btn admin-status" id="adminStatusButton" type="button">
+              <i class="bi bi-lock"></i>
+              <span id="adminState">Admin Locked</span>
+            </button>
+            <button class="btn icon-btn" type="button" aria-label="Help">
+              <i class="bi bi-question-circle"></i>
+            </button>
+            <div class="user-chip">
+              <div class="avatar">AM</div>
+              <div class="d-none d-sm-block">
+                <strong>A. Morgan</strong>
+                <span>Administrator</span>
+              </div>
+              <i class="bi bi-chevron-down d-none d-sm-inline"></i>
+            </div>
           </div>
         </header>
 
-        <section class="stats-grid" aria-label="Archive summary">
-          <article class="stat-tile">
-            <span>Courses</span>
-            <strong id="courseCount">0</strong>
-          </article>
-          <article class="stat-tile">
-            <span>Programs</span>
-            <strong id="programCount">0</strong>
-          </article>
-          <article class="stat-tile">
-            <span>Curriculum Rows</span>
-            <strong id="curriculumCount">0</strong>
-          </article>
-          <article class="stat-tile">
-            <span>Sections</span>
-            <strong id="sectionCount">0</strong>
-          </article>
-        </section>
-
-        <section class="view active" id="overviewView">
-          <div class="section-heading">
+        <div class="content-canvas">
+          <section class="hero-band">
             <div>
-              <p class="eyebrow">Overview</p>
-              <h3>Archive Dashboard</h3>
+              <h1>New Eden Archive</h1>
+              <p>Course & Curriculum Management</p>
             </div>
-            <select id="overviewCreditFilter" aria-label="Filter overview by credit"></select>
-          </div>
-          <div class="dashboard-grid">
-            <article class="panel">
-              <div class="panel-header">
-                <h4>Courses by Credit</h4>
-                <span id="overviewCourseTotal"></span>
+          </section>
+
+          <section class="row g-3 mb-4" aria-label="Archive summary">
+            <div class="col-12 col-sm-6 col-xl-3">
+              <article class="stat-card">
+                <div class="stat-icon"><i class="bi bi-book"></i></div>
+                <div>
+                  <strong id="courseCount">0</strong>
+                  <span>Courses</span>
+                </div>
+              </article>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <article class="stat-card">
+                <div class="stat-icon"><i class="bi bi-mortarboard"></i></div>
+                <div>
+                  <strong id="programCount">0</strong>
+                  <span>Programs</span>
+                </div>
+              </article>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <article class="stat-card">
+                <div class="stat-icon"><i class="bi bi-clipboard2-data"></i></div>
+                <div>
+                  <strong id="curriculumCount">0</strong>
+                  <span>Curriculum Rows</span>
+                </div>
+              </article>
+            </div>
+            <div class="col-12 col-sm-6 col-xl-3">
+              <article class="stat-card">
+                <div class="stat-icon"><i class="bi bi-leaf"></i></div>
+                <div>
+                  <strong id="sectionCount">0</strong>
+                  <span>Sections</span>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="view active" id="overviewView">
+            <div class="row g-3 align-items-stretch">
+              <div class="col-12 col-xxl-8">
+                <article class="archive-panel h-100">
+                  <div class="filter-bar">
+                    <div class="search-control">
+                      <i class="bi bi-search"></i>
+                      <input id="globalSearch" type="search" placeholder="Search courses" />
+                    </div>
+                    <select class="form-select" id="overviewSectionFilter" aria-label="Filter by section">
+                      <option>All Sections</option>
+                    </select>
+                    <select class="form-select" id="overviewCreditFilter" aria-label="Filter overview by credit"></select>
+                    <select class="form-select" id="statusFilter" aria-label="Filter status">
+                      <option>Status: Active</option>
+                    </select>
+                    <button class="btn btn-eden admin-only" id="addCourse" type="button">
+                      <i class="bi bi-plus-circle"></i>
+                      Add Course
+                    </button>
+                  </div>
+
+                  <div class="table-responsive archive-table-wrap">
+                    <table class="table archive-table align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th scope="col"><input class="form-check-input" type="checkbox" aria-label="Select all courses" /></th>
+                          <th scope="col">ID <i class="bi bi-chevron-expand"></i></th>
+                          <th scope="col">Credit <i class="bi bi-chevron-expand"></i></th>
+                          <th scope="col">Course Name <i class="bi bi-chevron-expand"></i></th>
+                          <th scope="col">Comment <i class="bi bi-chevron-expand"></i></th>
+                          <th scope="col">Status <i class="bi bi-chevron-expand"></i></th>
+                          <th scope="col" class="text-end">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="overviewCourses"></tbody>
+                    </table>
+                  </div>
+
+                  <div class="panel-footer">
+                    <span id="overviewCourseTotal">Showing courses</span>
+                    <nav aria-label="Course pagination">
+                      <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-double-left"></i></span></li>
+                        <li class="page-item active"><span class="page-link">1</span></li>
+                        <li class="page-item"><span class="page-link">2</span></li>
+                        <li class="page-item"><span class="page-link">3</span></li>
+                        <li class="page-item"><span class="page-link">4</span></li>
+                        <li class="page-item"><span class="page-link"><i class="bi bi-chevron-double-right"></i></span></li>
+                      </ul>
+                    </nav>
+                    <select class="form-select rows-select" aria-label="Rows per page">
+                      <option>25</option>
+                      <option>50</option>
+                    </select>
+                  </div>
+                </article>
               </div>
-              <div class="table-wrap compact">
-                <table>
+
+              <div class="col-12 col-xxl-4">
+                <div class="d-grid gap-3">
+                  <article class="archive-panel program-panel">
+                    <div class="program-heading">
+                      <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <h2 id="programTitle">Traditional Naturopathy</h2>
+                          <span class="badge rounded-pill text-bg-sage">Program</span>
+                        </div>
+                        <div class="program-meta">
+                          <span><small>Program Code</small><strong id="programCode">TNAT</strong></span>
+                          <span><small>Status</small><strong class="status-pill">Active</strong></span>
+                          <span><small>Version</small><strong id="programVersion">v3.2 (Current)</strong></span>
+                        </div>
+                      </div>
+                      <div class="btn-group">
+                        <button class="btn btn-outline-eden admin-only" id="editProgramButton" type="button">
+                          <i class="bi bi-pencil"></i>
+                          Edit Program
+                        </button>
+                        <button class="btn btn-outline-eden dropdown-toggle dropdown-toggle-split" type="button" aria-label="More program actions"></button>
+                      </div>
+                    </div>
+
+                    <ul class="nav nav-tabs program-tabs">
+                      <li class="nav-item"><button class="nav-link active" type="button">Overview</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button">Curriculum</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button">Requirements</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button">Notes</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button">Attachments</button></li>
+                    </ul>
+
+                    <div id="featuredProgramDetail" class="program-overview"></div>
+                  </article>
+
+                  <article class="archive-panel">
+                    <div class="required-header">
+                      <div>
+                        <h3>Required Courses <span class="badge rounded-pill text-bg-sage" id="requiredCount">0</span></h3>
+                      </div>
+                      <button class="btn btn-outline-eden admin-only" id="addProgramCourse" type="button">
+                        <i class="bi bi-list-check"></i>
+                        Manage Requirements
+                      </button>
+                    </div>
+                    <div class="table-responsive">
+                      <table class="table required-table align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Order</th>
+                            <th>Course ID</th>
+                            <th>Course Name</th>
+                            <th>Credit</th>
+                            <th>Type</th>
+                            <th class="text-end">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="curriculumRows"></tbody>
+                      </table>
+                    </div>
+                    <button class="view-all-courses" type="button">
+                      View all required courses
+                      <i class="bi bi-chevron-down"></i>
+                    </button>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="view" id="coursesView">
+            <article class="archive-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Courses</p>
+                  <h2>Course Catalog</h2>
+                </div>
+                <div class="toolbar">
+                  <select class="form-select" id="courseCreditFilter" aria-label="Filter courses by credit"></select>
+                </div>
+              </div>
+              <div class="table-responsive archive-table-wrap">
+                <table class="table archive-table align-middle mb-0">
                   <thead>
                     <tr>
                       <th>ID</th>
                       <th>Credit</th>
                       <th>Course Name</th>
-                    </tr>
-                  </thead>
-                  <tbody id="overviewCourses"></tbody>
-                </table>
-              </div>
-            </article>
-            <article class="panel accent-panel">
-              <div class="panel-header">
-                <h4>Program Focus</h4>
-                <select id="featuredProgram"></select>
-              </div>
-              <div id="featuredProgramDetail"></div>
-            </article>
-          </div>
-        </section>
-
-        <section class="view" id="coursesView">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Courses</p>
-              <h3>Course Catalog</h3>
-            </div>
-            <div class="toolbar">
-              <select id="courseCreditFilter" aria-label="Filter courses by credit"></select>
-              <button class="button primary admin-only" id="addCourse">Add Course</button>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Credit</th>
-                  <th>Course Name</th>
-                  <th>Comment</th>
-                  <th class="admin-col">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="courseRows"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="view" id="curriculumsView">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Curriculums</p>
-              <h3>Program Course Requirements</h3>
-            </div>
-            <div class="toolbar">
-              <select id="sectionFilter" aria-label="Filter by section"></select>
-              <select id="programFilter" aria-label="Choose program"></select>
-            </div>
-          </div>
-          <div class="program-layout">
-            <article class="program-card" id="programSummary"></article>
-            <article class="panel">
-              <div class="panel-header">
-                <h4>Required Courses</h4>
-                <button class="button primary admin-only" id="addProgramCourse">Add Course</button>
-              </div>
-              <div class="table-wrap compact">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>ID</th>
-                      <th>Credit</th>
-                      <th>Course</th>
                       <th>Comment</th>
-                      <th class="admin-col">Actions</th>
+                      <th class="admin-col text-end">Actions</th>
                     </tr>
                   </thead>
-                  <tbody id="curriculumRows"></tbody>
+                  <tbody id="courseRows"></tbody>
                 </table>
               </div>
             </article>
-          </div>
-        </section>
+          </section>
 
-        <section class="view" id="programsView">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Programs</p>
-              <h3>Programs by Section</h3>
-            </div>
-          </div>
-          <div class="program-directory" id="programDirectory"></div>
-        </section>
+          <section class="view" id="curriculumsView">
+            <article class="archive-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Curriculums</p>
+                  <h2>Program Course Requirements</h2>
+                </div>
+                <div class="toolbar">
+                  <select class="form-select" id="sectionFilter" aria-label="Filter by section"></select>
+                  <select class="form-select" id="programFilter" aria-label="Choose program"></select>
+                  <select class="form-select" id="featuredProgram" aria-label="Featured program"></select>
+                </div>
+              </div>
+              <div class="program-summary-strip" id="programSummary"></div>
+            </article>
+          </section>
 
-        <section class="view" id="historyView">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Version</p>
-              <h3>Version History</h3>
-            </div>
-          </div>
-          <div class="timeline" id="versionTimeline"></div>
-        </section>
+          <section class="view" id="programsView">
+            <article class="archive-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Programs</p>
+                  <h2>Programs by Section</h2>
+                </div>
+              </div>
+              <div class="program-directory" id="programDirectory"></div>
+            </article>
+          </section>
+
+          <section class="view" id="historyView">
+            <article class="archive-panel">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Version</p>
+                  <h2>Version History</h2>
+                </div>
+                <button class="btn btn-outline-eden" id="saveSnapshot" type="button">Save Local Snapshot</button>
+              </div>
+              <div class="timeline" id="versionTimeline"></div>
+            </article>
+          </section>
+        </div>
       </main>
     </div>
 
-    <dialog class="modal" id="adminDialog">
+    <dialog class="modal-native" id="adminDialog">
       <form method="dialog" class="modal-card">
-        <h3>Admin Sign In</h3>
+        <h2>Admin Sign In</h2>
         <p>This prototype uses a local preview password until Firebase Auth is connected.</p>
-        <label>
+        <label class="form-label">
           Preview password
-          <input id="adminPassword" type="password" autocomplete="current-password" />
+          <input class="form-control" id="adminPassword" type="password" autocomplete="current-password" />
         </label>
         <p class="form-note">Temporary password: <strong>neweden</strong></p>
         <div class="modal-actions">
-          <button class="button ghost" value="cancel">Cancel</button>
-          <button class="button primary" id="confirmAdmin" value="default">Unlock</button>
+          <button class="btn btn-outline-eden" value="cancel">Cancel</button>
+          <button class="btn btn-eden" id="confirmAdmin" value="default">Unlock</button>
         </div>
       </form>
     </dialog>
 
-    <dialog class="modal" id="editDialog">
+    <dialog class="modal-native" id="editDialog">
       <form method="dialog" class="modal-card" id="editForm">
-        <h3 id="editTitle">Edit</h3>
+        <h2 id="editTitle">Edit</h2>
         <div id="editFields"></div>
         <div class="modal-actions">
-          <button class="button ghost" value="cancel">Cancel</button>
-          <button class="button primary" id="confirmEdit" value="default">Save</button>
+          <button class="btn btn-outline-eden" value="cancel">Cancel</button>
+          <button class="btn btn-eden" id="confirmEdit" value="default">Save</button>
         </div>
       </form>
     </dialog>
 
+    <script
+      src="assets/vendor/bootstrap/bootstrap.bundle.min.js"
+    ></script>
     <script src="new-eden-data.generated.js"></script>
     <script src="app.js"></script>
   </body>

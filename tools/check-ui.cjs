@@ -18,11 +18,12 @@ async function run() {
   await page.reload({ waitUntil: "networkidle" });
   await page.screenshot({ path: "app-preview-desktop.png", fullPage: true });
 
+  await page.fill("#globalSearch", "Herbal");
+  const filteredOverviewRows = await page.locator("#overviewCourses tr").count();
+  await page.fill("#globalSearch", "");
+
   await page.click('button[data-view="courses"]');
   const courseRows = await page.locator("#courseRows tr").count();
-
-  await page.fill("#globalSearch", "Herbal");
-  const filteredCourseRows = await page.locator("#courseRows tr").count();
 
   await page.click("#adminToggle");
   await page.fill("#adminPassword", "neweden");
@@ -48,7 +49,7 @@ async function run() {
 
   const result = {
     courseRows,
-    filteredCourseRows,
+    filteredOverviewRows,
     adminState,
     curriculumRows,
     programSections,

@@ -18,7 +18,7 @@
 
   const els = {
     body: document.body,
-    navItems: document.querySelectorAll(".nav-item"),
+    navItems: document.querySelectorAll("[data-view]"),
     views: document.querySelectorAll(".view"),
     globalSearch: document.querySelector("#globalSearch"),
     adminState: document.querySelector("#adminState"),
@@ -40,6 +40,9 @@
     programSummary: document.querySelector("#programSummary"),
     curriculumRows: document.querySelector("#curriculumRows"),
     addProgramCourse: document.querySelector("#addProgramCourse"),
+    programTitle: document.querySelector("#programTitle"),
+    programCode: document.querySelector("#programCode"),
+    requiredCount: document.querySelector("#requiredCount"),
     programDirectory: document.querySelector("#programDirectory"),
     versionTimeline: document.querySelector("#versionTimeline"),
     editDialog: document.querySelector("#editDialog"),
@@ -53,7 +56,9 @@
   function init() {
     hydrateSelectors();
     bindEvents();
-    if (!state.selectedProgram) state.selectedProgram = programs()[0]?.name || "";
+    if (!state.selectedProgram) {
+      state.selectedProgram = programs().find((program) => program.section === "Traditional Naturopathy")?.name || programs()[0]?.name || "";
+    }
     render();
   }
 
@@ -100,7 +105,7 @@
       render();
     });
 
-    els.adminToggle.addEventListener("click", () => {
+    const toggleAdmin = () => {
       if (state.admin) {
         state.admin = false;
         sessionStorage.removeItem(adminKey);
@@ -110,7 +115,10 @@
       els.adminPassword.value = "";
       els.adminDialog.showModal();
       setTimeout(() => els.adminPassword.focus(), 0);
-    });
+    };
+
+    els.adminToggle.addEventListener("click", toggleAdmin);
+    document.querySelector("#adminStatusButton")?.addEventListener("click", toggleAdmin);
 
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
@@ -154,7 +162,8 @@
   function renderChrome() {
     els.body.classList.toggle("is-admin", state.admin);
     els.adminState.textContent = state.admin ? "Admin Unlocked" : "Admin Locked";
-    els.adminToggle.textContent = state.admin ? "Lock Admin" : "Unlock Admin";
+    els.adminToggle.querySelector("span").textContent = state.admin ? "Lock Admin" : "Admin";
+    document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
     els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.view}View`));
@@ -168,30 +177,40 @@
   }
 
   function renderOverview() {
-    const rows = filteredCourses().slice(0, 18);
-    els.overviewCourseTotal.textContent = `${filteredCourses().length} shown`;
-    els.overviewCourses.innerHTML = rows.map((course) => `
-      <tr>
+    const allRows = filteredCourses();
+    const rows = allRows.slice(0, 10);
+    els.overviewCourseTotal.textContent = `Showing 1 to ${Math.min(rows.length, allRows.length)} of ${allRows.length} courses`;
+    els.overviewCourses.innerHTML = rows.map((course, index) => `
+      <tr class="${index === 0 ? "is-selected" : ""}">
+        <td><input class="form-check-input" type="checkbox" ${index === 0 ? "checked" : ""} aria-label="Select ${escapeAttr(course.name)}" /></td>
         <td>${escapeHtml(course.id)}</td>
         <td>${escapeHtml(course.credit)}</td>
-        <td>${escapeHtml(course.name)}</td>
+        <td>${highlight(course.name)}</td>
+        <td>${escapeHtml(course.comment || "Course archive record.")}</td>
+        <td><span class="status-badge">Active</span></td>
+        <td class="text-end"><button class="table-action" type="button" aria-label="Course actions"><i class="bi bi-three-dots"></i></button></td>
       </tr>
-    `).join("") || emptyRow(3, "No courses match the current filters.");
+    `).join("") || emptyRow(7, "No courses match the current filters.");
 
     const selected = state.selectedProgram || programs()[0]?.name || "";
     els.featuredProgram.value = selected;
     const rowsForProgram = curriculumForProgram(selected);
     const totalCredits = rowsForProgram.reduce((sum, row) => sum + Number(row.credit || 0), 0);
+    const section = rowsForProgram[0]?.section || "Program";
+    els.programTitle.textContent = programShortName(selected);
+    els.programCode.textContent = programCode(selected, section);
+    els.requiredCount.textContent = rowsForProgram.length;
     els.featuredProgramDetail.innerHTML = `
-      <div class="program-card">
-        <p class="eyebrow">${escapeHtml(rowsForProgram[0]?.section || "Program")}</p>
-        <strong>${escapeHtml(selected || "No program selected")}</strong>
-        <dl>
-          <div><dt>Required Courses</dt><dd>${rowsForProgram.length}</dd></div>
-          <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
-          <div><dt>Sample Courses</dt><dd>${rowsForProgram.slice(0, 7).map((row) => `<span class="course-chip">${escapeHtml(row.courseId)} ${escapeHtml(row.courseLabel)}</span>`).join("")}</dd></div>
-        </dl>
-      </div>
+      <p class="mb-3"><strong>Description</strong><br />
+        A comprehensive program in ${escapeHtml(section.toLowerCase())} principles and practices,
+        with course requirements maintained from the New Eden archive workbook.
+      </p>
+      <p class="mb-3"><strong>Department</strong><br />${escapeHtml(section)}</p>
+      <dl>
+        <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
+        <div><dt>Total Required Courses</dt><dd>${rowsForProgram.length}</dd></div>
+        <div><dt>Last Updated</dt><dd>Imported from v1.0 workbook</dd></div>
+      </dl>
     `;
   }
 
@@ -205,8 +224,8 @@
           <td>${escapeHtml(course.credit)}</td>
           <td>${highlight(course.name)}</td>
           <td>${escapeHtml(course.comment || "")}</td>
-          <td class="admin-col">
-            <button class="button ghost" data-edit-course="${realIndex}">Edit</button>
+          <td class="admin-col text-end">
+            <button class="btn btn-sm btn-outline-eden" data-edit-course="${realIndex}">Edit</button>
           </td>
         </tr>
       `;
@@ -228,29 +247,30 @@
     const totalCredits = rows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
     els.programSummary.innerHTML = `
       <p class="eyebrow">${escapeHtml(rows[0]?.section || "Curriculum")}</p>
-      <strong>${escapeHtml(state.selectedProgram || "No program selected")}</strong>
-      <dl>
-        <div><dt>Required Courses</dt><dd>${rows.length}</dd></div>
-        <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
-        <div><dt>Admin Status</dt><dd>${state.admin ? "Editing enabled" : "Read-only"}</dd></div>
-      </dl>
+      <h3>${escapeHtml(state.selectedProgram || "No program selected")}</h3>
+      <div class="row g-3 mt-1">
+        <div class="col-sm-4"><strong>${rows.length}</strong><span>Required Courses</span></div>
+        <div class="col-sm-4"><strong>${totalCredits}</strong><span>Total Credits</span></div>
+        <div class="col-sm-4"><strong>${state.admin ? "Editing enabled" : "Read-only"}</strong><span>Admin Status</span></div>
+      </div>
     `;
 
-    els.curriculumRows.innerHTML = rows.map((row) => {
+    els.curriculumRows.innerHTML = rows.slice(0, 5).map((row, index) => {
       const realIndex = state.curriculum.indexOf(row);
       return `
         <tr>
+          <td>${index + 1}</td>
           <td>${escapeHtml(row.courseId)}</td>
+          <td>${highlight(stripCredit(row.courseLabel))}</td>
           <td>${escapeHtml(row.credit)}</td>
-          <td>${highlight(row.courseLabel)}</td>
-          <td>${escapeHtml(row.comment || "")}</td>
-          <td class="admin-col">
-            <button class="button ghost" data-edit-curriculum="${realIndex}">Edit</button>
-            <button class="button danger" data-remove-curriculum="${realIndex}">Remove</button>
+          <td>Required</td>
+          <td class="text-end">
+            <button class="table-action" data-edit-curriculum="${realIndex}" type="button" aria-label="Edit requirement"><i class="bi bi-three-dots"></i></button>
+            <button class="button danger admin-only" data-remove-curriculum="${realIndex}" type="button">Remove</button>
           </td>
         </tr>
       `;
-    }).join("") || emptyRow(5, "No curriculum rows match the current filters.");
+    }).join("") || emptyRow(6, "No curriculum rows match the current filters.");
 
     els.curriculumRows.querySelectorAll("[data-edit-curriculum]").forEach((button) => {
       button.addEventListener("click", () => openCurriculumEditor(Number(button.dataset.editCurriculum)));
@@ -434,6 +454,21 @@
 
   function courseLabel(course) {
     return `${course.name} Credit ${course.credit}`;
+  }
+
+  function stripCredit(label) {
+    return String(label || "").replace(/\s+Credit\s+\d+$/i, "");
+  }
+
+  function programShortName(programName) {
+    const parts = String(programName || "").split(" - ");
+    return parts[1] || parts[0] || "Program";
+  }
+
+  function programCode(programName, section) {
+    const sourceText = programShortName(programName) || section || "Program";
+    const letters = sourceText.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean);
+    return letters.slice(0, 3).map((word) => word[0]).join("").toUpperCase() || "NEA";
   }
 
   function matchesSearch(item) {
