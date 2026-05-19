@@ -2,6 +2,8 @@
 
 Editable web app prototype for the New Eden School course and curriculum archive.
 
+See [docs/FEATURE_PLAN.md](docs/FEATURE_PLAN.md) for the working feature roadmap.
+
 ## Current Status
 
 - Uses `New Eden Archive v1.0.xlsx` as the source data.
