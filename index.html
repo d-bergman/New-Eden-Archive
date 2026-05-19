@@ -15,6 +15,27 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section class="auth-gate" id="authGate" aria-live="polite">
+      <form class="auth-card" id="signInForm">
+        <div class="brand-seal auth-seal" aria-hidden="true">
+          <i class="bi bi-flower1"></i>
+        </div>
+        <p class="eyebrow">New Eden Archive</p>
+        <h1>Employee Sign In</h1>
+        <p>Sign in to view the course and curriculum archive.</p>
+        <label class="form-label">
+          Email
+          <input class="form-control" id="signInEmail" type="email" autocomplete="username" required />
+        </label>
+        <label class="form-label">
+          Password
+          <input class="form-control" id="signInPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn-eden w-100" type="submit">Sign In</button>
+        <div class="auth-message" id="signInMessage">Firebase authentication required.</div>
+      </form>
+    </section>
+
     <div class="archive-shell">
       <aside class="archive-sidebar" aria-label="Primary navigation">
         <div class="brand-lockup">
@@ -82,12 +103,14 @@
               <i class="bi bi-question-circle"></i>
             </button>
             <div class="user-chip">
-              <div class="avatar">AM</div>
+              <div class="avatar" id="userInitials">NE</div>
               <div class="d-none d-sm-block">
-                <strong>A. Morgan</strong>
-                <span>Administrator</span>
+                <strong id="userName">Not signed in</strong>
+                <span id="userRole">Viewer</span>
               </div>
-              <i class="bi bi-chevron-down d-none d-sm-inline"></i>
+              <button class="btn icon-btn sign-out-btn" id="signOutButton" type="button" aria-label="Sign out">
+                <i class="bi bi-box-arrow-right"></i>
+              </button>
             </div>
           </div>
         </header>
@@ -344,7 +367,7 @@
     <dialog class="modal-native" id="adminDialog">
       <form method="dialog" class="modal-card">
         <h2>Admin Sign In</h2>
-        <p>Use your Firebase admin account. The local preview password is still available while setup is in progress.</p>
+        <p>Use your Firebase account. Admin permissions come from your Firestore user role.</p>
         <label class="form-label">
           Email
           <input class="form-control" id="adminEmail" type="email" autocomplete="username" />
@@ -353,7 +376,7 @@
           Password
           <input class="form-control" id="adminPassword" type="password" autocomplete="current-password" />
         </label>
-        <p class="form-note">Local preview password: <strong>neweden</strong></p>
+        <p class="form-note">Local preview password only works with <code>?nofirebase=1</code>.</p>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmAdmin" value="default">Unlock</button>

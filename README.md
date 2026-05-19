@@ -79,4 +79,18 @@ The included Firestore rules allow public reads and admin-only writes, where adm
 }
 ```
 
-After that, sign in through the app. Use **Seed Firebase** once to upload the workbook-derived course, curriculum, and version-history data.
+6. Also create `users/{uid}` with display information:
+
+```json
+{
+  "displayName": "Darren Bergman",
+  "username": "bergmand",
+  "role": "admin"
+}
+```
+
+For standard users, set `"role": "viewer"`.
+
+After that, sign in through the app. Use **Seed Firebase** once from an admin account to upload the workbook-derived course, curriculum, and version-history data.
+
+The app is signed-in-only when Firebase is active. The local test route `?nofirebase=1` keeps automated UI checks available without connecting to Firebase.

@@ -28,6 +28,61 @@ body {
     linear-gradient(135deg, #fffdf8 0%, #edf4ed 100%);
 }
 
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    linear-gradient(rgba(15, 47, 33, 0.88), rgba(15, 47, 33, 0.92)),
+    radial-gradient(circle at 72% 10%, rgba(200, 168, 94, 0.22), transparent 30%);
+}
+
+body.auth-locked .auth-gate {
+  display: flex;
+}
+
+body.auth-locked .archive-shell {
+  min-height: 100vh;
+  filter: blur(2px);
+  pointer-events: none;
+  user-select: none;
+}
+
+.auth-card {
+  width: min(430px, 100%);
+  padding: 30px;
+  border: 1px solid rgba(232, 214, 160, 0.55);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.96);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
+}
+
+.auth-card h1 {
+  margin-bottom: 8px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.auth-card p {
+  color: var(--eden-muted);
+}
+
+.auth-seal {
+  margin-bottom: 18px;
+  background: var(--eden-forest);
+}
+
+.auth-message {
+  min-height: 22px;
+  margin-top: 12px;
+  color: var(--eden-muted);
+  font-size: 0.9rem;
+}
+
 button,
 input,
 select,
@@ -207,6 +262,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.sign-out-btn {
+  width: 34px;
+  height: 34px;
+  font-size: 1.05rem;
 }
 
 .avatar {

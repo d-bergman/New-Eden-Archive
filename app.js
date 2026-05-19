@@ -9,10 +9,12 @@
   const firebaseState = {
     ready: false,
     user: null,
+    profile: null,
     modules: null,
     app: null,
     auth: null,
     db: null,
+    unsubscribers: [],
   };
 
   const state = {
@@ -24,11 +26,17 @@
     selectedCredit: "all",
     selectedSection: "all",
     selectedProgram: "",
+    signedIn: firebaseDisabled,
     admin: sessionStorage.getItem(adminKey) === "true",
   };
 
   const els = {
     body: document.body,
+    authGate: document.querySelector("#authGate"),
+    signInForm: document.querySelector("#signInForm"),
+    signInEmail: document.querySelector("#signInEmail"),
+    signInPassword: document.querySelector("#signInPassword"),
+    signInMessage: document.querySelector("#signInMessage"),
     navItems: document.querySelectorAll("[data-view]"),
     views: document.querySelectorAll(".view"),
     globalSearch: document.querySelector("#globalSearch"),
@@ -41,6 +49,10 @@
     saveSnapshot: document.querySelector("#saveSnapshot"),
     firebaseStatus: document.querySelector("#firebaseStatus"),
     syncFirebase: document.querySelector("#syncFirebase"),
+    signOutButton: document.querySelector("#signOutButton"),
+    userInitials: document.querySelector("#userInitials"),
+    userName: document.querySelector("#userName"),
+    userRole: document.querySelector("#userRole"),
     overviewCreditFilter: document.querySelector("#overviewCreditFilter"),
     overviewCourses: document.querySelector("#overviewCourses"),
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
@@ -78,6 +90,11 @@
   }
 
   function bindEvents() {
+    els.signInForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      signInUser(els.signInEmail.value.trim(), els.signInPassword.value);
+    });
+
     els.navItems.forEach((button) => {
       button.addEventListener("click", () => {
         state.view = button.dataset.view;
@@ -121,7 +138,7 @@
     });
 
     const toggleAdmin = () => {
-      if (state.admin) {
+      if (state.signedIn && (!firebaseDisabled || state.admin)) {
         lockAdmin();
         return;
       }
@@ -133,10 +150,11 @@
 
     els.adminToggle.addEventListener("click", toggleAdmin);
     document.querySelector("#adminStatusButton")?.addEventListener("click", toggleAdmin);
+    els.signOutButton.addEventListener("click", lockAdmin);
 
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
-      signInAdmin();
+      signInUser(els.adminEmail.value.trim(), els.adminPassword.value);
     });
 
     els.syncFirebase.addEventListener("click", seedFirestore);
@@ -167,14 +185,26 @@
   }
 
   function renderChrome() {
+    els.body.classList.toggle("auth-locked", !state.signedIn);
     els.body.classList.toggle("is-admin", state.admin);
-    els.adminState.textContent = state.admin ? "Admin Unlocked" : "Admin Locked";
-    els.adminToggle.querySelector("span").textContent = state.admin ? "Lock Admin" : "Admin";
+    els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
+    els.adminToggle.querySelector("span").textContent = state.signedIn ? "Sign Out" : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
     els.syncFirebase.disabled = !firebaseState.ready || !firebaseState.user;
+    renderUserChip();
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
     els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.view}View`));
+  }
+
+  function renderUserChip() {
+    const profile = firebaseState.profile;
+    const emailName = firebaseState.user?.email?.split("@")[0] || "Employee";
+    const displayName = profile?.displayName || firebaseState.user?.displayName || emailName;
+    const role = state.admin ? "Administrator" : state.signedIn ? "Standard User" : "Not signed in";
+    els.userName.textContent = displayName;
+    els.userRole.textContent = role;
+    els.userInitials.textContent = initials(displayName);
   }
 
   function renderStats() {
@@ -432,7 +462,9 @@
 
   async function initFirebase() {
     if (firebaseDisabled) {
+      state.signedIn = true;
       setCloudStatus("Cloud disabled for test");
+      render();
       return;
     }
     if (!firebaseConfig) {
@@ -457,18 +489,26 @@
 
       authModule.onAuthStateChanged(firebaseState.auth, async (user) => {
         firebaseState.user = user;
+        firebaseState.profile = null;
         sessionStorage.removeItem(adminKey);
         if (!user) {
+          stopFirestoreListeners();
+          state.signedIn = false;
           state.admin = false;
           setCloudStatus("Cloud ready");
           render();
           return;
         }
 
-        const adminSnap = await firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid));
-        state.admin = adminSnap.exists();
-        setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Signed in, admin doc needed: ${user.uid}`);
-        if (state.admin) await loadFirestoreData();
+        const [adminSnap, profileSnap] = await Promise.all([
+          firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "admins", user.uid)),
+          firestoreModule.getDoc(firestoreModule.doc(firebaseState.db, "users", user.uid)),
+        ]);
+        firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
+        state.signedIn = true;
+        state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
+        setCloudStatus(state.admin ? `Cloud admin: ${user.email}` : `Cloud viewer: ${user.email}`);
+        startFirestoreListeners();
         render();
       });
     } catch (error) {
@@ -477,24 +517,28 @@
     }
   }
 
-  async function signInAdmin() {
-    const email = els.adminEmail.value.trim();
-    const password = els.adminPassword.value;
-
+  async function signInUser(email, password) {
     if (firebaseState.ready && email) {
       try {
         await firebaseState.modules.signInWithEmailAndPassword(firebaseState.auth, email, password);
+        els.signInPassword.value = "";
+        els.signInMessage.textContent = "Signed in.";
         els.adminDialog.close();
         return;
       } catch (error) {
-        els.adminPassword.setCustomValidity(firebaseErrorMessage(error));
-        els.adminPassword.reportValidity();
-        els.adminPassword.setCustomValidity("");
+        const message = firebaseErrorMessage(error);
+        els.signInMessage.textContent = message;
+        els.adminPassword.setCustomValidity(message);
+        if (document.activeElement === els.adminPassword || els.adminDialog.open) {
+          els.adminPassword.reportValidity();
+          els.adminPassword.setCustomValidity("");
+        }
         return;
       }
     }
 
-    if (password === "neweden") {
+    if (firebaseDisabled && password === "neweden") {
+      state.signedIn = true;
       state.admin = true;
       sessionStorage.setItem(adminKey, "true");
       els.adminDialog.close();
@@ -502,17 +546,18 @@
       return;
     }
 
-    els.adminPassword.setCustomValidity("Enter a Firebase email/password or use the local preview password.");
-    els.adminPassword.reportValidity();
-    els.adminPassword.setCustomValidity("");
+    els.signInMessage.textContent = "Enter a Firebase email/password.";
   }
 
   async function lockAdmin() {
     if (firebaseState.user && firebaseState.ready) {
       await firebaseState.modules.signOut(firebaseState.auth);
     }
+    stopFirestoreListeners();
+    if (!firebaseDisabled) state.signedIn = false;
     state.admin = false;
     firebaseState.user = null;
+    firebaseState.profile = null;
     sessionStorage.removeItem(adminKey);
     render();
   }
@@ -536,6 +581,36 @@
     if (versionSnap.size) {
       state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
     }
+  }
+
+  function startFirestoreListeners() {
+    if (!firebaseState.ready) return;
+    stopFirestoreListeners();
+    const { collection, onSnapshot, orderBy, query } = firebaseState.modules;
+    const db = firebaseState.db;
+
+    firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "courses"), orderBy("name")), (snapshot) => {
+      if (!snapshot.size) return;
+      state.courses = normalizeCourses(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+      render();
+    }));
+
+    firebaseState.unsubscribers.push(onSnapshot(collection(db, "curriculumRows"), (snapshot) => {
+      if (!snapshot.size) return;
+      state.curriculum = normalizeCurriculum(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+      render();
+    }));
+
+    firebaseState.unsubscribers.push(onSnapshot(collection(db, "versionHistory"), (snapshot) => {
+      if (!snapshot.size) return;
+      state.versionHistory = snapshot.docs.map((docSnap) => docSnap.data());
+      render();
+    }));
+  }
+
+  function stopFirestoreListeners() {
+    firebaseState.unsubscribers.forEach((unsubscribe) => unsubscribe());
+    firebaseState.unsubscribers = [];
   }
 
   async function seedFirestore() {
@@ -716,6 +791,15 @@
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
       .slice(0, 120) || "record";
+  }
+
+  function initials(name) {
+    return String(name || "NE")
+      .split(/[\s._-]+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "NE";
   }
 
   function matchesSearch(item) {

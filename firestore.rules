@@ -11,8 +11,19 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
 
+    match /admins/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin() || request.auth.uid == uid;
+      allow delete: if isAdmin();
+    }
+
     match /{document=**} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isAdmin();
     }
   }
