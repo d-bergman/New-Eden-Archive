@@ -11,12 +11,13 @@
     user: null,
     profile: null,
     modules: null,
-      app: null,
-      auth: null,
-      db: null,
-      storage: null,
-      unsubscribers: [],
-    };
+    app: null,
+    auth: null,
+    db: null,
+    storage: null,
+    unsubscribers: [],
+    hasCloudArchive: false,
+  };
   const attachmentState = {
     records: [],
     activeProgram: "",
@@ -36,6 +37,8 @@
     view: "overview",
     selectedCredit: "all",
     selectedSection: "all",
+    selectedOverviewSection: "all",
+    selectedStatus: "all",
     selectedProgram: "",
     signedIn: firebaseDisabled,
     admin: sessionStorage.getItem(adminKey) === "true",
@@ -64,7 +67,9 @@
     userInitials: document.querySelector("#userInitials"),
     userName: document.querySelector("#userName"),
     userRole: document.querySelector("#userRole"),
+    overviewSectionFilter: document.querySelector("#overviewSectionFilter"),
     overviewCreditFilter: document.querySelector("#overviewCreditFilter"),
+    statusFilter: document.querySelector("#statusFilter"),
     overviewCourses: document.querySelector("#overviewCourses"),
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
     featuredProgram: document.querySelector("#featuredProgram"),
@@ -132,9 +137,19 @@
       render();
     });
 
+    els.overviewSectionFilter.addEventListener("change", (event) => {
+      state.selectedOverviewSection = event.target.value;
+      render();
+    });
+
     els.overviewCreditFilter.addEventListener("change", (event) => {
       state.selectedCredit = event.target.value;
       els.courseCreditFilter.value = event.target.value;
+      render();
+    });
+
+    els.statusFilter.addEventListener("change", (event) => {
+      state.selectedStatus = event.target.value;
       render();
     });
 
@@ -272,98 +287,104 @@
   }
 
   function renderOverview() {
-  const allRows = filteredCourses();
-  const rows = allRows.slice(0, 10);
+    const allRows = filteredCourses({ section: state.selectedOverviewSection, status: state.selectedStatus });
+    const rows = allRows.slice(0, 10);
+    const shownEnd = allRows.length ? Math.min(rows.length, allRows.length) : 0;
 
-  els.overviewCourseTotal.textContent = `Showing 1 to ${Math.min(rows.length, allRows.length)} of ${allRows.length} courses`;
+    els.overviewCourseTotal.textContent = `Showing ${allRows.length ? 1 : 0} to ${shownEnd} of ${allRows.length} courses`;
 
-  els.overviewCourses.innerHTML = rows.map((course, index) => {
-    const courseIndex = state.courses.indexOf(course);
+    els.overviewCourses.innerHTML = rows.map((course, index) => {
+      const courseIndex = state.courses.indexOf(course);
+      const status = course.status || "Active";
 
-    return `
-      <tr class="${index === 0 ? "is-selected" : ""}">
-        <td><input class="form-check-input" type="checkbox" ${index === 0 ? "checked" : ""} aria-label="Select ${escapeAttr(course.name)}" /></td>
-        <td>${escapeHtml(course.id)}</td>
-        <td>${escapeHtml(course.credit)}</td>
-        <td>${highlight(course.name)}</td>
-        <td>${escapeHtml(course.comment || "Course archive record.")}</td>
-        <td><span class="status-badge">Active</span></td>
-        <td class="text-end">
-          <div class="action-menu-wrap">
-            <button class="table-action" data-toggle-course-menu="${courseIndex}" type="button" aria-label="Course actions">
-              <i class="bi bi-three-dots"></i>
-            </button>
-            <div class="action-menu" hidden>
-              <button type="button" data-edit-course="${courseIndex}">
-                <i class="bi bi-pencil"></i> Edit
+      return `
+        <tr class="${index === 0 ? "is-selected" : ""}">
+          <td><input class="form-check-input" type="checkbox" ${index === 0 ? "checked" : ""} aria-label="Select ${escapeAttr(course.name)}" /></td>
+          <td>${escapeHtml(course.id)}</td>
+          <td>${escapeHtml(course.credit)}</td>
+          <td>${highlight(course.name)}</td>
+          <td>${escapeHtml(course.comment || "Course archive record.")}</td>
+          <td><span class="status-badge">${escapeHtml(status)}</span></td>
+          <td class="text-end">
+            <div class="action-menu-wrap">
+              <button class="table-action" data-toggle-course-menu="${courseIndex}" type="button" aria-label="Course actions">
+                <i class="bi bi-three-dots"></i>
               </button>
-              <button type="button" class="danger" data-delete-course="${courseIndex}">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+              <div class="action-menu" hidden>
+                <button type="button" data-edit-course="${courseIndex}">
+                  <i class="bi bi-pencil"></i> Edit
+                </button>
+                <button type="button" class="danger" data-delete-course="${courseIndex}">
+                  <i class="bi bi-trash"></i> Delete
+                </button>
+              </div>
             </div>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join("") || emptyRow(7, "No courses match the current filters.");
+          </td>
+        </tr>
+      `;
+    }).join("") || emptyRow(7, "No courses match the current filters.");
 
-  bindCourseActionMenus(els.overviewCourses);
+    bindCourseActionMenus(els.overviewCourses);
 
-  const selected = state.selectedProgram || programs()[0]?.name || "";
-  els.featuredProgram.value = selected;
-  const rowsForProgram = curriculumForProgram(selected);
-  const program = programs().find((item) => item.name === selected);
-  const section = rowsForProgram[0]?.section || program?.section || "Program";
-  els.programTitle.textContent = programShortName(selected);
-  els.programCode.textContent = program?.code || programCode(selected, section);
-  els.requiredCount.textContent = rowsForProgram.length;
-  renderProgramPanel(activeProgramTab());
-}
-
-function bindCourseActionMenus(container) {
-  container.querySelectorAll("[data-toggle-course-menu]").forEach((button) => {
-    button.addEventListener("click", (event) => {
-      event.stopPropagation();
-
-      container.querySelectorAll(".action-menu").forEach((menu) => {
-        if (menu !== button.nextElementSibling) menu.hidden = true;
-      });
-
-      const menu = button.nextElementSibling;
-      menu.hidden = !menu.hidden;
-    });
-  });
-
-  container.querySelectorAll("[data-edit-course]").forEach((button) => {
-    button.addEventListener("click", () => {
-      openCourseEditor(Number(button.dataset.editCourse));
-    });
-  });
-
-  container.querySelectorAll("[data-delete-course]").forEach((button) => {
-    button.addEventListener("click", () => {
-      deleteCourse(Number(button.dataset.deleteCourse));
-    });
-  });
-}
-
-async function deleteCourse(index) {
-  if (!state.admin) return;
-
-  const course = state.courses[index];
-  if (!course) return;
-
-  if (!confirm(`Delete course "${course.name || course.id || "Untitled Course"}"?`)) return;
-
-  state.courses.splice(index, 1);
-
-  if (canWriteCloud() && course._docId) {
-    const { deleteDoc, doc } = firebaseState.modules;
-    await deleteDoc(doc(firebaseState.db, "courses", course._docId));
+    const selected = state.selectedProgram || programs()[0]?.name || "";
+    els.featuredProgram.value = selected;
+    const rowsForProgram = curriculumForProgram(selected);
+    const program = programs().find((item) => item.name === selected);
+    const section = rowsForProgram[0]?.section || program?.section || "Program";
+    els.programTitle.textContent = programShortName(selected);
+    els.programCode.textContent = program?.code || programCode(selected, section);
+    els.requiredCount.textContent = rowsForProgram.length;
+    renderProgramPanel(activeProgramTab());
   }
 
-  render();
-}
+  function bindCourseActionMenus(container) {
+    container.querySelectorAll("[data-toggle-course-menu]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+
+        container.querySelectorAll(".action-menu").forEach((menu) => {
+          if (menu !== button.nextElementSibling) menu.hidden = true;
+        });
+
+        const menu = button.nextElementSibling;
+        menu.hidden = !menu.hidden;
+      });
+    });
+
+    container.querySelectorAll("[data-edit-course]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openCourseEditor(Number(button.dataset.editCourse));
+      });
+    });
+
+    container.querySelectorAll("[data-delete-course]").forEach((button) => {
+      button.addEventListener("click", () => {
+        deleteCourse(Number(button.dataset.deleteCourse));
+      });
+    });
+  }
+
+  async function deleteCourse(index) {
+    if (!state.admin) return;
+
+    const course = state.courses[index];
+    if (!course) return;
+
+    const references = curriculumRowsForCourse(course);
+    const referenceMessage = references.length
+      ? ` This course is used in ${references.length} curriculum row(s); those requirements will stay in place until removed from their programs.`
+      : "";
+    if (!confirm(`Delete course "${course.name || course.id || "Untitled Course"}"?${referenceMessage}`)) return;
+
+    state.courses.splice(index, 1);
+
+    if (canWriteCloud() && course._docId) {
+      const { deleteDoc, doc } = firebaseState.modules;
+      await deleteDoc(doc(firebaseState.db, "courses", course._docId));
+    }
+
+    render();
+  }
 
   function renderProgramPanel(tab = "overview") {
     const selected = state.selectedProgram || programs()[0]?.name || "";
@@ -573,14 +594,23 @@ async function deleteCourse(index) {
     const creditOptions = [`<option value="all">All Credits</option>`]
       .concat(credits().map((credit) => `<option value="${escapeAttr(credit)}">Credit ${escapeHtml(credit)}</option>`))
       .join("");
-    els.overviewCreditFilter.innerHTML = creditOptions;
-    els.courseCreditFilter.innerHTML = creditOptions;
-    els.overviewCreditFilter.value = state.selectedCredit;
-    els.courseCreditFilter.value = state.selectedCredit;
-
-    els.sectionFilter.innerHTML = [`<option value="all">All Sections</option>`]
+    const sectionOptions = [`<option value="all">All Sections</option>`]
       .concat(sections().map((section) => `<option value="${escapeAttr(section)}">${escapeHtml(section)}</option>`))
       .join("");
+    const statusOptions = [`<option value="all">All Statuses</option>`]
+      .concat(statuses().map((status) => `<option value="${escapeAttr(status)}">${escapeHtml(status)}</option>`))
+      .join("");
+
+    els.overviewSectionFilter.innerHTML = sectionOptions;
+    els.overviewSectionFilter.value = state.selectedOverviewSection;
+    els.overviewCreditFilter.innerHTML = creditOptions;
+    els.courseCreditFilter.innerHTML = creditOptions;
+    els.statusFilter.innerHTML = statusOptions;
+    els.overviewCreditFilter.value = state.selectedCredit;
+    els.courseCreditFilter.value = state.selectedCredit;
+    els.statusFilter.value = state.selectedStatus;
+
+    els.sectionFilter.innerHTML = sectionOptions;
     els.sectionFilter.value = state.selectedSection;
 
     const programOptions = filteredPrograms().map((program) => `<option value="${escapeAttr(program.name)}">${escapeHtml(program.name)}</option>`).join("");
@@ -893,31 +923,19 @@ async function deleteCourse(index) {
         }
 
         state.signedIn = true;
-state.admin = false;
-els.signInMessage.textContent = "Signed in.";
-setCloudStatus("Loading cloud data...");
-
-try {
-  await refreshRoleStatus();
-  await loadFirestoreData();
-  startFirestoreListeners();
-  setCloudStatus(`Cloud loaded: ${state.courses.length} courses, ${programs().length} programs, ${state.curriculum.length} curriculum rows`);
-} catch (error) {
-  console.warn("Signed in, but cloud data lookup failed.", error);
-  setCloudStatus(`Cloud data failed. UID: ${user.uid}`);
-}
-
-render();
-
+        state.admin = false;
+        els.signInMessage.textContent = "Signed in.";
+        setCloudStatus("Loading cloud data");
         try {
-  await refreshRoleStatus();
-  await loadFirestoreData();
-  startFirestoreListeners();
-} catch (error) {
-  console.warn("Signed in, but role/profile lookup failed.", error);
-  setCloudStatus(`Role setup needed. UID: ${user.uid}`);
-}
-render();
+          await refreshRoleStatus();
+          const sizes = await loadFirestoreData();
+          startFirestoreListeners();
+          setCloudStatus(cloudLoadedMessage(sizes));
+        } catch (error) {
+          console.warn("Signed in, but cloud data lookup failed.", error);
+          setCloudStatus(`Cloud data failed. UID: ${user.uid}`);
+        }
+        render();
       });
     } catch (error) {
       console.warn("Firebase unavailable; using local workbook data.", error);
@@ -978,7 +996,7 @@ render();
       getDoc(doc(firebaseState.db, "users", firebaseState.user.uid)),
     ]);
     firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
-    state.admin = adminSnap.exists() || firebaseState.profile?.role === "admin";
+    state.admin = adminSnap.exists();
     if (state.admin) {
       setCloudStatus(`Cloud admin: ${firebaseState.user.email}`);
     } else {
@@ -999,29 +1017,39 @@ render();
       getDocs(collection(db, "attachments")),
     ]);
 
-    console.log("Firestore sizes", {
-  courses: courseSnap.size,
-  programs: programSnap.size,
-  curriculumRows: curriculumSnap.size,
-  versionHistory: versionSnap.size,
-  attachments: attachmentSnap.size,
-});
+    const sizes = {
+      courses: courseSnap.size,
+      programs: programSnap.size,
+      curriculumRows: curriculumSnap.size,
+      versionHistory: versionSnap.size,
+      attachments: attachmentSnap.size,
+    };
+    firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programs || sizes.curriculumRows);
 
-    if (courseSnap.size) {
-      state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    }
-    if (programSnap.size) {
-      state.programRecords = normalizePrograms(programSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    }
-    if (curriculumSnap.size) {
-      state.curriculum = normalizeCurriculum(curriculumSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    }
-    if (versionSnap.size) {
-      state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
-    }
-    if (attachmentSnap.size) {
+    if (!firebaseState.hasCloudArchive) {
       attachmentState.records = normalizeAttachments(attachmentSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+      return sizes;
     }
+
+    state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    state.programRecords = normalizePrograms(programSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    state.curriculum = normalizeCurriculum(curriculumSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
+    attachmentState.records = normalizeAttachments(attachmentSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+
+    return sizes;
+  }
+
+  function cloudLoadedMessage(sizes = {}) {
+    if (!firebaseState.hasCloudArchive) {
+      return "Cloud empty; showing workbook fallback";
+    }
+    const warnings = [];
+    if (!sizes.courses) warnings.push("0 courses");
+    if (!sizes.programs) warnings.push("0 programs");
+    if (!sizes.curriculumRows) warnings.push("0 curriculum rows");
+    const summary = `Cloud loaded: ${sizes.courses || 0} courses, ${sizes.programs || 0} programs, ${sizes.curriculumRows || 0} curriculum rows`;
+    return warnings.length ? `${summary}. Check ${warnings.join(", ")}.` : summary;
   }
 
   function startFirestoreListeners() {
@@ -1029,35 +1057,39 @@ render();
     stopFirestoreListeners();
     const { collection, onSnapshot, orderBy, query } = firebaseState.modules;
     const db = firebaseState.db;
+    const handleSnapshotError = (error) => {
+      console.warn("Firestore listener failed.", error);
+      setCloudStatus(firebaseErrorMessage(error));
+    };
 
     firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "courses"), orderBy("name")), (snapshot) => {
-      if (!snapshot.size) return;
+      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
       state.courses = normalizeCourses(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
-    }));
+    }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "programs"), orderBy("name")), (snapshot) => {
-      if (!snapshot.size) return;
+      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
       state.programRecords = normalizePrograms(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
-    }));
+    }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onSnapshot(collection(db, "curriculumRows"), (snapshot) => {
-      if (!snapshot.size) return;
+      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
       state.curriculum = normalizeCurriculum(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
-    }));
+    }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onSnapshot(collection(db, "versionHistory"), (snapshot) => {
-      if (!snapshot.size) return;
+      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
       state.versionHistory = snapshot.docs.map((docSnap) => docSnap.data());
       render();
-    }));
+    }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onSnapshot(collection(db, "attachments"), (snapshot) => {
       attachmentState.records = normalizeAttachments(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
-    }));
+    }, handleSnapshotError));
   }
 
   function stopFirestoreListeners() {
@@ -1299,9 +1331,13 @@ seedHistory.forEach((item, index) =>
     };
   }
 
-  function filteredCourses() {
+  function filteredCourses(filters = {}) {
+    const section = filters.section || "all";
+    const status = filters.status || "all";
     return state.courses
       .filter((course) => state.selectedCredit === "all" || course.credit === state.selectedCredit)
+      .filter((course) => status === "all" || (course.status || "Active") === status)
+      .filter((course) => section === "all" || courseSections(course).includes(section))
       .filter(matchesSearch)
       .sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -1314,9 +1350,24 @@ seedHistory.forEach((item, index) =>
     return state.curriculum.filter((row) => row.program === programName);
   }
 
+  function curriculumRowsForCourse(course) {
+    return state.curriculum.filter((row) => (
+      (course.id && row.courseId === course.id)
+      || (course.name && stripCredit(row.courseLabel) === course.name)
+    ));
+  }
+
   function credits() {
     return Array.from(new Set(state.courses.map((course) => course.credit).filter(Boolean)))
       .sort((a, b) => Number(a) - Number(b));
+  }
+
+  function statuses() {
+    return Array.from(new Set(state.courses.map((course) => course.status || "Active").filter(Boolean))).sort();
+  }
+
+  function courseSections(course) {
+    return Array.from(new Set(curriculumRowsForCourse(course).map((row) => row.section).filter(Boolean)));
   }
 
   function sections() {
