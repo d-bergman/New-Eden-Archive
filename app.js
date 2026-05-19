@@ -1,11 +1,8 @@
 (function () {
-  const source = window.NEW_EDEN_DATA || {};
   const firebaseConfig = window.NEW_EDEN_FIREBASE_CONFIG;
   const firebaseVersion = "12.13.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
-  const snapshotKey = "new-eden-archive-local-snapshot";
   const adminKey = "new-eden-admin-preview";
-  const saved = readSnapshot();
   const firebaseState = {
     ready: false,
     user: null,
@@ -29,10 +26,10 @@
   };
 
   const state = {
-    courses: normalizeCourses(saved?.courses || structuredClone(source.courses || [])),
-    curriculum: normalizeCurriculum(saved?.curriculum || structuredClone(source.curriculum || [])),
-    programRecords: normalizePrograms(saved?.programRecords || buildProgramRecords(saved?.curriculum || source.curriculum || [])),
-    versionHistory: saved?.versionHistory || structuredClone(source.versionHistory || []),
+    courses: [],
+    curriculum: [],
+    programRecords: [],
+    versionHistory: [],
     search: "",
     view: "overview",
     selectedCredit: "all",
@@ -60,9 +57,7 @@
     adminEmail: document.querySelector("#adminEmail"),
     adminPassword: document.querySelector("#adminPassword"),
     confirmAdmin: document.querySelector("#confirmAdmin"),
-    saveSnapshot: document.querySelector("#saveSnapshot"),
     firebaseStatus: document.querySelector("#firebaseStatus"),
-    syncFirebase: document.querySelector("#syncFirebase"),
     signOutButton: document.querySelector("#signOutButton"),
     userInitials: document.querySelector("#userInitials"),
     userName: document.querySelector("#userName"),
@@ -207,19 +202,6 @@
       signInUser(els.adminEmail.value.trim(), els.adminPassword.value);
     });
 
-    els.syncFirebase.addEventListener("click", seedFirestore);
-
-    els.saveSnapshot.addEventListener("click", () => {
-      localStorage.setItem(snapshotKey, JSON.stringify({
-        courses: state.courses,
-        curriculum: state.curriculum,
-        programRecords: state.programRecords,
-        versionHistory: state.versionHistory,
-      }));
-      els.saveSnapshot.textContent = "Saved";
-      setTimeout(() => { els.saveSnapshot.textContent = "Save Local Snapshot"; }, 1200);
-    });
-
     els.addCourse.addEventListener("click", () => openCourseEditor());
     els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
@@ -262,7 +244,6 @@
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
     els.adminToggle.querySelector("span").textContent = state.signedIn ? "Sign Out" : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
-    els.syncFirebase.disabled = !firebaseState.ready || !firebaseState.user;
     renderUserChip();
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
@@ -453,13 +434,13 @@
     els.featuredProgramDetail.innerHTML = `
       <p class="mb-3"><strong>Description</strong><br />
         A comprehensive program in ${escapeHtml(section.toLowerCase())} principles and practices,
-        with course requirements maintained from the New Eden archive workbook.
+        with course requirements maintained from the live New Eden archive.
       </p>
       <p class="mb-3"><strong>Department</strong><br />${escapeHtml(section)}</p>
       <dl>
         <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
         <div><dt>Total Required Courses</dt><dd>${rowsForProgram.length}</dd></div>
-        <div><dt>Last Updated</dt><dd>Imported from v1.0 workbook</dd></div>
+        <div><dt>Last Updated</dt><dd>Synced from Firebase</dd></div>
         <div><dt>Attachments</dt><dd>${attachments.length}</dd></div>
       </dl>
     `;
@@ -938,7 +919,7 @@
         render();
       });
     } catch (error) {
-      console.warn("Firebase unavailable; using local workbook data.", error);
+      console.warn("Firebase unavailable.", error);
       setCloudStatus("Cloud offline");
     }
   }
@@ -1042,7 +1023,7 @@
 
   function cloudLoadedMessage(sizes = {}) {
     if (!firebaseState.hasCloudArchive) {
-      return "Cloud empty; showing workbook fallback";
+      return "Cloud empty; add records in Firebase";
     }
     const warnings = [];
     if (!sizes.courses) warnings.push("0 courses");
@@ -1095,54 +1076,6 @@
   function stopFirestoreListeners() {
     firebaseState.unsubscribers.forEach((unsubscribe) => unsubscribe());
     firebaseState.unsubscribers = [];
-  }
-
-  async function seedFirestore() {
-    if (!firebaseState.ready || !firebaseState.user || !state.admin) return;
-    if (!confirm("Upload the current workbook data to Firestore? This will overwrite matching course and curriculum documents.")) return;
-
-    const { writeBatch, doc, serverTimestamp } = firebaseState.modules;
-    const db = firebaseState.db;
-    const batches = [];
-    let batch = writeBatch(db);
-    let writes = 0;
-
-    const queueSet = (ref, data) => {
-      batch.set(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
-      writes += 1;
-      if (writes % 450 === 0) {
-        batches.push(batch.commit());
-        batch = writeBatch(db);
-      }
-    };
-
-    const seedCourses = normalizeCourses(structuredClone(source.courses || []));
-const seedCurriculum = normalizeCurriculum(structuredClone(source.curriculum || []));
-const seedPrograms = normalizePrograms(
-  structuredClone(source.programRecords || buildProgramRecords(seedCurriculum))
-);
-const seedHistory = structuredClone(source.versionHistory || []);
-
-seedCourses.forEach((course) =>
-  queueSet(doc(db, "courses", course._docId), firestoreCourse(course))
-);
-
-seedPrograms.forEach((program) =>
-  queueSet(doc(db, "programs", program._docId), firestoreProgram(program))
-);
-
-seedCurriculum.forEach((row) =>
-  queueSet(doc(db, "curriculumRows", row._docId), firestoreCurriculumRow(row))
-);
-
-seedHistory.forEach((item, index) =>
-  queueSet(doc(db, "versionHistory", slugify(`${item.version || "version"}-${index}`)), item)
-);
-
-    batches.push(batch.commit());
-    setCloudStatus("Cloud seeding");
-    await Promise.all(batches);
-    setCloudStatus(`Cloud seeded ${writes} records`);
   }
 
   async function persistCourse(course) {
@@ -1547,13 +1480,5 @@ seedHistory.forEach((item, index) =>
 
   function escapeAttr(value) {
     return escapeHtml(value).replace(/`/g, "&#096;");
-  }
-
-  function readSnapshot() {
-    try {
-      return JSON.parse(localStorage.getItem(snapshotKey));
-    } catch {
-      return null;
-    }
   }
 })();

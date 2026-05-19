@@ -4,7 +4,7 @@ This document captures the working feature plan for the New Eden Archive web app
 
 ## Core Goal
 
-Create a password-protected internal archive for New Eden School course, curriculum, program, notes, attachments, and future transcript workflows. The app should replace the Excel workbook as the editable source of truth while preserving the workbook's current course and curriculum data.
+Create a password-protected internal archive for New Eden School course, curriculum, program, notes, attachments, and future transcript workflows. Firestore is the editable source of truth; the Excel workbook was only used for the initial import.
 
 ## User Roles
 
@@ -17,7 +17,6 @@ Admins can:
 - Add and remove course requirements inside a program.
 - Add notes.
 - Upload, organize, download, and remove attachments.
-- Seed or migrate workbook data.
 - Manage archive data.
 
 ### Standard Users
@@ -160,4 +159,3 @@ Future planning questions:
 8. Notes system.
 9. User management screen for admins.
 10. Transcript generator port.
-

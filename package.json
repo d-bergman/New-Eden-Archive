@@ -5,7 +5,7 @@
   "description": "Editable web app prototype for the New Eden course and curriculum archive.",
   "scripts": {
     "start": "python -m http.server 5173",
-    "check:js": "node --check app.js && node --check new-eden-data.generated.js && node --check tools/check-ui.cjs",
+    "check:js": "node --check app.js && node --check tools/check-ui.cjs",
     "check:ui": "node tools/check-ui.cjs"
   },
   "devDependencies": {
