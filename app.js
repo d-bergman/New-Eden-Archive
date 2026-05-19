@@ -272,10 +272,15 @@
   }
 
   function renderOverview() {
-    const allRows = filteredCourses();
-    const rows = allRows.slice(0, 10);
-    els.overviewCourseTotal.textContent = `Showing 1 to ${Math.min(rows.length, allRows.length)} of ${allRows.length} courses`;
-    els.overviewCourses.innerHTML = rows.map((course, index) => `
+  const allRows = filteredCourses();
+  const rows = allRows.slice(0, 10);
+
+  els.overviewCourseTotal.textContent = `Showing 1 to ${Math.min(rows.length, allRows.length)} of ${allRows.length} courses`;
+
+  els.overviewCourses.innerHTML = rows.map((course, index) => {
+    const courseIndex = state.courses.indexOf(course);
+
+    return `
       <tr class="${index === 0 ? "is-selected" : ""}">
         <td><input class="form-check-input" type="checkbox" ${index === 0 ? "checked" : ""} aria-label="Select ${escapeAttr(course.name)}" /></td>
         <td>${escapeHtml(course.id)}</td>
@@ -283,20 +288,82 @@
         <td>${highlight(course.name)}</td>
         <td>${escapeHtml(course.comment || "Course archive record.")}</td>
         <td><span class="status-badge">Active</span></td>
-        <td class="text-end"><button class="table-action" type="button" aria-label="Course actions"><i class="bi bi-three-dots"></i></button></td>
+        <td class="text-end">
+          <div class="action-menu-wrap">
+            <button class="table-action" data-toggle-course-menu="${courseIndex}" type="button" aria-label="Course actions">
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <div class="action-menu" hidden>
+              <button type="button" data-edit-course="${courseIndex}">
+                <i class="bi bi-pencil"></i> Edit
+              </button>
+              <button type="button" class="danger" data-delete-course="${courseIndex}">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </div>
+          </div>
+        </td>
       </tr>
-    `).join("") || emptyRow(7, "No courses match the current filters.");
+    `;
+  }).join("") || emptyRow(7, "No courses match the current filters.");
 
-    const selected = state.selectedProgram || programs()[0]?.name || "";
-    els.featuredProgram.value = selected;
-    const rowsForProgram = curriculumForProgram(selected);
-    const program = programs().find((item) => item.name === selected);
-    const section = rowsForProgram[0]?.section || program?.section || "Program";
-    els.programTitle.textContent = programShortName(selected);
-    els.programCode.textContent = program?.code || programCode(selected, section);
-    els.requiredCount.textContent = rowsForProgram.length;
-    renderProgramPanel(activeProgramTab());
+  bindCourseActionMenus(els.overviewCourses);
+
+  const selected = state.selectedProgram || programs()[0]?.name || "";
+  els.featuredProgram.value = selected;
+  const rowsForProgram = curriculumForProgram(selected);
+  const program = programs().find((item) => item.name === selected);
+  const section = rowsForProgram[0]?.section || program?.section || "Program";
+  els.programTitle.textContent = programShortName(selected);
+  els.programCode.textContent = program?.code || programCode(selected, section);
+  els.requiredCount.textContent = rowsForProgram.length;
+  renderProgramPanel(activeProgramTab());
+}
+
+function bindCourseActionMenus(container) {
+  container.querySelectorAll("[data-toggle-course-menu]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+
+      container.querySelectorAll(".action-menu").forEach((menu) => {
+        if (menu !== button.nextElementSibling) menu.hidden = true;
+      });
+
+      const menu = button.nextElementSibling;
+      menu.hidden = !menu.hidden;
+    });
+  });
+
+  container.querySelectorAll("[data-edit-course]").forEach((button) => {
+    button.addEventListener("click", () => {
+      openCourseEditor(Number(button.dataset.editCourse));
+    });
+  });
+
+  container.querySelectorAll("[data-delete-course]").forEach((button) => {
+    button.addEventListener("click", () => {
+      deleteCourse(Number(button.dataset.deleteCourse));
+    });
+  });
+}
+
+async function deleteCourse(index) {
+  if (!state.admin) return;
+
+  const course = state.courses[index];
+  if (!course) return;
+
+  if (!confirm(`Delete course "${course.name || course.id || "Untitled Course"}"?`)) return;
+
+  state.courses.splice(index, 1);
+
+  if (canWriteCloud() && course._docId) {
+    const { deleteDoc, doc } = firebaseState.modules;
+    await deleteDoc(doc(firebaseState.db, "courses", course._docId));
   }
+
+  render();
+}
 
   function renderProgramPanel(tab = "overview") {
     const selected = state.selectedProgram || programs()[0]?.name || "";
@@ -826,18 +893,31 @@
         }
 
         state.signedIn = true;
-        state.admin = false;
-        els.signInMessage.textContent = "Signed in.";
-        render();
+state.admin = false;
+els.signInMessage.textContent = "Signed in.";
+setCloudStatus("Loading cloud data...");
+
+try {
+  await refreshRoleStatus();
+  await loadFirestoreData();
+  startFirestoreListeners();
+  setCloudStatus(`Cloud loaded: ${state.courses.length} courses, ${programs().length} programs, ${state.curriculum.length} curriculum rows`);
+} catch (error) {
+  console.warn("Signed in, but cloud data lookup failed.", error);
+  setCloudStatus(`Cloud data failed. UID: ${user.uid}`);
+}
+
+render();
 
         try {
-          await refreshRoleStatus();
-          startFirestoreListeners();
-        } catch (error) {
-          console.warn("Signed in, but role/profile lookup failed.", error);
-          setCloudStatus(`Role setup needed. UID: ${user.uid}`);
-        }
-        render();
+  await refreshRoleStatus();
+  await loadFirestoreData();
+  startFirestoreListeners();
+} catch (error) {
+  console.warn("Signed in, but role/profile lookup failed.", error);
+  setCloudStatus(`Role setup needed. UID: ${user.uid}`);
+}
+render();
       });
     } catch (error) {
       console.warn("Firebase unavailable; using local workbook data.", error);
@@ -919,6 +999,14 @@
       getDocs(collection(db, "attachments")),
     ]);
 
+    console.log("Firestore sizes", {
+  courses: courseSnap.size,
+  programs: programSnap.size,
+  curriculumRows: curriculumSnap.size,
+  versionHistory: versionSnap.size,
+  attachments: attachmentSnap.size,
+});
+
     if (courseSnap.size) {
       state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
     }
@@ -996,10 +1084,28 @@
       }
     };
 
-    state.courses.forEach((course) => queueSet(doc(db, "courses", course._docId), firestoreCourse(course)));
-    programs().forEach((program) => queueSet(doc(db, "programs", program._docId), firestoreProgram(program)));
-    state.curriculum.forEach((row) => queueSet(doc(db, "curriculumRows", row._docId), firestoreCurriculumRow(row)));
-    state.versionHistory.forEach((item, index) => queueSet(doc(db, "versionHistory", slugify(`${item.version || "version"}-${index}`)), item));
+    const seedCourses = normalizeCourses(structuredClone(source.courses || []));
+const seedCurriculum = normalizeCurriculum(structuredClone(source.curriculum || []));
+const seedPrograms = normalizePrograms(
+  structuredClone(source.programRecords || buildProgramRecords(seedCurriculum))
+);
+const seedHistory = structuredClone(source.versionHistory || []);
+
+seedCourses.forEach((course) =>
+  queueSet(doc(db, "courses", course._docId), firestoreCourse(course))
+);
+
+seedPrograms.forEach((program) =>
+  queueSet(doc(db, "programs", program._docId), firestoreProgram(program))
+);
+
+seedCurriculum.forEach((row) =>
+  queueSet(doc(db, "curriculumRows", row._docId), firestoreCurriculumRow(row))
+);
+
+seedHistory.forEach((item, index) =>
+  queueSet(doc(db, "versionHistory", slugify(`${item.version || "version"}-${index}`)), item)
+);
 
     batches.push(batch.commit());
     setCloudStatus("Cloud seeding");
