@@ -403,6 +403,43 @@
       </form>
     </dialog>
 
+    <dialog class="modal-native requirement-modal" id="requirementsDialog">
+      <form method="dialog" class="modal-card" id="requirementsForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Requirement Builder</p>
+            <h2 id="requirementsTitle">Manage Requirements</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="requirement-builder">
+          <section class="builder-pane">
+            <label class="form-label">
+              Search Courses
+              <input class="form-control" id="requirementCourseSearch" type="search" placeholder="Search by course name or ID" />
+            </label>
+            <div class="course-picker" id="requirementCoursePicker"></div>
+          </section>
+
+          <section class="builder-pane">
+            <div class="builder-pane-header">
+              <h3>Selected Requirements</h3>
+              <span id="requirementSelectedCount">0</span>
+            </div>
+            <div class="selected-requirements" id="selectedRequirements"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" value="cancel">Cancel</button>
+          <button class="btn btn-eden" id="saveRequirements" value="default">Save Requirements</button>
+        </div>
+      </form>
+    </dialog>
+
     <script
       src="assets/vendor/bootstrap/bootstrap.bundle.min.js"
     ></script>

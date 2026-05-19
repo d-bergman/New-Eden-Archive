@@ -827,6 +827,10 @@ mark {
   box-shadow: var(--eden-shadow);
 }
 
+.requirement-modal {
+  width: min(1120px, calc(100vw - 32px));
+}
+
 .modal-native::backdrop {
   background: rgba(15, 47, 33, 0.45);
 }
@@ -862,6 +866,108 @@ mark {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.modal-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.requirement-builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.builder-pane {
+  min-height: 420px;
+  padding: 14px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.builder-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.builder-pane-header h3 {
+  margin: 0;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.builder-pane-header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  min-height: 28px;
+  border-radius: 999px;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+  font-weight: 850;
+}
+
+.course-picker,
+.selected-requirements {
+  display: grid;
+  gap: 8px;
+  max-height: 390px;
+  overflow: auto;
+}
+
+.course-picker-row,
+.selected-requirement-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 7px;
+  background: rgba(251, 250, 245, 0.82);
+  color: var(--eden-ink);
+  text-align: left;
+}
+
+.course-picker-row:hover,
+.selected-requirement-row:hover {
+  background: rgba(223, 232, 215, 0.64);
+}
+
+.course-picker-row strong,
+.course-picker-row small,
+.selected-requirement-row strong,
+.selected-requirement-row small {
+  display: block;
+}
+
+.course-picker-row small,
+.selected-requirement-row small {
+  color: var(--eden-muted);
+}
+
+.selected-requirement-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.requirement-order {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--eden-forest);
+  color: #fff;
+  font-weight: 800;
 }
 
 .empty-state {
@@ -917,7 +1023,8 @@ mark {
 
   .filter-bar,
   .program-meta,
-  .program-overview dl {
+  .program-overview dl,
+  .requirement-builder {
     grid-template-columns: 1fr;
   }
 

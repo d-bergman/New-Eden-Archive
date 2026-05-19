@@ -36,6 +36,15 @@ async function run() {
   await page.click('button[data-view="programs"]');
   const programSections = await page.locator(".directory-section").count();
 
+  await page.click('button[data-view="overview"]');
+  const requirementCountBefore = Number(await page.locator("#requiredCount").textContent());
+  await page.click("#addProgramCourse");
+  await page.fill("#requirementCourseSearch", "Apocalyptic");
+  await page.locator("[data-add-requirement]").first().click();
+  const builderSelectedCount = Number(await page.locator("#requirementSelectedCount").textContent());
+  await page.click("#saveRequirements");
+  const requirementCountAfter = Number(await page.locator("#requiredCount").textContent());
+
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("http://127.0.0.1:5173/?nofirebase=1", { waitUntil: "networkidle" });
   await page.evaluate(() => {
@@ -53,12 +62,15 @@ async function run() {
     adminState,
     curriculumRows,
     programSections,
+    requirementCountBefore,
+    builderSelectedCount,
+    requirementCountAfter,
     errors,
   };
 
   console.log(JSON.stringify(result, null, 2));
 
-  if (errors.length) {
+  if (errors.length || requirementCountAfter <= requirementCountBefore || builderSelectedCount <= requirementCountBefore) {
     process.exitCode = 1;
   }
 }

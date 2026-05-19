@@ -16,6 +16,11 @@
     db: null,
     unsubscribers: [],
   };
+  const requirementBuilder = {
+    programName: "",
+    rows: [],
+    search: "",
+  };
 
   const state = {
     courses: normalizeCourses(saved?.courses || structuredClone(source.courses || [])),
@@ -79,6 +84,14 @@
     editForm: document.querySelector("#editForm"),
     editTitle: document.querySelector("#editTitle"),
     editFields: document.querySelector("#editFields"),
+    requirementsDialog: document.querySelector("#requirementsDialog"),
+    requirementsForm: document.querySelector("#requirementsForm"),
+    requirementsTitle: document.querySelector("#requirementsTitle"),
+    requirementCourseSearch: document.querySelector("#requirementCourseSearch"),
+    requirementCoursePicker: document.querySelector("#requirementCoursePicker"),
+    selectedRequirements: document.querySelector("#selectedRequirements"),
+    requirementSelectedCount: document.querySelector("#requirementSelectedCount"),
+    saveRequirements: document.querySelector("#saveRequirements"),
   };
 
   init();
@@ -176,9 +189,19 @@
 
     els.addCourse.addEventListener("click", () => openCourseEditor());
     els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
-    els.addProgramCourse.addEventListener("click", () => openCurriculumEditor());
+    els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram.addEventListener("click", () => openProgramEditor());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
+
+    els.requirementCourseSearch.addEventListener("input", (event) => {
+      requirementBuilder.search = event.target.value.trim().toLowerCase();
+      renderRequirementBuilder();
+    });
+
+    els.saveRequirements.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveRequirementBuilder();
+    });
   }
 
   function render() {
@@ -309,7 +332,7 @@
           <td>${escapeHtml(row.courseId)}</td>
           <td>${highlight(stripCredit(row.courseLabel))}</td>
           <td>${escapeHtml(row.credit)}</td>
-          <td>Required</td>
+          <td>${escapeHtml(row.type || "Required")}</td>
           <td class="text-end">
             <button class="table-action" data-edit-curriculum="${realIndex}" type="button" aria-label="Edit requirement"><i class="bi bi-three-dots"></i></button>
             <button class="button danger admin-only" data-remove-curriculum="${realIndex}" type="button">Remove</button>
@@ -449,6 +472,114 @@
       persistCurriculumRow(values);
       render();
     });
+  }
+
+  function openRequirementBuilder() {
+    if (!state.admin || !state.selectedProgram) return;
+    requirementBuilder.programName = state.selectedProgram;
+    requirementBuilder.search = "";
+    requirementBuilder.rows = curriculumForProgram(state.selectedProgram).map((row, index) => ({
+      ...row,
+      order: Number(row.order || index + 1),
+    }));
+    els.requirementsTitle.textContent = programShortName(state.selectedProgram);
+    els.requirementCourseSearch.value = "";
+    renderRequirementBuilder();
+    els.requirementsDialog.showModal();
+    setTimeout(() => els.requirementCourseSearch.focus(), 0);
+  }
+
+  function renderRequirementBuilder() {
+    const selectedIds = new Set(requirementBuilder.rows.map((row) => row.courseId));
+    const courseMatches = state.courses
+      .filter((course) => !selectedIds.has(course.id))
+      .filter((course) => !requirementBuilder.search || matchesText(course, requirementBuilder.search))
+      .slice(0, 18);
+
+    els.requirementCoursePicker.innerHTML = courseMatches.map((course) => `
+      <button class="course-picker-row" type="button" data-add-requirement="${escapeAttr(course.id)}">
+        <span>
+          <strong>${escapeHtml(course.name)}</strong>
+          <small>${escapeHtml(course.id)} &bull; Credit ${escapeHtml(course.credit)}</small>
+        </span>
+        <i class="bi bi-plus-circle"></i>
+      </button>
+    `).join("") || `<div class="empty-state">No available courses match the search.</div>`;
+
+    els.selectedRequirements.innerHTML = requirementBuilder.rows
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
+      .map((row, index) => `
+        <div class="selected-requirement-row">
+          <span class="requirement-order">${index + 1}</span>
+          <span>
+            <strong>${escapeHtml(stripCredit(row.courseLabel))}</strong>
+            <small>${escapeHtml(row.courseId)} &bull; Credit ${escapeHtml(row.credit)}</small>
+          </span>
+          <button class="table-action" type="button" data-remove-requirement="${escapeAttr(row.courseId)}" aria-label="Remove requirement">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      `).join("") || `<div class="empty-state">No courses selected yet.</div>`;
+
+    els.requirementSelectedCount.textContent = requirementBuilder.rows.length;
+
+    els.requirementCoursePicker.querySelectorAll("[data-add-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const course = state.courses.find((item) => item.id === button.dataset.addRequirement);
+        if (!course) return;
+        const program = programs().find((item) => item.name === requirementBuilder.programName);
+        requirementBuilder.rows.push({
+          _docId: curriculumDocId({ program: requirementBuilder.programName, courseId: course.id }, requirementBuilder.rows.length),
+          section: program?.section || "",
+          program: requirementBuilder.programName,
+          courseLabel: courseLabel(course),
+          courseId: course.id,
+          credit: course.credit,
+          comment: "",
+          status: "Active",
+          type: "Required",
+          order: requirementBuilder.rows.length + 1,
+        });
+        renderRequirementBuilder();
+      });
+    });
+
+    els.selectedRequirements.querySelectorAll("[data-remove-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        requirementBuilder.rows = requirementBuilder.rows.filter((row) => row.courseId !== button.dataset.removeRequirement);
+        requirementBuilder.rows.forEach((row, index) => { row.order = index + 1; });
+        renderRequirementBuilder();
+      });
+    });
+  }
+
+  async function saveRequirementBuilder() {
+    if (!state.admin) return;
+    const previousRows = curriculumForProgram(requirementBuilder.programName);
+    const nextIds = new Set(requirementBuilder.rows.map((row) => row.courseId));
+    const removedRows = previousRows.filter((row) => !nextIds.has(row.courseId));
+    const program = programs().find((item) => item.name === requirementBuilder.programName);
+
+    state.curriculum = state.curriculum.filter((row) => row.program !== requirementBuilder.programName);
+    const rowsToSave = requirementBuilder.rows.map((row, index) => ({
+      ...row,
+      section: program?.section || row.section || "",
+      program: requirementBuilder.programName,
+      order: index + 1,
+      type: row.type || "Required",
+      _docId: row._docId || curriculumDocId(row, index),
+    }));
+    state.curriculum.push(...rowsToSave);
+
+    if (canWriteCloud()) {
+      await Promise.all([
+        ...removedRows.map((row) => removeCurriculumRow(row)),
+        ...rowsToSave.map((row) => persistCurriculumRow(row)),
+      ]);
+    }
+
+    els.requirementsDialog.close();
+    render();
   }
 
   function openProgramEditor(programName) {
@@ -818,6 +949,8 @@
       credit: row.credit || "",
       comment: row.comment || "",
       status: row.status || "Active",
+      type: row.type || "Required",
+      order: Number(row.order || 0),
     };
   }
 
@@ -918,6 +1051,8 @@
       credit: row.credit || "",
       comment: row.comment || "",
       status: row.status || "Active",
+      type: row.type || "Required",
+      order: Number(row.order || index + 1),
     }));
   }
 
@@ -968,7 +1103,11 @@
 
   function matchesSearch(item) {
     if (!state.search) return true;
-    return Object.values(item).some((value) => String(value || "").toLowerCase().includes(state.search));
+    return matchesText(item, state.search);
+  }
+
+  function matchesText(item, query) {
+    return Object.values(item).some((value) => String(value || "").toLowerCase().includes(query));
   }
 
   function highlight(value) {
