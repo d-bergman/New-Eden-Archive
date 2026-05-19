@@ -20,6 +20,7 @@
   const state = {
     courses: normalizeCourses(saved?.courses || structuredClone(source.courses || [])),
     curriculum: normalizeCurriculum(saved?.curriculum || structuredClone(source.curriculum || [])),
+    programRecords: normalizePrograms(saved?.programRecords || buildProgramRecords(saved?.curriculum || source.curriculum || [])),
     versionHistory: saved?.versionHistory || structuredClone(source.versionHistory || []),
     search: "",
     view: "overview",
@@ -61,6 +62,9 @@
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseRows: document.querySelector("#courseRows"),
     addCourse: document.querySelector("#addCourse"),
+    addCourseCatalog: document.querySelector("#addCourseCatalog"),
+    addProgram: document.querySelector("#addProgram"),
+    editProgramButton: document.querySelector("#editProgramButton"),
     sectionFilter: document.querySelector("#sectionFilter"),
     programFilter: document.querySelector("#programFilter"),
     programSummary: document.querySelector("#programSummary"),
@@ -163,6 +167,7 @@
       localStorage.setItem(snapshotKey, JSON.stringify({
         courses: state.courses,
         curriculum: state.curriculum,
+        programRecords: state.programRecords,
         versionHistory: state.versionHistory,
       }));
       els.saveSnapshot.textContent = "Saved";
@@ -170,7 +175,10 @@
     });
 
     els.addCourse.addEventListener("click", () => openCourseEditor());
+    els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
     els.addProgramCourse.addEventListener("click", () => openCurriculumEditor());
+    els.addProgram.addEventListener("click", () => openProgramEditor());
+    els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
   }
 
   function render() {
@@ -334,9 +342,15 @@
       <article class="directory-section">
         <h4>${escapeHtml(group.section)}</h4>
         ${group.programs.map((program) => `
-          <button class="program-link" data-program="${escapeAttr(program.name)}">
-            ${highlight(program.name)}
-          </button>
+          <div class="program-row">
+            <button class="program-link" data-program="${escapeAttr(program.name)}">
+              ${highlight(program.name)}
+            </button>
+            <div class="program-actions admin-only">
+              <button class="btn btn-sm btn-outline-eden" data-edit-program="${escapeAttr(program.name)}">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" data-remove-program="${escapeAttr(program.name)}">Remove</button>
+            </div>
+          </div>
         `).join("")}
       </article>
     `).join("") || `<div class="empty-state">No programs match the current search.</div>`;
@@ -348,6 +362,14 @@
         state.view = "curriculums";
         render();
       });
+    });
+
+    els.programDirectory.querySelectorAll("[data-edit-program]").forEach((button) => {
+      button.addEventListener("click", () => openProgramEditor(button.dataset.editProgram));
+    });
+
+    els.programDirectory.querySelectorAll("[data-remove-program]").forEach((button) => {
+      button.addEventListener("click", () => removeProgram(button.dataset.removeProgram));
     });
   }
 
@@ -425,6 +447,52 @@
       else state.curriculum[index] = values;
       state.selectedProgram = values.program;
       persistCurriculumRow(values);
+      render();
+    });
+  }
+
+  function openProgramEditor(programName) {
+    if (!state.admin) return;
+    const existing = programName
+      ? programs().find((program) => program.name === programName)
+      : null;
+    const program = existing || {
+      section: sections()[0] || "",
+      name: "",
+      code: "",
+      status: "Active",
+      version: "v1.0",
+      description: "",
+      notes: "",
+    };
+
+    openEditor(existing ? "Edit Program" : "Add Program", [
+      field("section", "Section", program.section, "select", sections()),
+      field("name", "Program Name", program.name),
+      field("code", "Program Code", program.code || programCode(program.name, program.section)),
+      field("status", "Status", program.status || "Active", "select", ["Active", "Inactive", "Archived"]),
+      field("version", "Version", program.version || "v1.0"),
+      field("description", "Description", program.description || "", "textarea"),
+      field("notes", "Notes", program.notes || "", "textarea"),
+    ], (values) => {
+      const record = normalizePrograms([{ ...program, ...values }])[0];
+      const oldName = program.name;
+      const index = state.programRecords.findIndex((item) => item._docId === record._docId || item.name === oldName);
+      if (index >= 0) state.programRecords[index] = record;
+      else state.programRecords.push(record);
+
+      if (oldName && oldName !== record.name) {
+        state.curriculum.forEach((row) => {
+          if (row.program === oldName) {
+            row.program = record.name;
+            row.section = record.section;
+            persistCurriculumRow(row);
+          }
+        });
+      }
+
+      state.selectedProgram = record.name;
+      persistProgram(record);
       render();
     });
   }
@@ -566,14 +634,18 @@
     if (!firebaseState.ready) return;
     const { collection, getDocs, orderBy, query } = firebaseState.modules;
     const db = firebaseState.db;
-    const [courseSnap, curriculumSnap, versionSnap] = await Promise.all([
+    const [courseSnap, programSnap, curriculumSnap, versionSnap] = await Promise.all([
       getDocs(query(collection(db, "courses"), orderBy("name"))),
+      getDocs(query(collection(db, "programs"), orderBy("name"))),
       getDocs(collection(db, "curriculumRows")),
       getDocs(collection(db, "versionHistory")),
     ]);
 
     if (courseSnap.size) {
       state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    }
+    if (programSnap.size) {
+      state.programRecords = normalizePrograms(programSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
     }
     if (curriculumSnap.size) {
       state.curriculum = normalizeCurriculum(curriculumSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
@@ -592,6 +664,12 @@
     firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "courses"), orderBy("name")), (snapshot) => {
       if (!snapshot.size) return;
       state.courses = normalizeCourses(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+      render();
+    }));
+
+    firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "programs"), orderBy("name")), (snapshot) => {
+      if (!snapshot.size) return;
+      state.programRecords = normalizePrograms(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
     }));
 
@@ -633,6 +711,7 @@
     };
 
     state.courses.forEach((course) => queueSet(doc(db, "courses", course._docId), firestoreCourse(course)));
+    programs().forEach((program) => queueSet(doc(db, "programs", program._docId), firestoreProgram(program)));
     state.curriculum.forEach((row) => queueSet(doc(db, "curriculumRows", row._docId), firestoreCurriculumRow(row)));
     state.versionHistory.forEach((item, index) => queueSet(doc(db, "versionHistory", slugify(`${item.version || "version"}-${index}`)), item));
 
@@ -651,6 +730,15 @@
     }, { merge: true });
   }
 
+  async function persistProgram(program) {
+    if (!canWriteCloud()) return;
+    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
+    await setDoc(doc(firebaseState.db, "programs", program._docId || slugify(program.name)), {
+      ...firestoreProgram(program),
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  }
+
   async function persistCurriculumRow(row) {
     if (!canWriteCloud()) return;
     const { doc, setDoc, serverTimestamp } = firebaseState.modules;
@@ -665,6 +753,27 @@
     if (!canWriteCloud() || !row?._docId) return;
     const { deleteDoc, doc } = firebaseState.modules;
     await deleteDoc(doc(firebaseState.db, "curriculumRows", row._docId));
+  }
+
+  async function removeProgram(programName) {
+    if (!state.admin) return;
+    const program = programs().find((item) => item.name === programName);
+    if (!program) return;
+    const count = state.curriculum.filter((row) => row.program === programName).length;
+    if (!confirm(`Remove "${programName}" and ${count} requirement row(s)?`)) return;
+
+    state.programRecords = state.programRecords.filter((item) => item.name !== programName);
+    const removedRows = state.curriculum.filter((row) => row.program === programName);
+    state.curriculum = state.curriculum.filter((row) => row.program !== programName);
+
+    if (canWriteCloud()) {
+      const { deleteDoc, doc } = firebaseState.modules;
+      await deleteDoc(doc(firebaseState.db, "programs", program._docId));
+      await Promise.all(removedRows.map((row) => row._docId ? deleteDoc(doc(firebaseState.db, "curriculumRows", row._docId)) : Promise.resolve()));
+    }
+
+    state.selectedProgram = programs()[0]?.name || "";
+    render();
   }
 
   function canWriteCloud() {
@@ -703,6 +812,18 @@
     };
   }
 
+  function firestoreProgram(program) {
+    return {
+      section: program.section || "",
+      name: program.name || "",
+      code: program.code || programCode(program.name, program.section),
+      status: program.status || "Active",
+      version: program.version || "v1.0",
+      description: program.description || "",
+      notes: program.notes || "",
+    };
+  }
+
   function filteredCourses() {
     return state.courses
       .filter((course) => state.selectedCredit === "all" || course.credit === state.selectedCredit)
@@ -724,18 +845,28 @@
   }
 
   function sections() {
-    return Array.from(new Set(state.curriculum.map((row) => row.section).filter(Boolean))).sort();
+    return Array.from(new Set([
+      ...state.curriculum.map((row) => row.section),
+      ...state.programRecords.map((program) => program.section),
+    ].filter(Boolean))).sort();
   }
 
   function programs() {
     const seen = new Set();
-    return state.curriculum.reduce((list, row) => {
+    const list = state.programRecords.reduce((items, program) => {
+      if (program.name && !seen.has(program.name)) {
+        seen.add(program.name);
+        items.push(program);
+      }
+      return items;
+    }, []);
+    return state.curriculum.reduce((items, row) => {
       if (row.program && !seen.has(row.program)) {
         seen.add(row.program);
-        list.push({ name: row.program, section: row.section });
+        items.push(normalizePrograms([{ name: row.program, section: row.section }])[0]);
       }
-      return list;
-    }, []).sort((a, b) => a.name.localeCompare(b.name));
+      return items;
+    }, list).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   function courseLabel(course) {
@@ -779,6 +910,30 @@
       comment: row.comment || "",
       status: row.status || "Active",
     }));
+  }
+
+  function buildProgramRecords(rows) {
+    const seen = new Set();
+    return (rows || []).reduce((items, row) => {
+      if (row.program && !seen.has(row.program)) {
+        seen.add(row.program);
+        items.push({ section: row.section || "", name: row.program });
+      }
+      return items;
+    }, []);
+  }
+
+  function normalizePrograms(programs) {
+    return (programs || []).map((program) => ({
+      _docId: program._docId || slugify(program.name),
+      section: program.section || "",
+      name: program.name || "",
+      code: program.code || programCode(program.name, program.section),
+      status: program.status || "Active",
+      version: program.version || "v1.0",
+      description: program.description || "",
+      notes: program.notes || "",
+    })).filter((program) => program.name);
   }
 
   function curriculumDocId(row, index) {

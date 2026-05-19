@@ -770,6 +770,22 @@ body:not(.is-admin) .admin-only {
   text-align: left;
 }
 
+.program-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--eden-line);
+}
+
+.program-row .program-link {
+  border-top: 0;
+}
+
+.program-actions {
+  gap: 6px;
+}
+
 .timeline {
   display: grid;
   gap: 12px;
