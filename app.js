@@ -506,18 +506,25 @@
       </button>
     `).join("") || `<div class="empty-state">No available courses match the search.</div>`;
 
-    els.selectedRequirements.innerHTML = requirementBuilder.rows
-      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))
-      .map((row, index) => `
+    sortRequirementRows();
+    els.selectedRequirements.innerHTML = requirementBuilder.rows.map((row, index) => `
         <div class="selected-requirement-row">
           <span class="requirement-order">${index + 1}</span>
           <span>
             <strong>${escapeHtml(stripCredit(row.courseLabel))}</strong>
             <small>${escapeHtml(row.courseId)} &bull; Credit ${escapeHtml(row.credit)}</small>
           </span>
-          <button class="table-action" type="button" data-remove-requirement="${escapeAttr(row.courseId)}" aria-label="Remove requirement">
-            <i class="bi bi-x-lg"></i>
-          </button>
+          <span class="requirement-row-actions">
+            <button class="table-action" type="button" data-move-requirement="${escapeAttr(row.courseId)}" data-direction="up" ${index === 0 ? "disabled" : ""} aria-label="Move requirement up">
+              <i class="bi bi-arrow-up"></i>
+            </button>
+            <button class="table-action" type="button" data-move-requirement="${escapeAttr(row.courseId)}" data-direction="down" ${index === requirementBuilder.rows.length - 1 ? "disabled" : ""} aria-label="Move requirement down">
+              <i class="bi bi-arrow-down"></i>
+            </button>
+            <button class="table-action" type="button" data-remove-requirement="${escapeAttr(row.courseId)}" aria-label="Remove requirement">
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </span>
         </div>
       `).join("") || `<div class="empty-state">No courses selected yet.</div>`;
 
@@ -551,6 +558,29 @@
         renderRequirementBuilder();
       });
     });
+
+    els.selectedRequirements.querySelectorAll("[data-move-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        moveRequirement(button.dataset.moveRequirement, button.dataset.direction);
+      });
+    });
+  }
+
+  function sortRequirementRows() {
+    requirementBuilder.rows.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    requirementBuilder.rows.forEach((row, index) => { row.order = index + 1; });
+  }
+
+  function moveRequirement(courseId, direction) {
+    sortRequirementRows();
+    const index = requirementBuilder.rows.findIndex((row) => row.courseId === courseId);
+    if (index < 0) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= requirementBuilder.rows.length) return;
+    const [row] = requirementBuilder.rows.splice(index, 1);
+    requirementBuilder.rows.splice(targetIndex, 0, row);
+    requirementBuilder.rows.forEach((item, itemIndex) => { item.order = itemIndex + 1; });
+    renderRequirementBuilder();
   }
 
   async function saveRequirementBuilder() {

@@ -970,6 +970,16 @@ mark {
   font-weight: 800;
 }
 
+.requirement-row-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.requirement-row-actions .table-action:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 .empty-state {
   padding: 22px;
   color: var(--eden-muted);

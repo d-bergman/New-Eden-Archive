@@ -42,6 +42,10 @@ async function run() {
   await page.fill("#requirementCourseSearch", "Apocalyptic");
   await page.locator("[data-add-requirement]").first().click();
   const builderSelectedCount = Number(await page.locator("#requirementSelectedCount").textContent());
+  const addedCourseId = "1001";
+  const orderBeforeMove = await page.locator(`[data-remove-requirement="${addedCourseId}"]`).locator("xpath=ancestor::div[contains(@class,'selected-requirement-row')]").locator(".requirement-order").textContent();
+  await page.locator(`[data-move-requirement="${addedCourseId}"][data-direction="up"]`).click();
+  const orderAfterMove = await page.locator(`[data-remove-requirement="${addedCourseId}"]`).locator("xpath=ancestor::div[contains(@class,'selected-requirement-row')]").locator(".requirement-order").textContent();
   await page.click("#saveRequirements");
   const requirementCountAfter = Number(await page.locator("#requiredCount").textContent());
 
@@ -65,12 +69,19 @@ async function run() {
     requirementCountBefore,
     builderSelectedCount,
     requirementCountAfter,
+    orderBeforeMove,
+    orderAfterMove,
     errors,
   };
 
   console.log(JSON.stringify(result, null, 2));
 
-  if (errors.length || requirementCountAfter <= requirementCountBefore || builderSelectedCount <= requirementCountBefore) {
+  if (
+    errors.length
+    || requirementCountAfter <= requirementCountBefore
+    || builderSelectedCount <= requirementCountBefore
+    || Number(orderAfterMove) >= Number(orderBeforeMove)
+  ) {
     process.exitCode = 1;
   }
 }
