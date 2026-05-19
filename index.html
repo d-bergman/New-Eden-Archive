@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Eden Archive</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Primary navigation">
+        <div class="brand-block">
+          <div class="brand-mark" aria-hidden="true">NE</div>
+          <div>
+            <p class="eyebrow">School Archive</p>
+            <h1>New Eden</h1>
+          </div>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-item active" data-view="overview">Overview</button>
+          <button class="nav-item" data-view="courses">Courses</button>
+          <button class="nav-item" data-view="curriculums">Curriculums</button>
+          <button class="nav-item" data-view="programs">Programs</button>
+          <button class="nav-item" data-view="history">Version History</button>
+        </nav>
+        <div class="admin-card">
+          <p class="eyebrow">Admin</p>
+          <strong id="adminState">Admin Locked</strong>
+          <span>Sign in to edit courses and curriculum rows.</span>
+          <button class="button primary full" id="adminToggle">Unlock Admin</button>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Course & Curriculum Management</p>
+            <h2>New Eden Archive</h2>
+          </div>
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span>Search</span>
+              <input id="globalSearch" type="search" placeholder="Search courses, programs, sections..." />
+            </label>
+            <button class="button ghost" id="saveSnapshot">Save Local Snapshot</button>
+          </div>
+        </header>
+
+        <section class="stats-grid" aria-label="Archive summary">
+          <article class="stat-tile">
+            <span>Courses</span>
+            <strong id="courseCount">0</strong>
+          </article>
+          <article class="stat-tile">
+            <span>Programs</span>
+            <strong id="programCount">0</strong>
+          </article>
+          <article class="stat-tile">
+            <span>Curriculum Rows</span>
+            <strong id="curriculumCount">0</strong>
+          </article>
+          <article class="stat-tile">
+            <span>Sections</span>
+            <strong id="sectionCount">0</strong>
+          </article>
+        </section>
+
+        <section class="view active" id="overviewView">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Overview</p>
+              <h3>Archive Dashboard</h3>
+            </div>
+            <select id="overviewCreditFilter" aria-label="Filter overview by credit"></select>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel">
+              <div class="panel-header">
+                <h4>Courses by Credit</h4>
+                <span id="overviewCourseTotal"></span>
+              </div>
+              <div class="table-wrap compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Credit</th>
+                      <th>Course Name</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overviewCourses"></tbody>
+                </table>
+              </div>
+            </article>
+            <article class="panel accent-panel">
+              <div class="panel-header">
+                <h4>Program Focus</h4>
+                <select id="featuredProgram"></select>
+              </div>
+              <div id="featuredProgramDetail"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="coursesView">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Courses</p>
+              <h3>Course Catalog</h3>
+            </div>
+            <div class="toolbar">
+              <select id="courseCreditFilter" aria-label="Filter courses by credit"></select>
+              <button class="button primary admin-only" id="addCourse">Add Course</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Credit</th>
+                  <th>Course Name</th>
+                  <th>Comment</th>
+                  <th class="admin-col">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="courseRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="view" id="curriculumsView">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Curriculums</p>
+              <h3>Program Course Requirements</h3>
+            </div>
+            <div class="toolbar">
+              <select id="sectionFilter" aria-label="Filter by section"></select>
+              <select id="programFilter" aria-label="Choose program"></select>
+            </div>
+          </div>
+          <div class="program-layout">
+            <article class="program-card" id="programSummary"></article>
+            <article class="panel">
+              <div class="panel-header">
+                <h4>Required Courses</h4>
+                <button class="button primary admin-only" id="addProgramCourse">Add Course</button>
+              </div>
+              <div class="table-wrap compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Credit</th>
+                      <th>Course</th>
+                      <th>Comment</th>
+                      <th class="admin-col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="curriculumRows"></tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="view" id="programsView">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Programs</p>
+              <h3>Programs by Section</h3>
+            </div>
+          </div>
+          <div class="program-directory" id="programDirectory"></div>
+        </section>
+
+        <section class="view" id="historyView">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Version</p>
+              <h3>Version History</h3>
+            </div>
+          </div>
+          <div class="timeline" id="versionTimeline"></div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="adminDialog">
+      <form method="dialog" class="modal-card">
+        <h3>Admin Sign In</h3>
+        <p>This prototype uses a local preview password until Firebase Auth is connected.</p>
+        <label>
+          Preview password
+          <input id="adminPassword" type="password" autocomplete="current-password" />
+        </label>
+        <p class="form-note">Temporary password: <strong>neweden</strong></p>
+        <div class="modal-actions">
+          <button class="button ghost" value="cancel">Cancel</button>
+          <button class="button primary" id="confirmAdmin" value="default">Unlock</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="editDialog">
+      <form method="dialog" class="modal-card" id="editForm">
+        <h3 id="editTitle">Edit</h3>
+        <div id="editFields"></div>
+        <div class="modal-actions">
+          <button class="button ghost" value="cancel">Cancel</button>
+          <button class="button primary" id="confirmEdit" value="default">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="new-eden-data.generated.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

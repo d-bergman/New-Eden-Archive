@@ -1,0 +1,68 @@
+const { chromium } = require("playwright");
+
+async function run() {
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 960 } });
+  const errors = [];
+
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+
+  await page.goto("http://127.0.0.1:5173/", { waitUntil: "networkidle" });
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.screenshot({ path: "app-preview-desktop.png", fullPage: true });
+
+  await page.click('button[data-view="courses"]');
+  const courseRows = await page.locator("#courseRows tr").count();
+
+  await page.fill("#globalSearch", "Herbal");
+  const filteredCourseRows = await page.locator("#courseRows tr").count();
+
+  await page.click("#adminToggle");
+  await page.fill("#adminPassword", "neweden");
+  await page.click("#confirmAdmin");
+  const adminState = await page.locator("#adminState").textContent();
+
+  await page.click('button[data-view="curriculums"]');
+  const curriculumRows = await page.locator("#curriculumRows tr").count();
+
+  await page.click('button[data-view="programs"]');
+  const programSections = await page.locator(".directory-section").count();
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto("http://127.0.0.1:5173/", { waitUntil: "networkidle" });
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  await page.reload({ waitUntil: "networkidle" });
+  await page.screenshot({ path: "app-preview-mobile.png", fullPage: true });
+
+  await browser.close();
+
+  const result = {
+    courseRows,
+    filteredCourseRows,
+    adminState,
+    curriculumRows,
+    programSections,
+    errors,
+  };
+
+  console.log(JSON.stringify(result, null, 2));
+
+  if (errors.length) {
+    process.exitCode = 1;
+  }
+}
+
+run().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
