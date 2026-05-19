@@ -94,3 +94,12 @@ For standard users, set `"role": "viewer"`.
 After that, sign in through the app. Use **Seed Firebase** once from an admin account to upload the workbook-derived course, curriculum, and version-history data.
 
 The app is signed-in-only when Firebase is active. The local test route `?nofirebase=1` keeps automated UI checks available without connecting to Firebase.
+
+## Attachments
+
+Program attachments use:
+
+- Firebase Storage for the file bytes
+- Firestore `attachments` documents for metadata and download URLs
+
+Signed-in users can download attachments. Admins can upload and remove attachments. Deploy `storage.rules` along with Firestore rules before using attachments in production.

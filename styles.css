@@ -609,6 +609,48 @@ textarea {
   padding: 18px 20px 20px;
 }
 
+.program-attachments {
+  display: none;
+  padding: 18px 20px 20px;
+}
+
+.attachment-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.attachment-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 7px;
+  background: rgba(251, 250, 245, 0.82);
+}
+
+.attachment-item > i {
+  color: var(--eden-forest);
+  font-size: 1.3rem;
+}
+
+.attachment-item strong,
+.attachment-item span {
+  display: block;
+}
+
+.attachment-item span {
+  color: var(--eden-muted);
+  font-size: 0.82rem;
+}
+
 .program-overview dl {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1104,5 +1146,14 @@ mark {
   .archive-table th:nth-child(n + 5),
   .archive-table td:nth-child(n + 5) {
     display: none;
+  }
+
+  .attachment-item {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .attachment-item .btn {
+    grid-column: 2;
+    justify-self: start;
   }
 }

@@ -11,10 +11,15 @@
     user: null,
     profile: null,
     modules: null,
-    app: null,
-    auth: null,
-    db: null,
-    unsubscribers: [],
+      app: null,
+      auth: null,
+      db: null,
+      storage: null,
+      unsubscribers: [],
+    };
+  const attachmentState = {
+    records: [],
+    activeProgram: "",
   };
   const requirementBuilder = {
     programName: "",
@@ -80,6 +85,9 @@
     requiredCount: document.querySelector("#requiredCount"),
     programDirectory: document.querySelector("#programDirectory"),
     versionTimeline: document.querySelector("#versionTimeline"),
+    programTabs: document.querySelectorAll("[data-program-tab]"),
+    attachmentUpload: document.querySelector("#attachmentUpload"),
+    attachmentList: document.querySelector("#attachmentList"),
     editDialog: document.querySelector("#editDialog"),
     editForm: document.querySelector("#editForm"),
     editTitle: document.querySelector("#editTitle"),
@@ -192,6 +200,14 @@
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram.addEventListener("click", () => openProgramEditor());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
+    els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
+
+    els.programTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        els.programTabs.forEach((item) => item.classList.toggle("active", item === tab));
+        renderProgramPanel(tab.dataset.programTab);
+      });
+    });
 
     els.requirementCourseSearch.addEventListener("input", (event) => {
       requirementBuilder.search = event.target.value.trim().toLowerCase();
@@ -264,11 +280,78 @@
     const selected = state.selectedProgram || programs()[0]?.name || "";
     els.featuredProgram.value = selected;
     const rowsForProgram = curriculumForProgram(selected);
-    const totalCredits = rowsForProgram.reduce((sum, row) => sum + Number(row.credit || 0), 0);
-    const section = rowsForProgram[0]?.section || "Program";
+    const program = programs().find((item) => item.name === selected);
+    const section = rowsForProgram[0]?.section || program?.section || "Program";
     els.programTitle.textContent = programShortName(selected);
-    els.programCode.textContent = programCode(selected, section);
+    els.programCode.textContent = program?.code || programCode(selected, section);
     els.requiredCount.textContent = rowsForProgram.length;
+    renderProgramPanel(activeProgramTab());
+  }
+
+  function renderProgramPanel(tab = "overview") {
+    const selected = state.selectedProgram || programs()[0]?.name || "";
+    const rowsForProgram = curriculumForProgram(selected);
+    const totalCredits = rowsForProgram.reduce((sum, row) => sum + Number(row.credit || 0), 0);
+    const section = rowsForProgram[0]?.section || programs().find((program) => program.name === selected)?.section || "Program";
+    const attachments = attachmentsForProgram(selected);
+
+    if (tab === "attachments") {
+      els.featuredProgramDetail.style.display = "none";
+      document.querySelector("#programAttachments").style.display = "block";
+      els.attachmentList.innerHTML = attachments.map((attachment) => `
+        <article class="attachment-item">
+          <i class="bi bi-file-earmark-text"></i>
+          <div>
+            <strong>${escapeHtml(attachment.name)}</strong>
+            <span>${escapeHtml(formatBytes(attachment.size))} ${attachment.contentType ? `&bull; ${escapeHtml(attachment.contentType)}` : ""}</span>
+          </div>
+          <a class="btn btn-sm btn-outline-eden" href="${escapeAttr(attachment.downloadURL || "#")}" target="_blank" rel="noopener" ${attachment.downloadURL ? "" : "aria-disabled=\"true\""}>
+            <i class="bi bi-download"></i>
+            Download
+          </a>
+          <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-remove-attachment="${escapeAttr(attachment._docId)}">
+            Remove
+          </button>
+        </article>
+      `).join("") || `<div class="empty-state">No attachments have been added for this program yet.</div>`;
+
+      els.attachmentList.querySelectorAll("[data-remove-attachment]").forEach((button) => {
+        button.addEventListener("click", () => removeAttachment(button.dataset.removeAttachment));
+      });
+      return;
+    }
+
+    document.querySelector("#programAttachments").style.display = "none";
+    els.featuredProgramDetail.style.display = "block";
+    if (tab === "requirements" || tab === "curriculum") {
+      els.featuredProgramDetail.innerHTML = `
+        <p class="mb-3"><strong>Requirements</strong><br />
+          This program currently has ${rowsForProgram.length} required course rows totaling ${totalCredits} credits.
+        </p>
+        <div class="attachment-list">
+          ${rowsForProgram.slice(0, 8).map((row, index) => `
+            <article class="attachment-item">
+              <span class="requirement-order">${index + 1}</span>
+              <div>
+                <strong>${escapeHtml(stripCredit(row.courseLabel))}</strong>
+                <span>${escapeHtml(row.courseId)} &bull; Credit ${escapeHtml(row.credit)}</span>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      `;
+      return;
+    }
+
+    if (tab === "notes") {
+      els.featuredProgramDetail.innerHTML = `
+        <p class="mb-3"><strong>Notes</strong><br />
+          Program notes will live here. This tab is ready for the notes system in the next slice.
+        </p>
+      `;
+      return;
+    }
+
     els.featuredProgramDetail.innerHTML = `
       <p class="mb-3"><strong>Description</strong><br />
         A comprehensive program in ${escapeHtml(section.toLowerCase())} principles and practices,
@@ -279,6 +362,7 @@
         <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
         <div><dt>Total Required Courses</dt><dd>${rowsForProgram.length}</dd></div>
         <div><dt>Last Updated</dt><dd>Imported from v1.0 workbook</dd></div>
+        <div><dt>Attachments</dt><dd>${attachments.length}</dd></div>
       </dl>
     `;
   }
@@ -703,16 +787,18 @@
 
     try {
       setCloudStatus("Cloud connecting");
-      const [appModule, authModule, firestoreModule] = await Promise.all([
+      const [appModule, authModule, firestoreModule, storageModule] = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-auth.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-firestore.js`),
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-storage.js`),
       ]);
 
-      firebaseState.modules = { ...appModule, ...authModule, ...firestoreModule };
+      firebaseState.modules = { ...appModule, ...authModule, ...firestoreModule, ...storageModule };
       firebaseState.app = appModule.initializeApp(firebaseConfig);
       firebaseState.auth = authModule.getAuth(firebaseState.app);
       firebaseState.db = firestoreModule.getFirestore(firebaseState.app);
+      firebaseState.storage = storageModule.getStorage(firebaseState.app);
       firebaseState.ready = true;
       setCloudStatus("Cloud ready");
 
@@ -804,11 +890,12 @@
     if (!firebaseState.ready) return;
     const { collection, getDocs, orderBy, query } = firebaseState.modules;
     const db = firebaseState.db;
-    const [courseSnap, programSnap, curriculumSnap, versionSnap] = await Promise.all([
+    const [courseSnap, programSnap, curriculumSnap, versionSnap, attachmentSnap] = await Promise.all([
       getDocs(query(collection(db, "courses"), orderBy("name"))),
       getDocs(query(collection(db, "programs"), orderBy("name"))),
       getDocs(collection(db, "curriculumRows")),
       getDocs(collection(db, "versionHistory")),
+      getDocs(collection(db, "attachments")),
     ]);
 
     if (courseSnap.size) {
@@ -822,6 +909,9 @@
     }
     if (versionSnap.size) {
       state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
+    }
+    if (attachmentSnap.size) {
+      attachmentState.records = normalizeAttachments(attachmentSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
     }
   }
 
@@ -852,6 +942,11 @@
     firebaseState.unsubscribers.push(onSnapshot(collection(db, "versionHistory"), (snapshot) => {
       if (!snapshot.size) return;
       state.versionHistory = snapshot.docs.map((docSnap) => docSnap.data());
+      render();
+    }));
+
+    firebaseState.unsubscribers.push(onSnapshot(collection(db, "attachments"), (snapshot) => {
+      attachmentState.records = normalizeAttachments(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
       render();
     }));
   }
@@ -946,6 +1041,74 @@
     render();
   }
 
+  async function uploadProgramAttachments(event) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length || !state.admin || !state.selectedProgram) return;
+
+    setCloudStatus(`Uploading ${files.length} file(s)`);
+    if (!canWriteCloud() || !firebaseState.storage) {
+      files.forEach((file) => {
+        attachmentState.records.push(normalizeAttachments([{
+          _docId: slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`),
+          ownerType: "program",
+          ownerName: state.selectedProgram,
+          name: file.name,
+          size: file.size,
+          contentType: file.type,
+          downloadURL: "",
+          storagePath: "",
+          uploadedBy: "local-preview",
+        }])[0]);
+      });
+      setCloudStatus("Attachment preview added locally");
+      renderProgramPanel("attachments");
+      return;
+    }
+
+    const { ref, uploadBytes, getDownloadURL, doc, setDoc, serverTimestamp } = firebaseState.modules;
+    await Promise.all(files.map(async (file) => {
+      const docId = slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`);
+      const storagePath = `attachments/programs/${slugify(state.selectedProgram)}/${docId}-${file.name}`;
+      const fileRef = ref(firebaseState.storage, storagePath);
+      await uploadBytes(fileRef, file);
+      const downloadURL = await getDownloadURL(fileRef);
+      const attachment = {
+        _docId: docId,
+        ownerType: "program",
+        ownerName: state.selectedProgram,
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        storagePath,
+        downloadURL,
+        uploadedBy: firebaseState.user?.uid || "",
+      };
+      await setDoc(doc(firebaseState.db, "attachments", docId), {
+        ...firestoreAttachment(attachment),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }));
+    setCloudStatus(`Uploaded ${files.length} file(s)`);
+  }
+
+  async function removeAttachment(docId) {
+    if (!state.admin || !docId) return;
+    const attachment = attachmentState.records.find((item) => item._docId === docId);
+    if (!attachment || !confirm(`Remove attachment "${attachment.name}"?`)) return;
+    attachmentState.records = attachmentState.records.filter((item) => item._docId !== docId);
+
+    if (canWriteCloud()) {
+      const { deleteDoc, doc, deleteObject, ref } = firebaseState.modules;
+      await deleteDoc(doc(firebaseState.db, "attachments", docId));
+      if (attachment.storagePath && firebaseState.storage) {
+        await deleteObject(ref(firebaseState.storage, attachment.storagePath)).catch(() => {});
+      }
+    }
+    renderProgramPanel("attachments");
+  }
+
   function canWriteCloud() {
     return firebaseState.ready && firebaseState.user && state.admin;
   }
@@ -993,6 +1156,19 @@
       version: program.version || "v1.0",
       description: program.description || "",
       notes: program.notes || "",
+    };
+  }
+
+  function firestoreAttachment(attachment) {
+    return {
+      ownerType: attachment.ownerType || "program",
+      ownerName: attachment.ownerName || "",
+      name: attachment.name || "",
+      size: Number(attachment.size || 0),
+      contentType: attachment.contentType || "",
+      storagePath: attachment.storagePath || "",
+      downloadURL: attachment.downloadURL || "",
+      uploadedBy: attachment.uploadedBy || "",
     };
   }
 
@@ -1108,6 +1284,36 @@
       description: program.description || "",
       notes: program.notes || "",
     })).filter((program) => program.name);
+  }
+
+  function normalizeAttachments(attachments) {
+    return (attachments || []).map((attachment) => ({
+      _docId: attachment._docId || slugify(`${attachment.ownerName || "attachment"}-${attachment.name || Date.now()}`),
+      ownerType: attachment.ownerType || "program",
+      ownerName: attachment.ownerName || "",
+      name: attachment.name || "",
+      size: Number(attachment.size || 0),
+      contentType: attachment.contentType || "",
+      storagePath: attachment.storagePath || "",
+      downloadURL: attachment.downloadURL || "",
+      uploadedBy: attachment.uploadedBy || "",
+    })).filter((attachment) => attachment.name);
+  }
+
+  function attachmentsForProgram(programName) {
+    return attachmentState.records.filter((attachment) => attachment.ownerType === "program" && attachment.ownerName === programName);
+  }
+
+  function activeProgramTab() {
+    return Array.from(els.programTabs).find((tab) => tab.classList.contains("active"))?.dataset.programTab || "overview";
+  }
+
+  function formatBytes(bytes) {
+    const value = Number(bytes || 0);
+    if (!value) return "0 B";
+    const units = ["B", "KB", "MB", "GB"];
+    const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+    return `${(value / (1024 ** index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
   }
 
   function curriculumDocId(row, index) {

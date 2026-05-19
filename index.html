@@ -246,14 +246,24 @@
                     </div>
 
                     <ul class="nav nav-tabs program-tabs">
-                      <li class="nav-item"><button class="nav-link active" type="button">Overview</button></li>
-                      <li class="nav-item"><button class="nav-link" type="button">Curriculum</button></li>
-                      <li class="nav-item"><button class="nav-link" type="button">Requirements</button></li>
-                      <li class="nav-item"><button class="nav-link" type="button">Notes</button></li>
-                      <li class="nav-item"><button class="nav-link" type="button">Attachments</button></li>
+                      <li class="nav-item"><button class="nav-link active" type="button" data-program-tab="overview">Overview</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button" data-program-tab="curriculum">Curriculum</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button" data-program-tab="requirements">Requirements</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button" data-program-tab="notes">Notes</button></li>
+                      <li class="nav-item"><button class="nav-link" type="button" data-program-tab="attachments">Attachments</button></li>
                     </ul>
 
                     <div id="featuredProgramDetail" class="program-overview"></div>
+                    <div class="program-attachments" id="programAttachments">
+                      <div class="attachment-toolbar admin-only">
+                        <label class="btn btn-outline-eden mb-0">
+                          <i class="bi bi-upload"></i>
+                          Upload Files
+                          <input class="visually-hidden" id="attachmentUpload" type="file" multiple />
+                        </label>
+                      </div>
+                      <div id="attachmentList" class="attachment-list"></div>
+                    </div>
                   </article>
 
                   <article class="archive-panel">

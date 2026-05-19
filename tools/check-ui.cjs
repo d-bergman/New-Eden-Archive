@@ -48,6 +48,8 @@ async function run() {
   const orderAfterMove = await page.locator(`[data-remove-requirement="${addedCourseId}"]`).locator("xpath=ancestor::div[contains(@class,'selected-requirement-row')]").locator(".requirement-order").textContent();
   await page.click("#saveRequirements");
   const requirementCountAfter = Number(await page.locator("#requiredCount").textContent());
+  await page.click('[data-program-tab="attachments"]');
+  const attachmentEmptyState = await page.locator("#attachmentList .empty-state").textContent();
 
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("http://127.0.0.1:5173/?nofirebase=1", { waitUntil: "networkidle" });
@@ -71,6 +73,7 @@ async function run() {
     requirementCountAfter,
     orderBeforeMove,
     orderAfterMove,
+    attachmentEmptyState,
     errors,
   };
 
