@@ -4,7 +4,7 @@ This document captures the working feature plan for the New Eden Archive web app
 
 ## Core Goal
 
-Create a password-protected internal archive for New Eden School course, curriculum, program, notes, attachments, and future transcript workflows. Firestore is the editable source of truth; the Excel workbook was only used for the initial import.
+Create a password-protected internal archive for New Eden School course, curriculum, program, notes, attachments, and future transcript workflows. Realtime Database is the editable source of truth; the Excel workbook was only used for the initial import.
 
 ## User Roles
 
@@ -109,7 +109,7 @@ The archive should support file uploads and downloads for documents such as:
 Recommended Firebase services:
 
 - Firebase Storage for files
-- Firestore metadata records for attachment names, types, owners, linked course/program, and download URLs
+- Realtime Database metadata records for attachment names, types, owners, linked course/program, and download URLs
 
 ### Notes
 
@@ -124,7 +124,7 @@ Notes should include author and timestamp metadata.
 
 ## Real-Time Sync
 
-The app should use Firestore real-time listeners so changes appear live for signed-in users without requiring refresh.
+The app should use Realtime Database listeners so changes appear live for signed-in users without requiring refresh.
 
 Expected live areas:
 
@@ -150,7 +150,7 @@ Future planning questions:
 ## Recommended Build Order
 
 1. Authentication and role-gated access.
-2. Firestore data model cleanup for courses, programs, requirements, users, notes, and attachments.
+2. Realtime Database model cleanup for courses, programs, requirements, users, notes, and attachments.
 3. Real-time sync for courses/programs/requirements.
 4. Full admin CRUD for courses.
 5. Full admin CRUD for programs/curriculums.

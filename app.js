@@ -1,5 +1,13 @@
 (function () {
-  const firebaseConfig = window.NEW_EDEN_FIREBASE_CONFIG;
+  const firebaseConfig = {
+    apiKey: "AIzaSyCKgoV1cUmlvgDxb3CL9UNNiHhhwMk7bYs",
+    authDomain: "new-eden-archive.firebaseapp.com",
+    databaseURL: "https://new-eden-archive-default-rtdb.firebaseio.com",
+    projectId: "new-eden-archive",
+    storageBucket: "new-eden-archive.firebasestorage.app",
+    messagingSenderId: "717052013385",
+    appId: "1:717052013385:web:eb7fa648642d3701624898",
+  };
   const firebaseVersion = "12.13.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
@@ -364,8 +372,8 @@
     state.courses.splice(index, 1);
 
     if (canWriteCloud() && course._docId) {
-      const { deleteDoc, doc } = firebaseState.modules;
-      await deleteDoc(doc(firebaseState.db, "courses", course._docId));
+      const { dbRef, remove } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `courses/${course._docId}`));
     }
 
     render();
@@ -380,10 +388,10 @@
     state.courses = state.courses.filter((course) => !isBlankCourse(course));
 
     if (canWriteCloud()) {
-      const { deleteDoc, doc } = firebaseState.modules;
+      const { dbRef, remove } = firebaseState.modules;
       await Promise.all(blankCourses
         .filter((course) => course._docId)
-        .map((course) => deleteDoc(doc(firebaseState.db, "courses", course._docId))));
+        .map((course) => remove(dbRef(firebaseState.db, `courses/${course._docId}`))));
     }
 
     setCloudStatus(`Removed ${blankCourses.length} blank course record(s)`);
@@ -944,41 +952,53 @@
   async function initFirebase() {
     if (firebaseDisabled) {
       state.signedIn = true;
-      setCloudStatus("Cloud disabled for test");
+      setCloudStatus("Realtime Database disabled for test");
       render();
-      return;
-    }
-    if (!firebaseConfig) {
-      setCloudStatus("Cloud config missing");
       return;
     }
 
     try {
-      setCloudStatus("Cloud connecting");
-      const [appModule, authModule, firestoreModule, storageModule] = await Promise.all([
+      setCloudStatus("Realtime Database connecting");
+      const [appModule, authModule, databaseModule, storageModule] = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-auth.js`),
-        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-firestore.js`),
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-database.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-storage.js`),
       ]);
 
-      firebaseState.modules = { ...appModule, ...authModule, ...firestoreModule, ...storageModule };
+      firebaseState.modules = {
+        ...appModule,
+        ...authModule,
+        getDatabase: databaseModule.getDatabase,
+        dbRef: databaseModule.ref,
+        get: databaseModule.get,
+        onValue: databaseModule.onValue,
+        set: databaseModule.set,
+        update: databaseModule.update,
+        remove: databaseModule.remove,
+        serverTimestamp: databaseModule.serverTimestamp,
+        getStorage: storageModule.getStorage,
+        storageRef: storageModule.ref,
+        uploadBytes: storageModule.uploadBytes,
+        getDownloadURL: storageModule.getDownloadURL,
+        deleteObject: storageModule.deleteObject,
+      };
       firebaseState.app = appModule.initializeApp(firebaseConfig);
       firebaseState.auth = authModule.getAuth(firebaseState.app);
-      firebaseState.db = firestoreModule.getFirestore(firebaseState.app);
+      firebaseState.db = databaseModule.getDatabase(firebaseState.app);
       firebaseState.storage = storageModule.getStorage(firebaseState.app);
       firebaseState.ready = true;
-      setCloudStatus("Cloud ready");
+      setCloudStatus("Realtime Database ready");
 
       authModule.onAuthStateChanged(firebaseState.auth, async (user) => {
         firebaseState.user = user;
         firebaseState.profile = null;
         sessionStorage.removeItem(adminKey);
         if (!user) {
-          stopFirestoreListeners();
+          stopRealtimeListeners();
           state.signedIn = false;
           state.admin = false;
-          setCloudStatus("Cloud ready");
+          setCloudStatus("Realtime Database ready");
           render();
           return;
         }
@@ -986,15 +1006,15 @@
         state.signedIn = true;
         state.admin = false;
         els.signInMessage.textContent = "Signed in.";
-        setCloudStatus("Loading cloud data");
+        setCloudStatus("Loading realtime data");
         try {
           await refreshRoleStatus();
-          const sizes = await loadFirestoreData();
-          startFirestoreListeners();
+          const sizes = await loadRealtimeData();
+          startRealtimeListeners();
           setCloudStatus(cloudLoadedMessage(sizes));
         } catch (error) {
-          console.warn("Signed in, but cloud data lookup failed.", error);
-          setCloudStatus(`Cloud data failed. UID: ${user.uid}`);
+          console.warn("Signed in, but realtime data lookup failed.", error);
+          setCloudStatus(`Realtime data failed. UID: ${user.uid}`);
         }
         render();
       });
@@ -1040,7 +1060,7 @@
     if (firebaseState.user && firebaseState.ready) {
       await firebaseState.modules.signOut(firebaseState.auth);
     }
-    stopFirestoreListeners();
+    stopRealtimeListeners();
     if (!firebaseDisabled) state.signedIn = false;
     state.admin = false;
     firebaseState.user = null;
@@ -1051,145 +1071,156 @@
 
   async function refreshRoleStatus() {
     if (!firebaseState.ready || !firebaseState.user) return;
-    const { doc, getDoc } = firebaseState.modules;
+    const { dbRef, get } = firebaseState.modules;
     const [adminSnap, profileSnap] = await Promise.all([
-      getDoc(doc(firebaseState.db, "admins", firebaseState.user.uid)),
-      getDoc(doc(firebaseState.db, "users", firebaseState.user.uid)),
+      get(dbRef(firebaseState.db, `admins/${firebaseState.user.uid}`)),
+      get(dbRef(firebaseState.db, `users/${firebaseState.user.uid}`)),
     ]);
-    firebaseState.profile = profileSnap.exists() ? profileSnap.data() : null;
+    firebaseState.profile = profileSnap.exists() ? profileSnap.val() : null;
     state.admin = adminSnap.exists();
     if (state.admin) {
-      setCloudStatus(`Cloud admin: ${firebaseState.user.email}`);
+      setCloudStatus(`Realtime admin: ${firebaseState.user.email}`);
     } else {
       setCloudStatus(`Viewer. Add admins/${firebaseState.user.uid} for admin access.`);
     }
     render();
   }
 
-  async function loadFirestoreData() {
+  async function loadRealtimeData() {
     if (!firebaseState.ready) return;
-    const { collection, getDocs, orderBy, query } = firebaseState.modules;
-    const db = firebaseState.db;
+    const { dbRef, get } = firebaseState.modules;
     const [courseSnap, programSnap, curriculumSnap, versionSnap, attachmentSnap] = await Promise.all([
-      getDocs(query(collection(db, "courses"), orderBy("name"))),
-      getDocs(query(collection(db, "programs"), orderBy("name"))),
-      getDocs(collection(db, "curriculumRows")),
-      getDocs(collection(db, "versionHistory")),
-      getDocs(collection(db, "attachments")),
+      get(dbRef(firebaseState.db, "courses")),
+      get(dbRef(firebaseState.db, "programs")),
+      get(dbRef(firebaseState.db, "curriculumRows")),
+      get(dbRef(firebaseState.db, "versionHistory")),
+      get(dbRef(firebaseState.db, "attachments")),
     ]);
 
     const sizes = {
-      courses: courseSnap.size,
-      programs: programSnap.size,
-      curriculumRows: curriculumSnap.size,
-      versionHistory: versionSnap.size,
-      attachments: attachmentSnap.size,
+      courses: rtdbList(courseSnap.val()).length,
+      programs: rtdbList(programSnap.val()).length,
+      curriculumRows: rtdbList(curriculumSnap.val()).length,
+      versionHistory: rtdbList(versionSnap.val()).length,
+      attachments: rtdbList(attachmentSnap.val()).length,
     };
     firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programs || sizes.curriculumRows);
 
     if (!firebaseState.hasCloudArchive) {
-      attachmentState.records = normalizeAttachments(attachmentSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+      attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
       return sizes;
     }
 
-    state.courses = normalizeCourses(courseSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    state.programRecords = normalizePrograms(programSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    state.curriculum = normalizeCurriculum(curriculumSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
-    state.versionHistory = versionSnap.docs.map((docSnap) => docSnap.data());
-    attachmentState.records = normalizeAttachments(attachmentSnap.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    state.courses = normalizeCourses(rtdbList(courseSnap.val()));
+    state.programRecords = normalizePrograms(rtdbList(programSnap.val()));
+    state.curriculum = normalizeCurriculum(rtdbList(curriculumSnap.val()));
+    state.versionHistory = rtdbList(versionSnap.val());
+    attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
 
     return sizes;
   }
 
   function cloudLoadedMessage(sizes = {}) {
     if (!firebaseState.hasCloudArchive) {
-      return "Cloud empty; add records in Firebase";
+      return "Realtime Database empty; add or import records";
     }
     const warnings = [];
     if (!sizes.courses) warnings.push("0 courses");
     if (!sizes.programs) warnings.push("0 programs");
     if (!sizes.curriculumRows) warnings.push("0 curriculum rows");
-    const summary = `Cloud loaded: ${sizes.courses || 0} courses, ${sizes.programs || 0} programs, ${sizes.curriculumRows || 0} curriculum rows`;
+    const summary = `Realtime loaded: ${sizes.courses || 0} courses, ${sizes.programs || 0} programs, ${sizes.curriculumRows || 0} curriculum rows`;
     return warnings.length ? `${summary}. Check ${warnings.join(", ")}.` : summary;
   }
 
-  function startFirestoreListeners() {
+  function rtdbList(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) {
+      return value.filter(Boolean).map((item, index) => ({ _docId: item._docId || String(index), ...item }));
+    }
+    return Object.entries(value).map(([key, item]) => ({ _docId: item?._docId || key, ...(item || {}) }));
+  }
+
+  function startRealtimeListeners() {
     if (!firebaseState.ready) return;
-    stopFirestoreListeners();
-    const { collection, onSnapshot, orderBy, query } = firebaseState.modules;
-    const db = firebaseState.db;
+    stopRealtimeListeners();
+    const { dbRef, onValue } = firebaseState.modules;
     const handleSnapshotError = (error) => {
-      console.warn("Firestore listener failed.", error);
+      console.warn("Realtime Database listener failed.", error);
       setCloudStatus(firebaseErrorMessage(error));
     };
 
-    firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "courses"), orderBy("name")), (snapshot) => {
-      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
-      state.courses = normalizeCourses(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "courses"), (snapshot) => {
+      if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;
+      state.courses = normalizeCourses(rtdbList(snapshot.val()));
       render();
     }, handleSnapshotError));
 
-    firebaseState.unsubscribers.push(onSnapshot(query(collection(db, "programs"), orderBy("name")), (snapshot) => {
-      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
-      state.programRecords = normalizePrograms(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "programs"), (snapshot) => {
+      if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;
+      state.programRecords = normalizePrograms(rtdbList(snapshot.val()));
       render();
     }, handleSnapshotError));
 
-    firebaseState.unsubscribers.push(onSnapshot(collection(db, "curriculumRows"), (snapshot) => {
-      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
-      state.curriculum = normalizeCurriculum(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "curriculumRows"), (snapshot) => {
+      if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;
+      state.curriculum = normalizeCurriculum(rtdbList(snapshot.val()));
       render();
     }, handleSnapshotError));
 
-    firebaseState.unsubscribers.push(onSnapshot(collection(db, "versionHistory"), (snapshot) => {
-      if (!snapshot.size && !firebaseState.hasCloudArchive) return;
-      state.versionHistory = snapshot.docs.map((docSnap) => docSnap.data());
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "versionHistory"), (snapshot) => {
+      if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;
+      state.versionHistory = rtdbList(snapshot.val());
       render();
     }, handleSnapshotError));
 
-    firebaseState.unsubscribers.push(onSnapshot(collection(db, "attachments"), (snapshot) => {
-      attachmentState.records = normalizeAttachments(snapshot.docs.map((docSnap) => ({ _docId: docSnap.id, ...docSnap.data() })));
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "attachments"), (snapshot) => {
+      attachmentState.records = normalizeAttachments(rtdbList(snapshot.val()));
       render();
     }, handleSnapshotError));
   }
 
-  function stopFirestoreListeners() {
+  function stopRealtimeListeners() {
     firebaseState.unsubscribers.forEach((unsubscribe) => unsubscribe());
     firebaseState.unsubscribers = [];
   }
 
   async function persistCourse(course) {
     if (!canWriteCloud()) return;
-    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
-    await setDoc(doc(firebaseState.db, "courses", course._docId || course.id), {
-      ...firestoreCourse(course),
+    const { dbRef, set, serverTimestamp } = firebaseState.modules;
+    course._docId = course._docId || course.id || slugify(course.name);
+    await set(dbRef(firebaseState.db, `courses/${course._docId}`), {
+      ...archiveCourse(course),
+      _docId: course._docId,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
   }
 
   async function persistProgram(program) {
     if (!canWriteCloud()) return;
-    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
-    await setDoc(doc(firebaseState.db, "programs", program._docId || slugify(program.name)), {
-      ...firestoreProgram(program),
+    const { dbRef, set, serverTimestamp } = firebaseState.modules;
+    program._docId = program._docId || slugify(program.name);
+    await set(dbRef(firebaseState.db, `programs/${program._docId}`), {
+      ...archiveProgram(program),
+      _docId: program._docId,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
   }
 
   async function persistCurriculumRow(row) {
     if (!canWriteCloud()) return;
-    const { doc, setDoc, serverTimestamp } = firebaseState.modules;
+    const { dbRef, set, serverTimestamp } = firebaseState.modules;
     row._docId = row._docId || curriculumDocId(row, state.curriculum.indexOf(row));
-    await setDoc(doc(firebaseState.db, "curriculumRows", row._docId), {
-      ...firestoreCurriculumRow(row),
+    await set(dbRef(firebaseState.db, `curriculumRows/${row._docId}`), {
+      ...archiveCurriculumRow(row),
+      _docId: row._docId,
       updatedAt: serverTimestamp(),
-    }, { merge: true });
+    });
   }
 
   async function removeCurriculumRow(row) {
     if (!canWriteCloud() || !row?._docId) return;
-    const { deleteDoc, doc } = firebaseState.modules;
-    await deleteDoc(doc(firebaseState.db, "curriculumRows", row._docId));
+    const { dbRef, remove } = firebaseState.modules;
+    await remove(dbRef(firebaseState.db, `curriculumRows/${row._docId}`));
   }
 
   async function removeProgram(programName) {
@@ -1204,9 +1235,9 @@
     state.curriculum = state.curriculum.filter((row) => row.program !== programName);
 
     if (canWriteCloud()) {
-      const { deleteDoc, doc } = firebaseState.modules;
-      await deleteDoc(doc(firebaseState.db, "programs", program._docId));
-      await Promise.all(removedRows.map((row) => row._docId ? deleteDoc(doc(firebaseState.db, "curriculumRows", row._docId)) : Promise.resolve()));
+      const { dbRef, remove } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `programs/${program._docId}`));
+      await Promise.all(removedRows.map((row) => row._docId ? remove(dbRef(firebaseState.db, `curriculumRows/${row._docId}`)) : Promise.resolve()));
     }
 
     state.selectedProgram = programs()[0]?.name || "";
@@ -1238,11 +1269,11 @@
       return;
     }
 
-    const { ref, uploadBytes, getDownloadURL, doc, setDoc, serverTimestamp } = firebaseState.modules;
+    const { dbRef, set, serverTimestamp, storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
     await Promise.all(files.map(async (file) => {
       const docId = slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`);
       const storagePath = `attachments/programs/${slugify(state.selectedProgram)}/${docId}-${file.name}`;
-      const fileRef = ref(firebaseState.storage, storagePath);
+      const fileRef = storageRef(firebaseState.storage, storagePath);
       await uploadBytes(fileRef, file);
       const downloadURL = await getDownloadURL(fileRef);
       const attachment = {
@@ -1256,11 +1287,12 @@
         downloadURL,
         uploadedBy: firebaseState.user?.uid || "",
       };
-      await setDoc(doc(firebaseState.db, "attachments", docId), {
-        ...firestoreAttachment(attachment),
+      await set(dbRef(firebaseState.db, `attachments/${docId}`), {
+        ...archiveAttachment(attachment),
+        _docId: docId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      });
     }));
     setCloudStatus(`Uploaded ${files.length} file(s)`);
   }
@@ -1272,10 +1304,10 @@
     attachmentState.records = attachmentState.records.filter((item) => item._docId !== docId);
 
     if (canWriteCloud()) {
-      const { deleteDoc, doc, deleteObject, ref } = firebaseState.modules;
-      await deleteDoc(doc(firebaseState.db, "attachments", docId));
+      const { dbRef, remove, deleteObject, storageRef } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `attachments/${docId}`));
       if (attachment.storagePath && firebaseState.storage) {
-        await deleteObject(ref(firebaseState.storage, attachment.storagePath)).catch(() => {});
+        await deleteObject(storageRef(firebaseState.storage, attachment.storagePath)).catch(() => {});
       }
     }
     renderProgramPanel("attachments");
@@ -1291,11 +1323,11 @@
 
   function firebaseErrorMessage(error) {
     if (error?.code === "auth/invalid-credential") return "Firebase rejected that email/password.";
-    if (error?.code === "permission-denied") return "Firestore denied that action. Check the admins UID document.";
+    if (error?.code === "permission-denied" || error?.code === "PERMISSION_DENIED") return "Realtime Database denied that action. Check the admins UID record.";
     return error?.message || "Firebase sign-in failed.";
   }
 
-  function firestoreCourse(course) {
+  function archiveCourse(course) {
     return {
       id: course.id || "",
       credit: course.credit || "",
@@ -1305,7 +1337,7 @@
     };
   }
 
-  function firestoreCurriculumRow(row) {
+  function archiveCurriculumRow(row) {
     return {
       section: row.section || "",
       program: row.program || "",
@@ -1319,7 +1351,7 @@
     };
   }
 
-  function firestoreProgram(program) {
+  function archiveProgram(program) {
     return {
       section: program.section || "",
       name: program.name || "",
@@ -1331,7 +1363,7 @@
     };
   }
 
-  function firestoreAttachment(attachment) {
+  function archiveAttachment(attachment) {
     return {
       ownerType: attachment.ownerType || "program",
       ownerName: attachment.ownerName || "",
