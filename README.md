@@ -59,7 +59,19 @@ The app does not use the Excel workbook for migration. To copy the current Fireb
 - Firestore: `admins/{uid}`
 - Realtime Database: `admins/{uid}`
 
-Then run:
+Preferred service account option:
+
+1. In Firebase Console, open **Project settings -> Service accounts**.
+2. Click **Generate new private key**.
+3. Save the downloaded JSON file somewhere outside the public web app folder.
+4. Run:
+
+```powershell
+$env:SERVICE_ACCOUNT_PATH="C:\path\to\new-eden-service-account.json"
+npm run migrate:firestore
+```
+
+Email/password fallback:
 
 ```powershell
 $env:FIREBASE_EMAIL="you@example.com"

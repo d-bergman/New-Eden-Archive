@@ -1,7 +1,11 @@
+import { readFileSync } from "node:fs";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { collection, getDocs, getFirestore } from "firebase/firestore";
 import { get, getDatabase, ref, set, update } from "firebase/database";
+import { cert, initializeApp as initializeAdminApp } from "firebase-admin/app";
+import { getDatabase as getAdminDatabase } from "firebase-admin/database";
+import { getFirestore as getAdminFirestore } from "firebase-admin/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCKgoV1cUmlvgDxb3CL9UNNiHhhwMk7bYs",
@@ -23,22 +27,23 @@ const collections = [
 
 const email = process.env.FIREBASE_EMAIL;
 const password = process.env.FIREBASE_PASSWORD;
+const serviceAccountPath = process.env.SERVICE_ACCOUNT_PATH || process.env.GOOGLE_APPLICATION_CREDENTIALS;
 const dryRun = process.env.DRY_RUN === "true";
 const overwrite = process.env.OVERWRITE === "true";
 
-if (!email || !password) {
-  console.error("Missing FIREBASE_EMAIL or FIREBASE_PASSWORD.");
-  console.error("PowerShell example:");
+function printUsageAndExit() {
+  console.error("Missing migration credentials.");
+  console.error("");
+  console.error("Preferred PowerShell service account example:");
+  console.error('$env:SERVICE_ACCOUNT_PATH="C:\\path\\to\\new-eden-service-account.json"');
+  console.error("npm run migrate:firestore");
+  console.error("");
+  console.error("Email/password fallback example:");
   console.error('$env:FIREBASE_EMAIL="you@example.com"');
   console.error('$env:FIREBASE_PASSWORD="your-password"');
   console.error("npm run migrate:firestore");
   process.exit(1);
 }
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const firestore = getFirestore(app);
-const database = getDatabase(app);
 
 function cleanForDatabase(value) {
   if (value === undefined) return null;
@@ -54,8 +59,7 @@ function cleanForDatabase(value) {
   );
 }
 
-async function readCollection(name) {
-  const snapshot = await getDocs(collection(firestore, name));
+function rowsFromSnapshot(snapshot) {
   const rows = {};
 
   snapshot.forEach((docSnap) => {
@@ -69,25 +73,71 @@ async function readCollection(name) {
   return rows;
 }
 
-async function assertRealtimeAdmin(uid) {
-  const adminSnap = await get(ref(database, `admins/${uid}`));
-  if (!adminSnap.exists()) {
-    throw new Error(`Realtime Database admin record missing. Create admins/${uid} before running the migration.`);
-  }
+function createClientMigrator() {
+  if (!email || !password) printUsageAndExit();
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const firestore = getFirestore(app);
+  const database = getDatabase(app);
+
+  return {
+    async signIn() {
+      console.log("Signing in with Firebase Email/Password...");
+      const credential = await signInWithEmailAndPassword(auth, email, password);
+      const uid = credential.user.uid;
+      console.log(`Signed in as ${credential.user.email} (${uid})`);
+
+      const adminSnap = await get(ref(database, `admins/${uid}`));
+      if (!adminSnap.exists()) {
+        throw new Error(`Realtime Database admin record missing. Create admins/${uid} before running the migration.`);
+      }
+      console.log("Realtime Database admin record found.");
+    },
+    async readCollection(name) {
+      return rowsFromSnapshot(await getDocs(collection(firestore, name)));
+    },
+    async replacePath(path, value) {
+      await set(ref(database, path), value);
+    },
+    async mergePayload(payload) {
+      await update(ref(database), payload);
+    },
+  };
+}
+
+function createAdminMigrator() {
+  const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, "utf8"));
+  const app = initializeAdminApp({
+    credential: cert(serviceAccount),
+    databaseURL: firebaseConfig.databaseURL,
+  });
+  const firestore = getAdminFirestore(app);
+  const database = getAdminDatabase(app);
+
+  return {
+    async signIn() {
+      console.log(`Using service account: ${serviceAccount.client_email}`);
+    },
+    async readCollection(name) {
+      return rowsFromSnapshot(await firestore.collection(name).get());
+    },
+    async replacePath(path, value) {
+      await database.ref(path).set(value);
+    },
+    async mergePayload(payload) {
+      await database.ref().update(payload);
+    },
+  };
 }
 
 async function migrate() {
-  console.log("Signing in...");
-  const credential = await signInWithEmailAndPassword(auth, email, password);
-  const uid = credential.user.uid;
-  console.log(`Signed in as ${credential.user.email} (${uid})`);
-
-  await assertRealtimeAdmin(uid);
-  console.log("Realtime Database admin record found.");
+  const migrator = serviceAccountPath ? createAdminMigrator() : createClientMigrator();
+  await migrator.signIn();
 
   const payload = {};
   for (const name of collections) {
-    payload[name] = await readCollection(name);
+    payload[name] = await migrator.readCollection(name);
     console.log(`${name}: ${Object.keys(payload[name]).length} record(s) read from Firestore`);
   }
 
@@ -98,11 +148,11 @@ async function migrate() {
 
   if (overwrite) {
     for (const [path, value] of Object.entries(payload)) {
-      await set(ref(database, path), value);
+      await migrator.replacePath(path, value);
       console.log(`${path}: replaced in Realtime Database`);
     }
   } else {
-    await update(ref(database), payload);
+    await migrator.mergePayload(payload);
     console.log("Realtime Database paths merged. Existing extra records were not deleted.");
   }
 }
