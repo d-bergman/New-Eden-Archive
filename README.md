@@ -52,6 +52,37 @@ This only works with `?nofirebase=1`. Production uses Firebase Auth and Realtime
 
 Realtime Database is the source of truth. The original Excel workbook was used only for the first import and is no longer loaded by the app. New edits are saved to Firebase.
 
+## Firestore to Realtime Database Migration
+
+The app does not use the Excel workbook for migration. To copy the current Firebase data from Firestore into Realtime Database, first make sure the signed-in migration account exists in both places:
+
+- Firestore: `admins/{uid}`
+- Realtime Database: `admins/{uid}`
+
+Then run:
+
+```powershell
+$env:FIREBASE_EMAIL="you@example.com"
+$env:FIREBASE_PASSWORD="your-password"
+npm run migrate:firestore
+```
+
+By default, the migration merges these Firestore collections into matching Realtime Database paths: `courses`, `programs`, `curriculumRows`, `versionHistory`, and `attachments`.
+
+Optional dry run:
+
+```powershell
+$env:DRY_RUN="true"
+npm run migrate:firestore
+```
+
+Optional full replacement of those Realtime Database paths:
+
+```powershell
+$env:OVERWRITE="true"
+npm run migrate:firestore
+```
+
 ## Realtime Database Paths
 
 - `courses`

@@ -5,10 +5,12 @@
   "description": "Editable web app prototype for the New Eden course and curriculum archive.",
   "scripts": {
     "start": "python -m http.server 5173",
-    "check:js": "node --check app.js && node --check tools/check-ui.cjs",
-    "check:ui": "node tools/check-ui.cjs"
+    "check:js": "node --check app.js && node --check tools/check-ui.cjs && node --check tools/migrate-firestore-to-rtdb.mjs",
+    "check:ui": "node tools/check-ui.cjs",
+    "migrate:firestore": "node tools/migrate-firestore-to-rtdb.mjs"
   },
   "devDependencies": {
+    "firebase": "^12.14.0",
     "playwright": "^1.57.0"
   }
 }
