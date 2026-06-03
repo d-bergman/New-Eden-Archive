@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.4";
+  const appVersion = "1.1.5";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -77,6 +77,7 @@
     signedIn: firebaseDisabled,
     authChecking: true,
     admin: sessionStorage.getItem(adminKey) === "true",
+    adminEligible: sessionStorage.getItem(adminKey) === "true",
   };
 
   const els = {
@@ -100,6 +101,7 @@
     connectedUsers: document.querySelector("#connectedUsers"),
     appVersion: document.querySelector("#appVersion"),
     appLoader: document.querySelector("#appLoader"),
+    userChip: document.querySelector("#userChip"),
     signOutButton: document.querySelector("#signOutButton"),
     userInitials: document.querySelector("#userInitials"),
     userName: document.querySelector("#userName"),
@@ -188,6 +190,15 @@
     confirmMessage: document.querySelector("#confirmMessage"),
     confirmCancel: document.querySelector("#confirmCancel"),
     confirmAccept: document.querySelector("#confirmAccept"),
+    profileDialog: document.querySelector("#profileDialog"),
+    profileForm: document.querySelector("#profileForm"),
+    profileDisplayName: document.querySelector("#profileDisplayName"),
+    profileEmail: document.querySelector("#profileEmail"),
+    profileShowRealtimeLoaded: document.querySelector("#profileShowRealtimeLoaded"),
+    profileNewPassword: document.querySelector("#profileNewPassword"),
+    profileConfirmPassword: document.querySelector("#profileConfirmPassword"),
+    profileMessage: document.querySelector("#profileMessage"),
+    saveProfileSettings: document.querySelector("#saveProfileSettings"),
   };
 
   init();
@@ -327,18 +338,34 @@
     });
 
     const toggleAdmin = async () => {
-      if (state.signedIn && !state.admin && !firebaseDisabled) {
+      if (state.signedIn && firebaseDisabled) {
+        state.admin = !state.admin;
+        state.adminEligible = true;
+        sessionStorage.setItem(adminKey, String(state.admin));
+        render();
+        return;
+      }
+      if (state.signedIn && state.adminEligible) {
+        state.admin = !state.admin;
+        sessionStorage.setItem(adminKey, String(state.admin));
+        await startUserPresence();
+        render();
+        return;
+      }
+      if (state.signedIn && !state.adminEligible && !firebaseDisabled) {
         setCloudStatus(`Checking admin access for UID: ${firebaseState.user?.uid || "unknown"}`);
         try {
           await refreshRoleStatus();
+          if (state.adminEligible) {
+            state.admin = true;
+            sessionStorage.setItem(adminKey, "true");
+            await startUserPresence();
+            render();
+          }
         } catch (error) {
           console.warn("Admin role refresh failed.", error);
           setCloudStatus(`Role setup needed. UID: ${firebaseState.user?.uid || "unknown"}`);
         }
-        return;
-      }
-      if (state.signedIn && (!firebaseDisabled || state.admin)) {
-        lockAdmin();
         return;
       }
       els.adminEmail.value = firebaseState.user?.email || "";
@@ -350,6 +377,19 @@
     els.adminToggle.addEventListener("click", toggleAdmin);
     document.querySelector("#adminStatusButton")?.addEventListener("click", toggleAdmin);
     els.signOutButton.addEventListener("click", lockAdmin);
+    els.userChip.addEventListener("click", (event) => {
+      if (event.target.closest("#signOutButton")) return;
+      openProfileSettings();
+    });
+    els.userChip.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openProfileSettings();
+    });
+    els.saveProfileSettings.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveProfileSettings();
+    });
 
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
@@ -461,7 +501,13 @@
     els.body.classList.toggle("is-admin", state.admin);
     els.body.dataset.activeView = state.view;
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
-    els.adminToggle.querySelector("span").textContent = state.signedIn ? "Sign Out" : "Sign In";
+    els.adminToggle.querySelector("span").textContent = state.signedIn
+      ? state.admin
+        ? "Viewer Mode"
+        : state.adminEligible
+          ? "Admin Mode"
+          : "Viewer"
+      : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
     renderUserChip();
 
@@ -507,6 +553,9 @@
       els.liveSyncStatus.dataset.status = statusKind;
       els.liveSyncStatus.querySelector("span:last-child").textContent = statusText;
     }
+    if (els.firebaseStatus) {
+      els.firebaseStatus.style.display = showRealtimeLoadedSummary() ? "" : "none";
+    }
 
     if (els.connectedUsers) {
       if (!state.signedIn) {
@@ -518,6 +567,10 @@
       const displayNames = uniqueNames.length ? uniqueNames : [currentUserDisplayName() || "Local Preview"];
       els.connectedUsers.textContent = `Connected Users: ${displayNames.length} - ${displayNames.join(" • ")}`;
     }
+  }
+
+  function showRealtimeLoadedSummary() {
+    return firebaseState.profile?.settings?.showRealtimeLoaded !== false;
   }
 
   function hideAppLoader() {
@@ -2017,12 +2070,13 @@
       authModule.onAuthStateChanged(firebaseState.auth, async (user) => {
         firebaseState.user = user;
         firebaseState.profile = null;
-        sessionStorage.removeItem(adminKey);
         if (!user) {
           stopRealtimeListeners();
           state.signedIn = false;
           state.admin = false;
+          state.adminEligible = false;
           state.authChecking = false;
+          sessionStorage.removeItem(adminKey);
           setCloudStatus("Realtime Database ready");
           render();
           hideAppLoader();
@@ -2031,6 +2085,7 @@
 
         state.signedIn = true;
         state.admin = false;
+        state.adminEligible = false;
         state.authChecking = false;
         els.signInMessage.textContent = "Signed in.";
         setCloudStatus("Loading realtime data");
@@ -2079,6 +2134,7 @@
     if (firebaseDisabled && password === "neweden") {
       state.signedIn = true;
       state.admin = true;
+      state.adminEligible = true;
       sessionStorage.setItem(adminKey, "true");
       els.adminDialog.close();
       render();
@@ -2095,10 +2151,94 @@
     stopRealtimeListeners();
     if (!firebaseDisabled) state.signedIn = false;
     state.admin = false;
+    state.adminEligible = false;
     firebaseState.user = null;
     firebaseState.profile = null;
     sessionStorage.removeItem(adminKey);
     render();
+  }
+
+  function openProfileSettings() {
+    if (!state.signedIn) {
+      els.adminEmail.value = "";
+      els.adminPassword.value = "";
+      els.adminDialog.showModal();
+      return;
+    }
+    els.profileDisplayName.value = currentUserDisplayName() || "";
+    els.profileEmail.value = firebaseState.user?.email || "";
+    els.profileShowRealtimeLoaded.checked = showRealtimeLoadedSummary();
+    els.profileNewPassword.value = "";
+    els.profileConfirmPassword.value = "";
+    els.profileMessage.textContent = "Profile names appear in Connected Users.";
+    els.profileDialog.showModal();
+    setTimeout(() => els.profileDisplayName.focus(), 0);
+  }
+
+  async function saveProfileSettings() {
+    if (!state.signedIn) return;
+    const displayName = els.profileDisplayName.value.trim();
+    const newPassword = els.profileNewPassword.value;
+    const confirmPassword = els.profileConfirmPassword.value;
+    const showRealtimeLoaded = els.profileShowRealtimeLoaded.checked;
+    if (!displayName) {
+      els.profileMessage.textContent = "Display name is required.";
+      els.profileDisplayName.focus();
+      return;
+    }
+    if (newPassword || confirmPassword) {
+      if (newPassword.length < 6) {
+        els.profileMessage.textContent = "Password must be at least 6 characters.";
+        els.profileNewPassword.focus();
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        els.profileMessage.textContent = "Password fields do not match.";
+        els.profileConfirmPassword.focus();
+        return;
+      }
+    }
+
+    els.profileMessage.textContent = "Saving profile...";
+    try {
+      const profile = {
+        ...(firebaseState.profile || {}),
+        displayName,
+        name: displayName,
+        email: firebaseState.user?.email || "",
+        settings: {
+          ...(firebaseState.profile?.settings || {}),
+          showRealtimeLoaded,
+        },
+      };
+      if (firebaseState.ready && firebaseState.user) {
+        const { dbRef, set, updateProfile, updatePassword, serverTimestamp } = firebaseState.modules;
+        await Promise.all([
+          updateProfile(firebaseState.user, { displayName }).catch(() => {}),
+          set(dbRef(firebaseState.db, `users/${firebaseState.user.uid}`), {
+            ...profile,
+            updatedAt: serverTimestamp(),
+          }),
+        ]);
+        if (newPassword) {
+          await updatePassword(firebaseState.user, newPassword);
+        }
+      }
+      firebaseState.profile = profile;
+      await startUserPresence();
+      render();
+      els.profileDialog.close("saved");
+    } catch (error) {
+      console.warn("Profile save failed.", error);
+      els.profileMessage.textContent = profileErrorMessage(error);
+    }
+  }
+
+  function profileErrorMessage(error) {
+    if (error?.code === "auth/requires-recent-login") return "Please sign out and sign back in before changing your password.";
+    if (error?.code === "auth/weak-password") return "Password must be at least 6 characters.";
+    if (error?.code === "permission-denied" || error?.code === "PERMISSION_DENIED") return "Realtime Database denied profile saving. Publish the updated rules.";
+    return error?.message || "Profile save failed.";
   }
 
   async function refreshRoleStatus() {
@@ -2109,10 +2249,12 @@
       get(dbRef(firebaseState.db, `users/${firebaseState.user.uid}`)),
     ]);
     firebaseState.profile = profileSnap.exists() ? profileSnap.val() : null;
-    state.admin = adminSnap.exists();
-    if (state.admin) {
+    state.adminEligible = adminSnap.exists();
+    state.admin = state.adminEligible && sessionStorage.getItem(adminKey) !== "false";
+    if (state.adminEligible) {
       setCloudStatus(`Realtime admin: ${firebaseState.user.email}`);
     } else {
+      state.admin = false;
       setCloudStatus(`Viewer. Add admins/${firebaseState.user.uid} for admin access.`);
     }
     render();

@@ -116,7 +116,7 @@
             <button class="btn icon-btn" id="helpButton" type="button" aria-label="Open help guide">
               <i class="bi bi-question-circle"></i>
             </button>
-            <div class="user-chip">
+            <div class="user-chip" id="userChip" role="button" tabindex="0" aria-label="Open profile settings">
               <div class="avatar" id="userInitials">NE</div>
               <div class="d-none d-sm-block">
                 <strong id="userName">Not signed in</strong>
@@ -452,7 +452,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.1.4</span></p>
+            <p>Version <span id="appVersion">1.1.5</span></p>
           </footer>
         </div>
       </main>
@@ -474,6 +474,63 @@
         <div class="modal-actions">
           <button class="btn btn-outline-eden" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmAdmin" value="default">Unlock</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native" id="profileDialog">
+      <form method="dialog" class="modal-card profile-card" id="profileForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Profile</p>
+            <h2>Profile Settings</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close profile settings">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="profile-settings-grid">
+          <section>
+            <h3>Identity</h3>
+            <label class="form-label">
+              Display Name
+              <input class="form-control" id="profileDisplayName" autocomplete="name" placeholder="Bhumika" />
+            </label>
+            <label class="form-label">
+              Email
+              <input class="form-control" id="profileEmail" type="email" disabled />
+            </label>
+          </section>
+
+          <section>
+            <h3>Password</h3>
+            <label class="form-label">
+              New Password
+              <input class="form-control" id="profileNewPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password" />
+            </label>
+            <label class="form-label">
+              Confirm Password
+              <input class="form-control" id="profileConfirmPassword" type="password" autocomplete="new-password" />
+            </label>
+          </section>
+
+          <section>
+            <h3>Interface</h3>
+            <label class="settings-toggle">
+              <input class="form-check-input" id="profileShowRealtimeLoaded" type="checkbox" />
+              <span>
+                <strong>Show realtime loaded summary</strong>
+                <small>Display the course/program/curriculum count in the top bar.</small>
+              </span>
+            </label>
+          </section>
+        </div>
+
+        <p class="form-note" id="profileMessage">Profile names appear in Connected Users.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" value="cancel">Cancel</button>
+          <button class="btn btn-eden" id="saveProfileSettings" type="button">Save Profile</button>
         </div>
       </form>
     </dialog>

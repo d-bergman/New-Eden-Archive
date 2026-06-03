@@ -1,5 +1,21 @@
 # New Eden Archive Changelog
 
+## V1.1.5 - 2026-06-03 10:36 AM CT - Profile Settings and Admin Mode Hotfix
+
+### Summary
+- Added employee profile settings and made admin mode behave like a mode switch instead of a sign-out trigger.
+
+### New Features
+- Added a Profile Settings modal from the user chip with display name, password update, and interface settings.
+- Saved display names to each signed-in user's profile so Connected Users can show chosen names instead of email prefixes.
+- Added a profile setting to hide the top-bar realtime loaded summary.
+
+### Fixes
+- Changed the Admin button so eligible admins can toggle between Admin and Viewer mode without being sent back to login.
+- Updated the visible app version label to V1.1.5.
+- Updated Realtime Database rules so users can save their own profile settings while presence remains scoped to the signed-in user's UID.
+- Updated the local UI smoke check to match the new Admin/Viewer mode toggle.
+
 ## V1.1.4 - 2026-06-03 10:21 AM CT - Presence and Curriculum Layout Hotfix
 
 ### Summary

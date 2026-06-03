@@ -385,6 +385,12 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+}
+
+.user-chip:hover .avatar,
+.user-chip:focus-visible .avatar {
+  box-shadow: 0 0 0 4px rgba(103, 185, 87, 0.14);
 }
 
 .sign-out-btn {
@@ -413,6 +419,46 @@ textarea {
 .user-chip span {
   color: var(--eden-muted);
   font-size: 0.84rem;
+}
+
+.profile-card {
+  width: min(680px, 94vw);
+}
+
+.profile-settings-grid {
+  display: grid;
+  gap: 18px;
+}
+
+.profile-settings-grid section {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.74);
+}
+
+.profile-settings-grid h3 {
+  margin: 0;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+}
+
+.settings-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin: 0;
+  color: var(--eden-ink);
+}
+
+.settings-toggle small {
+  display: block;
+  margin-top: 2px;
+  color: var(--eden-muted);
 }
 
 .content-canvas {

@@ -23,8 +23,6 @@ async function run() {
   const overviewEmptyState = await page.locator("#overviewCourses .empty-state").textContent();
 
   await page.click("#adminToggle");
-  await page.fill("#adminPassword", "neweden");
-  await page.click("#confirmAdmin");
   const adminState = await page.locator("#adminState").textContent();
 
   await page.click('button[data-view="courses"]');
