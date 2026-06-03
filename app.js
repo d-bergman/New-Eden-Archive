@@ -488,15 +488,16 @@
           <td>${highlight(course.name)}</td>
           <td>${escapeHtml(course.comment || "")}</td>
           <td class="admin-col text-end">
-            <button class="btn btn-sm btn-outline-eden" data-edit-course="${realIndex}">Edit</button>
+            <div class="course-row-actions">
+              <button class="btn btn-sm btn-outline-eden" type="button" data-edit-course="${realIndex}">Edit</button>
+              <button class="btn btn-sm btn-outline-danger" type="button" data-delete-course="${realIndex}">Delete</button>
+            </div>
           </td>
         </tr>
       `;
     }).join("") || emptyRow(5, "No courses match the current filters.");
 
-    els.courseRows.querySelectorAll("[data-edit-course]").forEach((button) => {
-      button.addEventListener("click", () => openCourseEditor(Number(button.dataset.editCourse)));
-    });
+    bindCourseActionMenus(els.courseRows);
   }
 
   function renderCurriculum() {
@@ -936,6 +937,10 @@
       return `<label>${escapeHtml(item.label)}<input name="${escapeAttr(item.name)}" value="${escapeAttr(item.value || "")}" /></label>`;
     }).join("");
     els.editDialog.showModal();
+    document.querySelector("#cancelEdit")?.addEventListener("click", () => {
+      els.editForm.onsubmit = null;
+      els.editDialog.close("cancel");
+    }, { once: true });
 
     els.editForm.onsubmit = async (event) => {
       event.preventDefault();
