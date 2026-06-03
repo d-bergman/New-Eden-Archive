@@ -1,5 +1,17 @@
 # New Eden Archive Changelog
 
+## V1.1.6 - 2026-06-03 12:57 PM CT - Profile Settings Polish
+
+### Summary
+- Polished profile settings and simplified the sidebar mode controls.
+
+### Fixes
+- Widened the Profile Settings modal and rebuilt it into a cleaner two-column desktop layout.
+- Removed the redundant sidebar Admin/Viewer mode button and replaced it with Profile Settings.
+- Kept the top Admin button as the only Admin/Viewer mode toggle.
+- Updated the local UI smoke check to use the top Admin mode button.
+- Updated the visible app version label to V1.1.6.
+
 ## V1.1.5 - 2026-06-03 10:36 AM CT - Profile Settings and Admin Mode Hotfix
 
 ### Summary

@@ -22,7 +22,7 @@ async function run() {
   const programCount = await page.locator("#programCount").textContent();
   const overviewEmptyState = await page.locator("#overviewCourses .empty-state").textContent();
 
-  await page.click("#adminToggle");
+  await page.click("#adminStatusButton");
   const adminState = await page.locator("#adminState").textContent();
 
   await page.click('button[data-view="courses"]');

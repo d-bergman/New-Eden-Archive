@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.5";
+  const appVersion = "1.1.6";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -91,7 +91,7 @@
     views: document.querySelectorAll(".view"),
     globalSearch: document.querySelector("#globalSearch"),
     adminState: document.querySelector("#adminState"),
-    adminToggle: document.querySelector("#adminToggle"),
+    profileSettingsNav: document.querySelector("#profileSettingsNav"),
     adminDialog: document.querySelector("#adminDialog"),
     adminEmail: document.querySelector("#adminEmail"),
     adminPassword: document.querySelector("#adminPassword"),
@@ -374,7 +374,7 @@
       setTimeout(() => els.adminPassword.focus(), 0);
     };
 
-    els.adminToggle.addEventListener("click", toggleAdmin);
+    els.profileSettingsNav.addEventListener("click", openProfileSettings);
     document.querySelector("#adminStatusButton")?.addEventListener("click", toggleAdmin);
     els.signOutButton.addEventListener("click", lockAdmin);
     els.userChip.addEventListener("click", (event) => {
@@ -501,13 +501,6 @@
     els.body.classList.toggle("is-admin", state.admin);
     els.body.dataset.activeView = state.view;
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
-    els.adminToggle.querySelector("span").textContent = state.signedIn
-      ? state.admin
-        ? "Viewer Mode"
-        : state.adminEligible
-          ? "Admin Mode"
-          : "Viewer"
-      : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
     renderUserChip();
 
@@ -535,6 +528,15 @@
       || emailName;
   }
 
+  function updateFirebaseStatusVisibility() {
+    if (!els.firebaseStatus) return;
+    const show = showRealtimeLoadedSummary();
+
+    els.firebaseStatus.hidden = !show;
+    els.firebaseStatus.classList.toggle("d-md-inline", show);
+    els.firebaseStatus.classList.toggle("d-none", !show);
+  }
+
   function renderConnectionMeta() {
     const statusText = firebaseDisabled
       ? "Live Sync: Preview Mode"
@@ -549,12 +551,11 @@
         ? "connected"
         : "pending";
 
+    updateFirebaseStatusVisibility();
+
     if (els.liveSyncStatus) {
       els.liveSyncStatus.dataset.status = statusKind;
       els.liveSyncStatus.querySelector("span:last-child").textContent = statusText;
-    }
-    if (els.firebaseStatus) {
-      els.firebaseStatus.style.display = showRealtimeLoadedSummary() ? "" : "none";
     }
 
     if (els.connectedUsers) {
@@ -565,7 +566,8 @@
       const names = state.connectedUsers.map((user) => user.name).filter(Boolean);
       const uniqueNames = [...new Set(names)];
       const displayNames = uniqueNames.length ? uniqueNames : [currentUserDisplayName() || "Local Preview"];
-      els.connectedUsers.textContent = `Connected Users: ${displayNames.length} - ${displayNames.join(" • ")}`;
+      const nameSeparator = ` ${String.fromCharCode(8226)} `;
+      els.connectedUsers.textContent = `Connected Users: ${displayNames.length} - ${displayNames.join(nameSeparator)}`;
     }
   }
 
@@ -2225,6 +2227,10 @@
         }
       }
       firebaseState.profile = profile;
+      updateFirebaseStatusVisibility();
+      if (els.firebaseStatus) {
+        els.firebaseStatus.hidden = !showRealtimeLoaded;
+      }
       await startUserPresence();
       render();
       els.profileDialog.close("saved");
@@ -2694,7 +2700,9 @@
   }
 
   function setCloudStatus(message) {
-    if (els.firebaseStatus) els.firebaseStatus.textContent = message;
+    if (!els.firebaseStatus) return;
+    els.firebaseStatus.textContent = message;
+    updateFirebaseStatusVisibility();
   }
 
   function firebaseErrorMessage(error) {
