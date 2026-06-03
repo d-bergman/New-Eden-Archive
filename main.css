@@ -932,10 +932,18 @@ body:not(.is-admin) .admin-only {
 }
 
 .program-directory {
+  margin-top: 16px;
+}
+
+.programs-workspace {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 14px;
-  padding: 18px;
+  grid-template-columns: minmax(360px, 0.95fr) minmax(460px, 1.2fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.program-toolbar {
+  grid-template-columns: minmax(260px, 520px);
 }
 
 .directory-section {
@@ -1007,6 +1015,20 @@ body:not(.is-admin) .admin-only {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.program-panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 20px 20px;
+}
+
+.program-overview h3 {
+  margin: 0 0 10px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
 }
 
 .timeline {
@@ -1432,7 +1454,8 @@ mark {
   .program-meta,
   .program-overview dl,
   .requirement-builder,
-  .curriculum-workspace {
+  .curriculum-workspace,
+  .programs-workspace {
     grid-template-columns: 1fr;
   }
 

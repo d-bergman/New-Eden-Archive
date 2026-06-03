@@ -1,5 +1,24 @@
 # New Eden Archive Changelog
 
+## V1.0.9 - 2026-06-03 4:58 AM CT - Programs Workspace Redesign
+
+### Summary
+- Rebuilt the Programs tab to match the Curriculums workspace layout and clarified the parent-child workflow.
+
+### New Features
+- Added a program selector above the Programs workspace.
+- Replaced the program card grid with a two-pane layout.
+- Added a left Program Overview pane with program details, overview text, notes, and Add Program access.
+- Added a right Curriculums pane that lists curriculums attached to the selected program.
+- Kept Manage Curriculums as the primary tool for adding/removing curriculums under the selected program.
+- Added a separate Program Description field so overview text and notes are no longer mixed together.
+
+### Fixes
+- Made Save Program a non-submit action button so it no longer fights dialog form behavior.
+- Added explicit Program Name validation for the Save Program button.
+- Added save failure feedback when Firebase rejects the program category path, while still updating the local view.
+- Kept the program selector stable instead of narrowing it with unrelated global search text.
+
 ## V1.0.8 - 2026-06-03 4:43 AM CT - Curriculum Header Wording Hotfix
 
 ### Summary

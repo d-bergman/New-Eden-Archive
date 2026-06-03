@@ -357,19 +357,18 @@
 
           <section class="view" id="programsView">
             <article class="archive-panel">
-              <div class="section-heading">
+              <div class="section-heading catalog-heading">
                 <div>
                   <p class="eyebrow">Programs</p>
-                  <h2>Program Structure</h2>
-                  <p class="section-subtitle">Create major program categories, then organize the curriculums that belong to each program.</p>
+                  <h2>Program Overview</h2>
+                  <p class="section-subtitle">Choose a program to review its details and manage the curriculums attached to it.</p>
                 </div>
-                <button class="btn btn-eden admin-only" id="addProgram" type="button">
-                  <i class="bi bi-plus-circle"></i>
-                  Add Program
-                </button>
               </div>
-              <div class="program-directory" id="programDirectory"></div>
+              <div class="catalog-toolbar program-toolbar">
+                <select class="form-select" id="programCategoryFilter" aria-label="Choose program"></select>
+              </div>
             </article>
+            <div class="program-directory" id="programDirectory"></div>
           </section>
 
           <section class="view" id="historyView">
@@ -459,6 +458,10 @@
               </select>
             </label>
             <label class="form-label">
+              Description
+              <textarea class="form-control" id="programBuilderDescription" name="description" rows="4" placeholder="Brief overview for this program category"></textarea>
+            </label>
+            <label class="form-label">
               Notes
               <textarea class="form-control" id="programBuilderNotes" name="notes" rows="5" placeholder="Optional notes for this program category"></textarea>
             </label>
@@ -485,7 +488,7 @@
 
         <div class="modal-actions">
           <button class="btn btn-outline-eden" data-close-program-builder type="button">Cancel</button>
-          <button class="btn btn-eden" id="saveProgramBuilder" value="default">Save Program</button>
+          <button class="btn btn-eden" id="saveProgramBuilder" type="button" value="default">Save Program</button>
         </div>
       </form>
     </dialog>

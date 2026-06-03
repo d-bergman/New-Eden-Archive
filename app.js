@@ -36,6 +36,7 @@
     originalName: "",
     name: "",
     status: "Active",
+    description: "",
     notes: "",
     curriculums: [],
   };
@@ -53,6 +54,7 @@
     selectedOverviewSection: "all",
     selectedStatus: "all",
     selectedProgram: "",
+    selectedProgramCategory: "",
     courseSearch: "",
     courseSortKey: "id",
     courseSortDirection: "asc",
@@ -100,6 +102,7 @@
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
     addCurriculum: document.querySelector("#addCurriculum"),
     addProgram: document.querySelector("#addProgram"),
+    programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
     removeBlankCourses: document.querySelector("#removeBlankCourses"),
     sectionFilter: document.querySelector("#sectionFilter"),
@@ -136,6 +139,7 @@
     programBuilderTitle: document.querySelector("#programBuilderTitle"),
     programBuilderName: document.querySelector("#programBuilderName"),
     programBuilderStatus: document.querySelector("#programBuilderStatus"),
+    programBuilderDescription: document.querySelector("#programBuilderDescription"),
     programBuilderNotes: document.querySelector("#programBuilderNotes"),
     programBuilderCurriculumName: document.querySelector("#programBuilderCurriculumName"),
     addProgramBuilderCurriculum: document.querySelector("#addProgramBuilderCurriculum"),
@@ -248,6 +252,11 @@
       render();
     });
 
+    els.programCategoryFilter.addEventListener("change", (event) => {
+      state.selectedProgramCategory = event.target.value;
+      renderPrograms();
+    });
+
     const toggleAdmin = async () => {
       if (state.signedIn && !state.admin && !firebaseDisabled) {
         setCloudStatus(`Checking admin access for UID: ${firebaseState.user?.uid || "unknown"}`);
@@ -282,7 +291,7 @@
     els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
     els.addCurriculum.addEventListener("click", () => openProgramEditor());
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
-    els.addProgram.addEventListener("click", () => openProgramBuilder());
+    els.addProgram?.addEventListener("click", () => openProgramBuilder());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
     els.removeBlankCourses.addEventListener("click", removeBlankCourses);
     els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
@@ -660,51 +669,141 @@
   }
 
   function renderPrograms() {
-    const categories = programCategories().map((category) => {
-      const curriculums = programs().filter((program) => program.section === category.name);
-      return {
-        ...category,
-        curriculums: curriculums.filter((program) => matchesSearch(category) || matchesSearch(program)),
-        totalCurriculums: curriculums.length,
-      };
-    }).filter((category) => matchesSearch(category) || category.curriculums.length);
+    const categories = programCategories();
+    if (!categories.some((category) => category.name === state.selectedProgramCategory)) {
+      state.selectedProgramCategory = categories[0]?.name || "";
+    }
+    els.programCategoryFilter.innerHTML = categories.map((category) => `
+      <option value="${escapeAttr(category.name)}">${escapeHtml(category.name)}</option>
+    `).join("");
+    els.programCategoryFilter.value = state.selectedProgramCategory;
 
-    els.programDirectory.innerHTML = categories.map((category) => `
-      <article class="directory-section program-category-card">
-        <div class="program-category-header">
-          <div>
-            <h4>${highlight(category.name)}</h4>
-            <p>${category.totalCurriculums} curriculum${category.totalCurriculums === 1 ? "" : "s"}</p>
-          </div>
-          <div class="program-actions admin-only">
-            <button class="btn btn-sm btn-outline-eden" data-edit-program-category="${escapeAttr(category.name)}">Edit Program</button>
-            <button class="btn btn-sm btn-outline-danger" data-remove-program-category="${escapeAttr(category.name)}">Remove</button>
-          </div>
-        </div>
-        <button class="btn btn-outline-eden w-100 admin-only" data-manage-program="${escapeAttr(category.name)}" type="button">
-          <i class="bi bi-diagram-3"></i>
-          Manage Curriculums
-        </button>
-        <div class="program-curriculum-list">
-          ${category.curriculums.map((program) => `
-          <div class="program-row">
-            <button class="program-link" data-program="${escapeAttr(program.name)}">
-              ${highlight(program.name)}
-            </button>
-            <div class="program-actions admin-only">
-              <button class="btn btn-sm btn-outline-eden" data-program="${escapeAttr(program.name)}">Requirements</button>
-              <button class="btn btn-sm btn-outline-danger" data-remove-program="${escapeAttr(program.name)}">Remove</button>
+    const category = programCategories().find((item) => item.name === state.selectedProgramCategory);
+    if (!category) {
+      els.programDirectory.innerHTML = `
+        <article class="archive-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Programs</p>
+              <h2>No Program Selected</h2>
             </div>
+            <button class="btn btn-eden admin-only" data-add-program type="button">
+              <i class="bi bi-plus-circle"></i>
+              Add Program
+            </button>
           </div>
-          `).join("") || `<div class="empty-state">No curriculums have been added to this program yet.</div>`}
-        </div>
-      </article>
-    `).join("") || `<div class="empty-state">No programs match the current search.</div>`;
+          <div class="empty-state">No programs match the current search.</div>
+        </article>
+      `;
+      bindProgramWorkspaceActions();
+      return;
+    }
+
+    const curriculums = programs().filter((program) => program.section === category.name);
+    const curriculumRows = state.curriculum.filter((row) => row.section === category.name);
+    const totalCredits = curriculumRows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
+
+    els.programDirectory.innerHTML = `
+      <div class="programs-workspace">
+        <article class="archive-panel program-panel">
+          <div class="program-heading">
+            <div>
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h2>${escapeHtml(category.name)}</h2>
+                <span class="badge rounded-pill text-bg-sage">Program</span>
+              </div>
+              <div class="program-meta">
+                <span><small>Status</small><strong class="status-pill">${escapeHtml(category.status || "Active")}</strong></span>
+                <span><small>Curriculums</small><strong>${curriculums.length}</strong></span>
+                <span><small>Total Credits</small><strong>${totalCredits}</strong></span>
+              </div>
+            </div>
+            <button class="btn btn-eden admin-only" data-add-program type="button">
+              <i class="bi bi-plus-circle"></i>
+              Add Program
+            </button>
+          </div>
+
+          <div class="program-overview">
+            <h3>Overview</h3>
+            <p class="mb-3"><strong>Description</strong><br />
+              ${escapeHtml(category.description || `${category.name} contains ${curriculums.length} curriculum${curriculums.length === 1 ? "" : "s"} maintained in the New Eden archive.`).replace(/\n/g, "<br />")}
+            </p>
+            <h3>Notes</h3>
+            <p class="mb-3"><strong>Notes</strong><br />
+              ${category.notes ? escapeHtml(category.notes).replace(/\n/g, "<br />") : "No notes have been added for this program yet."}
+            </p>
+            <dl>
+              <div><dt>Total Curriculums</dt><dd>${curriculums.length}</dd></div>
+              <div><dt>Total Required Courses</dt><dd>${curriculumRows.length}</dd></div>
+              <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
+            </dl>
+          </div>
+
+          <div class="program-panel-actions admin-only">
+            <button class="btn btn-outline-eden" data-edit-program-category="${escapeAttr(category.name)}" type="button">
+              <i class="bi bi-pencil"></i>
+              Edit Program
+            </button>
+            <button class="btn btn-outline-danger" data-remove-program-category="${escapeAttr(category.name)}" type="button">
+              Remove Program
+            </button>
+          </div>
+        </article>
+
+        <article class="archive-panel">
+          <div class="required-header">
+            <div>
+              <h3>Curriculums <span class="badge rounded-pill text-bg-sage">${curriculums.length}</span></h3>
+            </div>
+            <button class="btn btn-outline-eden admin-only" data-manage-program="${escapeAttr(category.name)}" type="button">
+              <i class="bi bi-diagram-3"></i>
+              Manage Curriculums
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table required-table align-middle mb-0">
+              <thead>
+                <tr>
+                  <th>Curriculum</th>
+                  <th>Code</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${curriculums.map((program) => `
+                  <tr>
+                    <td>${escapeHtml(programShortName(program.name))}</td>
+                    <td>${escapeHtml(program.code || programCode(program.name, program.section))}</td>
+                    <td><span class="status-badge">${escapeHtml(program.status || "Active")}</span></td>
+                    <td class="text-end">
+                      <div class="course-row-actions">
+                        <button class="btn btn-sm btn-outline-eden" data-program="${escapeAttr(program.name)}" type="button">Requirements</button>
+                        <button class="btn btn-sm btn-outline-danger admin-only" data-remove-program="${escapeAttr(program.name)}" type="button">Remove</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join("") || emptyRow(4, "No curriculums have been added to this program yet.")}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </div>
+    `;
+
+    bindProgramWorkspaceActions();
+  }
+
+  function bindProgramWorkspaceActions() {
+    els.programDirectory.querySelectorAll("[data-add-program]").forEach((button) => {
+      button.addEventListener("click", () => openProgramBuilder());
+    });
 
     els.programDirectory.querySelectorAll("[data-program]").forEach((button) => {
       button.addEventListener("click", () => {
         state.selectedProgram = button.dataset.program;
-        state.selectedSection = "all";
+        state.selectedSection = state.selectedProgramCategory || "all";
         state.view = "curriculums";
         render();
       });
@@ -1167,6 +1266,7 @@
     openEditor("Edit Program", [
       field("name", "Program Name", existing.name),
       field("status", "Status", existing.status || "Active", "select", ["Active", "Inactive", "Archived"]),
+      field("description", "Description", existing.description || "", "textarea"),
       field("notes", "Notes", existing.notes || "", "textarea"),
     ], async (values) => {
       const oldName = existing.name;
@@ -1174,6 +1274,7 @@
         ...existing,
         name: values.name.trim(),
         status: values.status,
+        description: values.description,
         notes: values.notes,
       }])[0];
       if (!nextCategory) return;
@@ -1223,12 +1324,14 @@
     const category = existing || {
       name: "",
       status: "Active",
+      description: "",
       notes: "",
     };
 
     programBuilder.originalName = existing?.name || "";
     programBuilder.name = category.name;
     programBuilder.status = category.status || "Active";
+    programBuilder.description = category.description || "";
     programBuilder.notes = category.notes || "";
     programBuilder.curriculums = existing
       ? programs().filter((program) => program.section === existing.name).map((program) => ({ ...program }))
@@ -1237,6 +1340,7 @@
     els.programBuilderTitle.textContent = existing ? "Manage Curriculums" : "Add Program";
     els.programBuilderName.value = programBuilder.name;
     els.programBuilderStatus.value = programBuilder.status;
+    els.programBuilderDescription.value = programBuilder.description;
     els.programBuilderNotes.value = programBuilder.notes;
     els.programBuilderCurriculumName.value = "";
     renderProgramBuilder();
@@ -1322,6 +1426,10 @@
 
   async function saveProgramBuilder() {
     if (!state.admin) return;
+    if (!els.programBuilderName.value.trim()) {
+      els.programBuilderName.reportValidity();
+      return;
+    }
     const previousCategory = programBuilder.originalName
       ? state.programCategories.find((category) => category.name === programBuilder.originalName)
       : null;
@@ -1331,6 +1439,7 @@
         : undefined,
       name: els.programBuilderName.value.trim(),
       status: els.programBuilderStatus.value,
+      description: els.programBuilderDescription.value.trim(),
       notes: els.programBuilderNotes.value.trim(),
     }])[0];
     if (!nextCategory) return;
@@ -1379,18 +1488,25 @@
     state.curriculum = state.curriculum.filter((row) => !removedCurriculums.some((program) => program.name === row.program));
 
     if (canWriteCloud()) {
-      await persistProgramCategory(nextCategory);
-      if (oldName && oldName !== nextCategory.name) {
-        await removeProgramCategoryRecord(previousCategory?._docId || slugify(oldName));
+      try {
+        await persistProgramCategory(nextCategory);
+        if (oldName && oldName !== nextCategory.name) {
+          await removeProgramCategoryRecord(previousCategory?._docId || slugify(oldName));
+        }
+        await Promise.all([
+          ...nextCurriculums.map((curriculum) => persistProgram(curriculum)),
+          ...movedRows.map((row) => persistCurriculumRow(row)),
+          ...removedCurriculums.map((curriculum) => removeProgramRecord(curriculum)),
+          ...removedRows.map((row) => removeCurriculumRow(row)),
+        ]);
+        setCloudStatus(`Saved program: ${nextCategory.name}`);
+      } catch (error) {
+        console.warn("Program save failed.", error);
+        setCloudStatus(`Program saved locally; Firebase save failed: ${firebaseErrorMessage(error)}`);
       }
-      await Promise.all([
-        ...nextCurriculums.map((curriculum) => persistProgram(curriculum)),
-        ...movedRows.map((row) => persistCurriculumRow(row)),
-        ...removedCurriculums.map((curriculum) => removeProgramRecord(curriculum)),
-        ...removedRows.map((row) => removeCurriculumRow(row)),
-      ]);
     }
 
+    state.selectedProgramCategory = nextCategory.name;
     state.selectedSection = nextCategory.name;
     state.selectedProgram = nextCurriculums[0]?.name || state.selectedProgram;
     els.programBuilderDialog.close();
@@ -2054,6 +2170,7 @@
     return {
       name: category.name || "",
       status: category.status || "Active",
+      description: category.description || "",
       notes: category.notes || "",
     };
   }
@@ -2308,6 +2425,7 @@
       _docId: category._docId || slugify(category.name),
       name: category.name || "",
       status: category.status || "Active",
+      description: category.description || "",
       notes: category.notes || "",
     })).filter((category) => category.name);
   }
