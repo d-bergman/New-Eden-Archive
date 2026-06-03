@@ -1,5 +1,15 @@
 # New Eden Archive Changelog
 
+## V1.0.8 - 2026-06-03 4:43 AM CT - Curriculum Header Wording Hotfix
+
+### Summary
+- Updated the Curriculums tab header to better describe the selected curriculum workspace.
+
+### Fixes
+- Renamed the header from **Program Course Requirements** to **Curriculum Course Overview**.
+- Changed the subtitle to show the selected curriculum name, required-course count, and total credits.
+- Made the subtitle count use the full selected curriculum, not the currently filtered table rows.
+
 ## V1.0.7 - 2026-06-03 4:34 AM CT - Program and Curriculum Action Split
 
 ### Summary

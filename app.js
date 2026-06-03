@@ -617,8 +617,8 @@
     const program = programs().find((item) => item.name === state.selectedProgram);
     const section = rows[0]?.section || program?.section || state.selectedSection || "Curriculum";
     els.programSummary.textContent = state.selectedProgram
-      ? `${section} - ${rows.length} required course rows totaling ${totalCredits} credits.`
-      : "Choose a section and curriculum to manage required courses.";
+      ? `${programShortName(state.selectedProgram)} - ${allRows.length} required courses totaling ${totalCredits} credits.`
+      : "Choose a curriculum to review its required courses and credits.";
     els.programTitle.textContent = programShortName(state.selectedProgram);
     els.programCode.textContent = program?.code || programCode(state.selectedProgram, section);
     els.requiredCount.textContent = rows.length;
