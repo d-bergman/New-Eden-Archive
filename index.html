@@ -303,8 +303,13 @@
                 <div>
                   <p class="eyebrow">Courses</p>
                   <h2>Course Catalog</h2>
+                  <p class="catalog-summary" id="courseCatalogSummary">0 courses in catalog</p>
                 </div>
                 <div class="toolbar">
+                  <label class="search-field catalog-search">
+                    <i class="bi bi-search"></i>
+                    <input id="courseCatalogSearch" type="search" placeholder="Search courses" aria-label="Search course catalog" />
+                  </label>
                   <select class="form-select" id="courseCreditFilter" aria-label="Filter courses by credit"></select>
                   <button class="btn btn-eden admin-only" id="addCourseCatalog" type="button">
                     <i class="bi bi-plus-circle"></i>
@@ -316,9 +321,9 @@
                 <table class="table archive-table align-middle mb-0">
                   <thead>
                     <tr>
-                      <th>ID</th>
-                      <th>Credit</th>
-                      <th>Course Name</th>
+                      <th><button class="sort-header" type="button" data-course-sort="id">ID <i class="bi bi-chevron-expand"></i></button></th>
+                      <th><button class="sort-header" type="button" data-course-sort="credit">Credit <i class="bi bi-chevron-expand"></i></button></th>
+                      <th><button class="sort-header" type="button" data-course-sort="name">Course Name <i class="bi bi-chevron-expand"></i></button></th>
                       <th>Comment</th>
                       <th class="admin-col text-end">Actions</th>
                     </tr>
@@ -454,6 +459,23 @@
         <div class="modal-actions">
           <button class="btn btn-outline-eden" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="saveRequirements" value="default">Save Requirements</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native confirm-dialog" id="confirmDialog">
+      <form method="dialog" class="modal-card confirm-card">
+        <div class="confirm-icon">
+          <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div>
+          <p class="eyebrow" id="confirmEyebrow">Confirm</p>
+          <h2 id="confirmTitle">Confirm Action</h2>
+          <p class="confirm-message" id="confirmMessage"></p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" id="confirmCancel" type="button">Cancel</button>
+          <button class="btn btn-danger-eden" id="confirmAccept" type="button">Confirm</button>
         </div>
       </form>
     </dialog>

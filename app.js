@@ -45,6 +45,9 @@
     selectedOverviewSection: "all",
     selectedStatus: "all",
     selectedProgram: "",
+    courseSearch: "",
+    courseSortKey: "id",
+    courseSortDirection: "asc",
     signedIn: firebaseDisabled,
     admin: sessionStorage.getItem(adminKey) === "true",
   };
@@ -78,6 +81,8 @@
     featuredProgram: document.querySelector("#featuredProgram"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
+    courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
+    courseCatalogSummary: document.querySelector("#courseCatalogSummary"),
     courseRows: document.querySelector("#courseRows"),
     addCourse: document.querySelector("#addCourse"),
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
@@ -110,6 +115,12 @@
     selectedRequirements: document.querySelector("#selectedRequirements"),
     requirementSelectedCount: document.querySelector("#requirementSelectedCount"),
     saveRequirements: document.querySelector("#saveRequirements"),
+    confirmDialog: document.querySelector("#confirmDialog"),
+    confirmEyebrow: document.querySelector("#confirmEyebrow"),
+    confirmTitle: document.querySelector("#confirmTitle"),
+    confirmMessage: document.querySelector("#confirmMessage"),
+    confirmCancel: document.querySelector("#confirmCancel"),
+    confirmAccept: document.querySelector("#confirmAccept"),
   };
 
   init();
@@ -162,6 +173,24 @@
       state.selectedCredit = event.target.value;
       els.overviewCreditFilter.value = event.target.value;
       render();
+    });
+
+    els.courseCatalogSearch.addEventListener("input", (event) => {
+      state.courseSearch = event.target.value.trim().toLowerCase();
+      renderCourses();
+    });
+
+    document.querySelectorAll("[data-course-sort]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const key = button.dataset.courseSort;
+        if (state.courseSortKey === key) {
+          state.courseSortDirection = state.courseSortDirection === "asc" ? "desc" : "asc";
+        } else {
+          state.courseSortKey = key;
+          state.courseSortDirection = "asc";
+        }
+        renderCourses();
+      });
     });
 
     els.sectionFilter.addEventListener("change", (event) => {
@@ -367,7 +396,13 @@
     const referenceMessage = references.length
       ? ` This course is used in ${references.length} curriculum row(s); those requirements will stay in place until removed from their programs.`
       : "";
-    if (!confirm(`Delete course "${course.name || course.id || "Untitled Course"}"?${referenceMessage}`)) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Course Archive",
+      title: "Delete Course",
+      message: `Delete course "${course.name || course.id || "Untitled Course"}"?${referenceMessage}`,
+      confirmText: "Delete",
+    });
+    if (!confirmed) return;
 
     state.courses.splice(index, 1);
 
@@ -383,7 +418,13 @@
     if (!state.admin) return;
     const blankCourses = archiveHealthReport().blankCourses;
     if (!blankCourses.length) return;
-    if (!confirm(`Remove ${blankCourses.length} blank course record(s)?`)) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Archive Health",
+      title: "Remove Blank Courses",
+      message: `Remove ${blankCourses.length} blank course record(s)?`,
+      confirmText: "Remove",
+    });
+    if (!confirmed) return;
 
     state.courses = state.courses.filter((course) => !isBlankCourse(course));
 
@@ -478,14 +519,26 @@
   }
 
   function renderCourses() {
-    const rows = filteredCourses();
+    const query = courseCatalogQuery();
+    const rows = filteredCourses({
+      search: query,
+      sortKey: state.courseSortKey,
+      sortDirection: state.courseSortDirection,
+    });
+    const totalCourses = state.courses.length;
+    els.courseCatalogSearch.value = state.courseSearch;
+    els.courseCatalogSummary.textContent = rows.length === totalCourses
+      ? `${totalCourses} courses in catalog`
+      : `Showing ${rows.length} of ${totalCourses} courses`;
+    renderCourseSortHeaders();
+
     els.courseRows.innerHTML = rows.map((course, index) => {
       const realIndex = state.courses.indexOf(course);
       return `
         <tr>
           <td>${escapeHtml(course.id)}</td>
           <td>${escapeHtml(course.credit)}</td>
-          <td>${highlight(course.name)}</td>
+          <td>${highlight(course.name, query)}</td>
           <td>${escapeHtml(course.comment || "")}</td>
           <td class="admin-col text-end">
             <div class="course-row-actions">
@@ -541,8 +594,16 @@
     });
 
     els.curriculumRows.querySelectorAll("[data-remove-curriculum]").forEach((button) => {
-      button.addEventListener("click", () => {
+      button.addEventListener("click", async () => {
         if (!state.admin) return;
+        const row = state.curriculum[Number(button.dataset.removeCurriculum)];
+        const confirmed = await confirmAction({
+          eyebrow: "Curriculum",
+          title: "Remove Requirement",
+          message: `Remove "${stripCredit(row?.courseLabel) || row?.courseId || "this course"}" from ${row?.program || "this program"}?`,
+          confirmText: "Remove",
+        });
+        if (!confirmed) return;
         const removed = state.curriculum.splice(Number(button.dataset.removeCurriculum), 1)[0];
         removeCurriculumRow(removed);
         render();
@@ -588,6 +649,21 @@
 
     els.programDirectory.querySelectorAll("[data-remove-program]").forEach((button) => {
       button.addEventListener("click", () => removeProgram(button.dataset.removeProgram));
+    });
+  }
+
+  function renderCourseSortHeaders() {
+    document.querySelectorAll("[data-course-sort]").forEach((button) => {
+      const active = button.dataset.courseSort === state.courseSortKey;
+      button.classList.toggle("active", active);
+      const icon = button.querySelector("i");
+      if (icon) {
+        icon.className = active && state.courseSortDirection === "asc"
+          ? "bi bi-chevron-up"
+          : active
+            ? "bi bi-chevron-down"
+            : "bi bi-chevron-expand";
+      }
     });
   }
 
@@ -1233,7 +1309,13 @@
     const program = programs().find((item) => item.name === programName);
     if (!program) return;
     const count = state.curriculum.filter((row) => row.program === programName).length;
-    if (!confirm(`Remove "${programName}" and ${count} requirement row(s)?`)) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Programs",
+      title: "Remove Program",
+      message: `Remove "${programName}" and ${count} requirement row(s)?`,
+      confirmText: "Remove",
+    });
+    if (!confirmed) return;
 
     state.programRecords = state.programRecords.filter((item) => item.name !== programName);
     const removedRows = state.curriculum.filter((row) => row.program === programName);
@@ -1305,7 +1387,14 @@
   async function removeAttachment(docId) {
     if (!state.admin || !docId) return;
     const attachment = attachmentState.records.find((item) => item._docId === docId);
-    if (!attachment || !confirm(`Remove attachment "${attachment.name}"?`)) return;
+    if (!attachment) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Attachments",
+      title: "Remove Attachment",
+      message: `Remove attachment "${attachment.name}"?`,
+      confirmText: "Remove",
+    });
+    if (!confirmed) return;
     attachmentState.records = attachmentState.records.filter((item) => item._docId !== docId);
 
     if (canWriteCloud()) {
@@ -1320,6 +1409,41 @@
 
   function canWriteCloud() {
     return firebaseState.ready && firebaseState.user && state.admin;
+  }
+
+  function confirmAction({ eyebrow = "Confirm", title = "Confirm Action", message = "", confirmText = "Confirm" } = {}) {
+    return new Promise((resolve) => {
+      els.confirmEyebrow.textContent = eyebrow;
+      els.confirmTitle.textContent = title;
+      els.confirmMessage.textContent = message;
+      els.confirmAccept.textContent = confirmText;
+
+      const cleanup = (result) => {
+        els.confirmCancel.removeEventListener("click", onCancel);
+        els.confirmAccept.removeEventListener("click", onAccept);
+        els.confirmDialog.removeEventListener("cancel", onNativeCancel);
+        els.confirmDialog.removeEventListener("close", onClose);
+        resolve(result);
+      };
+      const closeWith = (result) => {
+        els.confirmDialog.returnValue = result ? "confirm" : "cancel";
+        els.confirmDialog.close();
+      };
+      const onCancel = () => closeWith(false);
+      const onAccept = () => closeWith(true);
+      const onNativeCancel = (event) => {
+        event.preventDefault();
+        closeWith(false);
+      };
+      const onClose = () => cleanup(els.confirmDialog.returnValue === "confirm");
+
+      els.confirmCancel.addEventListener("click", onCancel);
+      els.confirmAccept.addEventListener("click", onAccept);
+      els.confirmDialog.addEventListener("cancel", onNativeCancel);
+      els.confirmDialog.addEventListener("close", onClose, { once: true });
+      els.confirmDialog.showModal();
+      setTimeout(() => els.confirmCancel.focus(), 0);
+    });
   }
 
   function setCloudStatus(message) {
@@ -1384,12 +1508,41 @@
   function filteredCourses(filters = {}) {
     const section = filters.section || "all";
     const status = filters.status || "all";
+    const search = filters.search ?? state.search;
+    const sortKey = filters.sortKey || "name";
+    const sortDirection = filters.sortDirection || "asc";
     return state.courses
       .filter((course) => state.selectedCredit === "all" || course.credit === state.selectedCredit)
       .filter((course) => status === "all" || (course.status || "Active") === status)
       .filter((course) => section === "all" || courseSections(course).includes(section))
-      .filter(matchesSearch)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .filter((course) => !search || matchesText(course, search))
+      .sort((a, b) => compareCourses(a, b, sortKey, sortDirection));
+  }
+
+  function compareCourses(a, b, key, direction = "asc") {
+    const multiplier = direction === "desc" ? -1 : 1;
+    const compare = (() => {
+      if (key === "credit") {
+        const creditCompare = Number(a.credit || 0) - Number(b.credit || 0);
+        return creditCompare || naturalCompare(a.id, b.id) || naturalCompare(a.name, b.name);
+      }
+      if (key === "id") {
+        return naturalCompare(a.id, b.id) || naturalCompare(a.name, b.name);
+      }
+      return naturalCompare(a.name, b.name) || naturalCompare(a.id, b.id);
+    })();
+    return compare * multiplier;
+  }
+
+  function naturalCompare(a, b) {
+    return String(a || "").localeCompare(String(b || ""), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
+  }
+
+  function courseCatalogQuery() {
+    return state.courseSearch || state.search;
   }
 
   function filteredPrograms() {
@@ -1608,10 +1761,10 @@
     return Object.values(item).some((value) => String(value || "").toLowerCase().includes(query));
   }
 
-  function highlight(value) {
+  function highlight(value, query = state.search) {
     const text = escapeHtml(value || "");
-    if (!state.search) return text;
-    const escapedSearch = state.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (!query) return text;
+    const escapedSearch = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return text.replace(new RegExp(`(${escapedSearch})`, "ig"), "<mark>$1</mark>");
   }
 

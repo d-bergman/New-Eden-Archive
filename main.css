@@ -406,6 +406,33 @@ textarea {
   outline: 0;
 }
 
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--eden-line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.search-field i {
+  color: var(--eden-ink);
+  font-size: 1.1rem;
+}
+
+.search-field input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  outline: 0;
+}
+
+.catalog-search {
+  min-width: min(320px, 100%);
+}
+
 .form-select,
 .form-control {
   min-height: 46px;
@@ -497,6 +524,28 @@ textarea {
   background: rgba(23, 61, 42, 0.08);
 }
 
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+}
+
+.sort-header:hover,
+.sort-header.active {
+  color: var(--eden-forest);
+}
+
+.sort-header i {
+  color: var(--eden-muted);
+  font-size: 0.78rem;
+}
+
 .course-row-actions {
   display: inline-flex;
   justify-content: flex-end;
@@ -565,6 +614,12 @@ textarea {
 
 .program-heading h2 {
   font-size: clamp(1.55rem, 1.8vw, 2.2rem);
+}
+
+.catalog-summary {
+  margin: 4px 0 0;
+  color: var(--eden-muted);
+  font-size: 0.9rem;
 }
 
 .text-bg-sage {
@@ -987,6 +1042,45 @@ mark {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+.btn-danger-eden {
+  border-color: #a63b35;
+  background: #a63b35;
+  color: #fff;
+  font-weight: 800;
+}
+
+.btn-danger-eden:hover {
+  border-color: #842d28;
+  background: #842d28;
+  color: #fff;
+}
+
+.confirm-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+}
+
+.confirm-card .modal-actions {
+  grid-column: 1 / -1;
+}
+
+.confirm-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f3e4dc;
+  color: #a63b35;
+  font-size: 1.2rem;
+}
+
+.confirm-message {
+  margin: 8px 0 0;
+  color: var(--eden-muted);
+  line-height: 1.45;
 }
 
 .modal-heading {
