@@ -1,5 +1,19 @@
 # New Eden Archive Changelog
 
+## V1.0.2 - 2026-06-03 3:21 AM CT - Attachment Upload Hotfix
+
+### Summary
+- Improved attachment uploads so the interface no longer remains stuck on an endless uploading status when Firebase Storage does not complete the request.
+
+### Fixes
+- Switched attachment uploads to Firebase resumable upload tasks.
+- Added a 30-second upload timeout with a clear Firebase status message if Storage stalls.
+- Added immediate local attachment list updates after metadata saves, so a completed upload appears under Attachments without waiting on the realtime listener.
+- Preserved both drag/drop upload and browse-file upload behavior.
+
+### Notes
+- If uploads still fail after this hotfix, the visible status message should point to the next setup issue, such as Firebase Storage rules, bucket configuration, or network access.
+
 ## V1.0.1 - 2026-06-03 3:13 AM CT - Curriculum Edit Wording Hotfix
 
 ### Summary

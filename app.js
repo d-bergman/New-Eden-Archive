@@ -1163,6 +1163,7 @@
         getStorage: storageModule.getStorage,
         storageRef: storageModule.ref,
         uploadBytes: storageModule.uploadBytes,
+        uploadBytesResumable: storageModule.uploadBytesResumable,
         getDownloadURL: storageModule.getDownloadURL,
         deleteObject: storageModule.deleteObject,
       };
@@ -1463,12 +1464,12 @@
         return;
       }
 
-      const { dbRef, set, serverTimestamp, storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
-      await Promise.all(files.map(async (file) => {
+      const { dbRef, set, serverTimestamp, storageRef, uploadBytesResumable, getDownloadURL } = firebaseState.modules;
+      const uploadedAttachments = await Promise.all(files.map(async (file) => {
         const docId = slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`);
         const storagePath = `attachments/programs/${slugify(state.selectedProgram)}/${docId}-${file.name}`;
         const fileRef = storageRef(firebaseState.storage, storagePath);
-        await uploadBytes(fileRef, file);
+        await uploadTaskWithTimeout(uploadBytesResumable(fileRef, file), 30000);
         const downloadURL = await getDownloadURL(fileRef);
         const attachment = {
           _docId: docId,
@@ -1487,13 +1488,35 @@
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        return attachment;
       }));
+      attachmentState.records = normalizeAttachments([
+        ...attachmentState.records.filter((item) => !uploadedAttachments.some((attachment) => attachment._docId === item._docId)),
+        ...uploadedAttachments,
+      ]);
       setCloudStatus(`Uploaded ${files.length} file(s)`);
       renderProgramPanel("attachments");
     } catch (error) {
       console.warn("Attachment upload failed.", error);
       setCloudStatus(`Upload failed: ${firebaseErrorMessage(error)}`);
     }
+  }
+
+  function uploadTaskWithTimeout(uploadTask, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        uploadTask.cancel();
+        reject(new Error("Upload timed out. Check Firebase Storage setup, rules, or network connection."));
+      }, timeoutMs);
+
+      uploadTask.on("state_changed", null, (error) => {
+        clearTimeout(timeoutId);
+        reject(error);
+      }, () => {
+        clearTimeout(timeoutId);
+        resolve(uploadTask.snapshot);
+      });
+    });
   }
 
   async function removeAttachment(docId) {
