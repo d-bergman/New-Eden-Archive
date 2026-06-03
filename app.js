@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.2.0";
+  const appVersion = "1.2.1";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -56,6 +56,7 @@
     activityLog: [],
     notices: [],
     tasks: [],
+    directoryUsers: [],
     search: "",
     activityLogSearch: "",
     view: "overview",
@@ -168,6 +169,7 @@
     editTitle: document.querySelector("#editTitle"),
     editFields: document.querySelector("#editFields"),
     editMessage: document.querySelector("#editMessage"),
+    confirmEdit: document.querySelector("#confirmEdit"),
     curriculumBuilderDialog: document.querySelector("#curriculumBuilderDialog"),
     curriculumBuilderProgram: document.querySelector("#curriculumBuilderProgram"),
     curriculumBuilderName: document.querySelector("#curriculumBuilderName"),
@@ -1488,6 +1490,7 @@
           ok: false,
           field: "id",
           message: "This course number is already in use. Please enter a unique course number.",
+          disableUntilChange: true,
         };
       }
       values._docId = courseDocId(values);
@@ -2164,6 +2167,7 @@
 
   function openEditor(title, fields, onSave) {
     els.editTitle.textContent = title;
+    if (els.confirmEdit) els.confirmEdit.disabled = false;
     if (els.editMessage) {
       els.editMessage.hidden = true;
       els.editMessage.textContent = "";
@@ -2203,10 +2207,25 @@
           els.editMessage.hidden = false;
           els.editMessage.textContent = result.message || "Please fix the highlighted field.";
         }
+        if (result.disableUntilChange && els.confirmEdit) {
+          els.confirmEdit.disabled = true;
+        }
         if (result.field) {
           const fieldEl = els.editForm.querySelector(`[name="${CSS.escape(result.field)}"]`);
           fieldEl?.classList.add("is-invalid");
           fieldEl?.focus();
+          const clearInvalidState = () => {
+            fieldEl.classList.remove("is-invalid");
+            if (els.editMessage) {
+              els.editMessage.hidden = true;
+              els.editMessage.textContent = "";
+            }
+            if (els.confirmEdit) els.confirmEdit.disabled = false;
+            fieldEl.removeEventListener("input", clearInvalidState);
+            fieldEl.removeEventListener("change", clearInvalidState);
+          };
+          fieldEl?.addEventListener("input", clearInvalidState);
+          fieldEl?.addEventListener("change", clearInvalidState);
         }
         return;
       }
@@ -2471,7 +2490,7 @@
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap, usersSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
@@ -2481,6 +2500,7 @@
       readOptionalPath("activityLog"),
       readOptionalPath("notices"),
       readOptionalPath("tasks"),
+      readOptionalPath("users"),
     ]);
 
     const sizes = {
@@ -2493,6 +2513,7 @@
       activityLog: rtdbList(activitySnap?.val()).length,
       notices: rtdbList(noticeSnap?.val()).length,
       tasks: rtdbList(taskSnap?.val()).length,
+      users: rtdbList(usersSnap?.val()).length,
     };
     firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programCategories || sizes.programs || sizes.curriculumRows);
 
@@ -2510,6 +2531,7 @@
     state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
+    state.directoryUsers = normalizeDirectoryUsers(rtdbList(usersSnap?.val()));
 
     return sizes;
   }
@@ -2595,6 +2617,12 @@
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "tasks"), (snapshot) => {
       state.tasks = normalizeTasks(rtdbList(snapshot.val()));
       renderTasks();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "users"), (snapshot) => {
+      state.directoryUsers = normalizeDirectoryUsers(rtdbList(snapshot.val()));
+      renderTasks();
+      renderUserChip();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "presence"), (snapshot) => {
@@ -2932,6 +2960,16 @@
       els.noticeMessage.focus();
       return;
     }
+    const activeNoticeCount = state.notices.filter((notice) => notice.status !== "deleted").length;
+    if (activeNoticeCount >= 3) {
+      await alertAction({
+        eyebrow: "Notices",
+        title: "Notice Limit Reached",
+        message: "The archive can show up to 3 active notices. Delete a previous notice before adding another.",
+        confirmText: "OK",
+      });
+      return;
+    }
     const notice = {
       message,
       status: "active",
@@ -3138,6 +3176,7 @@
     confirmText = "Confirm",
     requirePassword = false,
     passwordMessage = "Enter your Firebase password to permanently delete this archive record.",
+    hideCancel = false,
   } = {}) {
     return new Promise((resolve) => {
       els.confirmEyebrow.textContent = eyebrow;
@@ -3145,6 +3184,7 @@
       els.confirmMessage.textContent = message;
       els.confirmAccept.textContent = confirmText;
       els.confirmAccept.disabled = false;
+      els.confirmCancel.hidden = hideCancel;
       if (els.confirmPasswordGroup) els.confirmPasswordGroup.hidden = !requirePassword;
       if (els.confirmPassword) els.confirmPassword.value = "";
       if (els.confirmPasswordMessage) els.confirmPasswordMessage.textContent = passwordMessage;
@@ -3155,6 +3195,7 @@
         els.confirmDialog.removeEventListener("cancel", onNativeCancel);
         els.confirmDialog.removeEventListener("close", onClose);
         els.confirmAccept.disabled = false;
+        els.confirmCancel.hidden = false;
         if (els.confirmPasswordGroup) els.confirmPasswordGroup.hidden = true;
         if (els.confirmPassword) els.confirmPassword.value = "";
         resolve(result);
@@ -3193,8 +3234,12 @@
       els.confirmDialog.addEventListener("cancel", onNativeCancel);
       els.confirmDialog.addEventListener("close", onClose, { once: true });
       els.confirmDialog.showModal();
-      setTimeout(() => (requirePassword ? els.confirmPassword : els.confirmCancel)?.focus(), 0);
+      setTimeout(() => (requirePassword ? els.confirmPassword : hideCancel ? els.confirmAccept : els.confirmCancel)?.focus(), 0);
     });
+  }
+
+  function alertAction(options = {}) {
+    return confirmAction({ ...options, hideCancel: true });
   }
 
   function firebaseAuthErrorMessage(error) {
@@ -3595,6 +3640,18 @@
     })).filter((task) => task.title);
   }
 
+  function normalizeDirectoryUsers(users) {
+    return (users || []).map((user) => {
+      const emailName = user.email ? String(user.email).split("@")[0] : "";
+      return {
+        uid: user.uid || user._docId || "",
+        name: user.displayName || user.name || user.fullName || emailName || "Employee",
+        email: user.email || "",
+      };
+    }).filter((user) => user.uid && user.name)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   function attachmentsForProgram(programName) {
     return attachmentState.records.filter((attachment) => attachment.ownerType === "program" && attachment.ownerName === programName);
   }
@@ -3625,6 +3682,13 @@
 
   function taskAssignees() {
     const users = new Map();
+    state.directoryUsers.forEach((user) => {
+      if (!user.uid) return;
+      users.set(user.uid, {
+        uid: user.uid,
+        name: user.name || user.email?.split("@")[0] || "Employee",
+      });
+    });
     if (firebaseState.user) {
       users.set(firebaseState.user.uid, {
         uid: firebaseState.user.uid,

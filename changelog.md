@@ -1,5 +1,20 @@
 # New Eden Archive Changelog
 
+## V1.2.1 - 2026-06-03 4:13 PM CT - Log and Dark Mode Hotfix
+
+### Summary
+- Polished the new log workspace controls and made dark mode readable across the archive.
+
+### Fixes
+- Improved Task Board form sizing so the title, assignee, description, and Create Task button line up cleanly.
+- Updated task action buttons so Edit no longer sits awkwardly between Reopen/Done and Delete.
+- Added saved user profiles to the task assignee list so tasks can be assigned to employees who are not currently online.
+- Limited active notices to 3 and added a themed warning modal when that limit is reached.
+- Disabled the Add/Edit Course Save button after duplicate course-number validation until the Course ID field changes.
+- Rebuilt dark mode contrast for tables, inputs, buttons, panels, badges, and helper text.
+- Updated Realtime Database rules so signed-in users can read the profile directory used for offline task assignment.
+- Updated the visible app version label to V1.2.1.
+
 ## V1.2.0 - 2026-06-03 3:43 PM CT - Log, Notices, Tasks, and Dark Mode
 
 ### Summary
