@@ -1,6 +1,18 @@
 # New Eden Archive Changelog
 
-## V1.1.2 - 2026-06-03 6:05 AM CT - Startup Auth Flicker Hotfix
+## V1.1.3 - 2026-06-03 9:54 AM CT - Program Table Layout Hotfix
+
+### Summary
+- Fixed the Programs workspace curriculum table layout and corrected the recent changelog timestamps to Central time.
+
+### Fixes
+- Reduced the wasted blank space in the Programs tab curriculum list so the Requirements and Remove actions stay visible inside the right pane.
+- Adjusted the Programs workspace column sizing so the curriculum pane has more practical room on desktop screens.
+- Added a dedicated Programs curriculum table class so its columns no longer inherit the generic requirement-table widths.
+- Updated the visible app version label to V1.1.3.
+- Corrected the V1.1.1 and V1.1.2 changelog times after confirming the local Windows clock was reporting Central time.
+
+## V1.1.2 - 2026-06-03 9:54 AM CT - Startup Auth Flicker Hotfix
 
 ### Summary
 - Fixed the login gate briefly flashing during page refresh.
@@ -9,7 +21,7 @@
 - Added an auth-checking startup state so the loader remains the only visible startup surface while Firebase restores the signed-in session.
 - Delayed hiding the loader until preview mode, signed-in Firebase state, signed-out Firebase state, or Firebase offline state is actually resolved.
 
-## V1.1.1 - 2026-06-03 5:52 AM CT - Dashboard Status and Pagination Polish
+## V1.1.1 - 2026-06-03 9:54 AM CT - Dashboard Status and Pagination Polish
 
 ### Summary
 - Adapted several Testing Center Dashboard usability patterns into the New Eden Archive theme.

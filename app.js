@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.1";
+  const appVersion = "1.1.3";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -942,7 +942,7 @@
             </button>
           </div>
           <div class="table-responsive">
-            <table class="table required-table align-middle mb-0">
+            <table class="table required-table program-structure-table align-middle mb-0">
               <thead>
                 <tr>
                   <th>Curriculum</th>
