@@ -48,6 +48,9 @@
     courseSearch: "",
     courseSortKey: "id",
     courseSortDirection: "asc",
+    requirementSearch: "",
+    requirementCredit: "all",
+    changelogEntries: [],
     signedIn: firebaseDisabled,
     admin: sessionStorage.getItem(adminKey) === "true",
   };
@@ -78,7 +81,6 @@
     statusFilter: document.querySelector("#statusFilter"),
     overviewCourses: document.querySelector("#overviewCourses"),
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
-    featuredProgram: document.querySelector("#featuredProgram"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
@@ -94,6 +96,8 @@
     programSummary: document.querySelector("#programSummary"),
     curriculumRows: document.querySelector("#curriculumRows"),
     addProgramCourse: document.querySelector("#addProgramCourse"),
+    requirementTableSearch: document.querySelector("#requirementTableSearch"),
+    requirementTableCreditFilter: document.querySelector("#requirementTableCreditFilter"),
     programTitle: document.querySelector("#programTitle"),
     programCode: document.querySelector("#programCode"),
     requiredCount: document.querySelector("#requiredCount"),
@@ -102,6 +106,7 @@
     dataHealth: document.querySelector("#dataHealth"),
     programTabs: document.querySelectorAll("[data-program-tab]"),
     attachmentUpload: document.querySelector("#attachmentUpload"),
+    attachmentDropZone: document.querySelector("#attachmentDropZone"),
     attachmentList: document.querySelector("#attachmentList"),
     editDialog: document.querySelector("#editDialog"),
     editForm: document.querySelector("#editForm"),
@@ -129,9 +134,12 @@
     hydrateSelectors();
     bindEvents();
     if (!state.selectedProgram) {
-      state.selectedProgram = programs().find((program) => program.section === "Traditional Naturopathy")?.name || programs()[0]?.name || "";
+      const initialProgram = programs().find((program) => program.section === "Traditional Naturopathy") || programs()[0];
+      state.selectedProgram = initialProgram?.name || "";
+      state.selectedSection = initialProgram?.section || state.selectedSection;
     }
     render();
+    loadChangelog();
     initFirebase();
   }
 
@@ -205,12 +213,6 @@
       render();
     });
 
-    els.featuredProgram.addEventListener("change", (event) => {
-      state.selectedProgram = event.target.value;
-      state.view = "curriculums";
-      render();
-    });
-
     const toggleAdmin = async () => {
       if (state.signedIn && !state.admin && !firebaseDisabled) {
         setCloudStatus(`Checking admin access for UID: ${firebaseState.user?.uid || "unknown"}`);
@@ -261,9 +263,34 @@
       renderRequirementBuilder();
     });
 
+    els.requirementTableSearch.addEventListener("input", (event) => {
+      state.requirementSearch = event.target.value.trim().toLowerCase();
+      renderCurriculum();
+    });
+
+    els.requirementTableCreditFilter.addEventListener("change", (event) => {
+      state.requirementCredit = event.target.value;
+      renderCurriculum();
+    });
+
     els.saveRequirements.addEventListener("click", (event) => {
       event.preventDefault();
       saveRequirementBuilder();
+    });
+
+    els.attachmentDropZone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      els.attachmentDropZone.classList.add("is-dragover");
+    });
+
+    els.attachmentDropZone.addEventListener("dragleave", () => {
+      els.attachmentDropZone.classList.remove("is-dragover");
+    });
+
+    els.attachmentDropZone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      els.attachmentDropZone.classList.remove("is-dragover");
+      handleProgramAttachmentFiles(Array.from(event.dataTransfer?.files || []));
     });
   }
 
@@ -282,6 +309,7 @@
   function renderChrome() {
     els.body.classList.toggle("auth-locked", !state.signedIn);
     els.body.classList.toggle("is-admin", state.admin);
+    els.body.dataset.activeView = state.view;
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
     els.adminToggle.querySelector("span").textContent = state.signedIn ? "Sign Out" : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
@@ -348,15 +376,6 @@
 
     bindCourseActionMenus(els.overviewCourses);
 
-    const selected = state.selectedProgram || programs()[0]?.name || "";
-    els.featuredProgram.value = selected;
-    const rowsForProgram = curriculumForProgram(selected);
-    const program = programs().find((item) => item.name === selected);
-    const section = rowsForProgram[0]?.section || program?.section || "Program";
-    els.programTitle.textContent = programShortName(selected);
-    els.programCode.textContent = program?.code || programCode(selected, section);
-    els.requiredCount.textContent = rowsForProgram.length;
-    renderProgramPanel(activeProgramTab());
   }
 
   function bindCourseActionMenus(container) {
@@ -443,7 +462,9 @@
     const selected = state.selectedProgram || programs()[0]?.name || "";
     const rowsForProgram = curriculumForProgram(selected);
     const totalCredits = rowsForProgram.reduce((sum, row) => sum + Number(row.credit || 0), 0);
-    const section = rowsForProgram[0]?.section || programs().find((program) => program.name === selected)?.section || "Program";
+    const program = programs().find((item) => item.name === selected);
+    const section = rowsForProgram[0]?.section || program?.section || "Program";
+    const description = programDescription(program, section);
     const attachments = attachmentsForProgram(selected);
 
     if (tab === "attachments") {
@@ -474,30 +495,11 @@
 
     document.querySelector("#programAttachments").style.display = "none";
     els.featuredProgramDetail.style.display = "block";
-    if (tab === "requirements" || tab === "curriculum") {
-      els.featuredProgramDetail.innerHTML = `
-        <p class="mb-3"><strong>Requirements</strong><br />
-          This program currently has ${rowsForProgram.length} required course rows totaling ${totalCredits} credits.
-        </p>
-        <div class="attachment-list">
-          ${rowsForProgram.slice(0, 8).map((row, index) => `
-            <article class="attachment-item">
-              <span class="requirement-order">${index + 1}</span>
-              <div>
-                <strong>${escapeHtml(stripCredit(row.courseLabel))}</strong>
-                <span>${escapeHtml(row.courseId)} &bull; Credit ${escapeHtml(row.credit)}</span>
-              </div>
-            </article>
-          `).join("")}
-        </div>
-      `;
-      return;
-    }
-
     if (tab === "notes") {
+      const notes = String(program?.notes || "").trim();
       els.featuredProgramDetail.innerHTML = `
         <p class="mb-3"><strong>Notes</strong><br />
-          Program notes will live here. This tab is ready for the notes system in the next slice.
+          ${notes ? escapeHtml(notes).replace(/\n/g, "<br />") : "No notes have been added for this program yet."}
         </p>
       `;
       return;
@@ -505,10 +507,9 @@
 
     els.featuredProgramDetail.innerHTML = `
       <p class="mb-3"><strong>Description</strong><br />
-        A comprehensive program in ${escapeHtml(section.toLowerCase())} principles and practices,
-        with course requirements maintained from the live New Eden archive.
+        ${escapeHtml(description).replace(/\n/g, "<br />")}
       </p>
-      <p class="mb-3"><strong>Department</strong><br />${escapeHtml(section)}</p>
+      <p class="mb-3"><strong>Program</strong><br />${escapeHtml(section)}</p>
       <dl>
         <div><dt>Total Credits</dt><dd>${totalCredits}</dd></div>
         <div><dt>Total Required Courses</dt><dd>${rowsForProgram.length}</dd></div>
@@ -560,38 +561,34 @@
     }
     els.programFilter.value = state.selectedProgram;
 
-    const rows = curriculumForProgram(state.selectedProgram).filter(matchesSearch);
-    const totalCredits = rows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
-    els.programSummary.innerHTML = `
-      <p class="eyebrow">${escapeHtml(rows[0]?.section || "Curriculum")}</p>
-      <h3>${escapeHtml(state.selectedProgram || "No program selected")}</h3>
-      <div class="row g-3 mt-1">
-        <div class="col-sm-4"><strong>${rows.length}</strong><span>Required Courses</span></div>
-        <div class="col-sm-4"><strong>${totalCredits}</strong><span>Total Credits</span></div>
-        <div class="col-sm-4"><strong>${state.admin ? "Editing enabled" : "Read-only"}</strong><span>Admin Status</span></div>
-      </div>
-    `;
+    const allRows = curriculumForProgram(state.selectedProgram);
+    const rows = filteredRequirementRows(allRows);
+    const totalCredits = allRows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
+    const program = programs().find((item) => item.name === state.selectedProgram);
+    const section = rows[0]?.section || program?.section || state.selectedSection || "Curriculum";
+    els.programSummary.textContent = state.selectedProgram
+      ? `${section} - ${rows.length} required course rows totaling ${totalCredits} credits.`
+      : "Choose a section and curriculum to manage required courses.";
+    els.programTitle.textContent = programShortName(state.selectedProgram);
+    els.programCode.textContent = program?.code || programCode(state.selectedProgram, section);
+    els.requiredCount.textContent = rows.length;
+    els.requirementTableSearch.value = state.requirementSearch;
+    hydrateRequirementCreditFilter(allRows);
+    renderProgramPanel(activeProgramTab());
 
-    els.curriculumRows.innerHTML = rows.slice(0, 5).map((row, index) => {
+    els.curriculumRows.innerHTML = rows.map((row) => {
       const realIndex = state.curriculum.indexOf(row);
       return `
         <tr>
-          <td>${index + 1}</td>
           <td>${escapeHtml(row.courseId)}</td>
           <td>${highlight(stripCredit(row.courseLabel))}</td>
           <td>${escapeHtml(row.credit)}</td>
-          <td>${escapeHtml(row.type || "Required")}</td>
           <td class="text-end">
-            <button class="table-action" data-edit-curriculum="${realIndex}" type="button" aria-label="Edit requirement"><i class="bi bi-three-dots"></i></button>
-            <button class="button danger admin-only" data-remove-curriculum="${realIndex}" type="button">Remove</button>
+            <button class="btn btn-sm btn-outline-danger admin-only" data-remove-curriculum="${realIndex}" type="button">Remove</button>
           </td>
         </tr>
       `;
-    }).join("") || emptyRow(6, "No curriculum rows match the current filters.");
-
-    els.curriculumRows.querySelectorAll("[data-edit-curriculum]").forEach((button) => {
-      button.addEventListener("click", () => openCurriculumEditor(Number(button.dataset.editCurriculum)));
-    });
+    }).join("") || emptyRow(4, "No curriculum rows match the current filters.");
 
     els.curriculumRows.querySelectorAll("[data-remove-curriculum]").forEach((button) => {
       button.addEventListener("click", async () => {
@@ -668,15 +665,103 @@
   }
 
   function renderHistory() {
-    els.versionTimeline.innerHTML = state.versionHistory.map((item) => `
-      <article class="timeline-item">
-        <time>${escapeHtml(item.date)}</time>
-        <div>
-          <h4>${escapeHtml(item.version)} - ${escapeHtml(item.title)}</h4>
-          <p>${escapeHtml(item.comment)}</p>
+    els.versionTimeline.innerHTML = state.changelogEntries.map((entry, index) => `
+      <details class="changelog-entry" ${index === 0 ? "open" : ""}>
+        <summary>
+          <time>${escapeHtml(entry.date)}</time>
+          <span>
+            <strong>${escapeHtml(entry.version)}</strong>
+            <em>${escapeHtml(entry.title)}</em>
+          </span>
+          <i class="bi bi-chevron-down"></i>
+        </summary>
+        <div class="changelog-body">
+          ${markdownToHtml(entry.body)}
         </div>
-      </article>
-    `).join("") || `<div class="empty-state">No version history found.</div>`;
+      </details>
+    `).join("") || `<div class="empty-state">No changelog entries found.</div>`;
+  }
+
+  async function loadChangelog() {
+    try {
+      const response = await fetch("changelog.md", { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load changelog.md (${response.status})`);
+      state.changelogEntries = parseChangelog(await response.text());
+    } catch (error) {
+      console.warn("Changelog load failed.", error);
+      state.changelogEntries = [];
+    }
+    renderHistory();
+  }
+
+  function parseChangelog(markdown) {
+    const entries = [];
+    let current = null;
+
+    markdown.split(/\r?\n/).forEach((line) => {
+      const heading = line.match(/^##\s+(V[\d.]+)\s+-\s+(.+?)\s+-\s+(.+)$/i);
+      if (heading) {
+        if (current) entries.push(current);
+        current = {
+          version: heading[1],
+          date: heading[2],
+          title: heading[3],
+          body: "",
+        };
+        return;
+      }
+      if (current) current.body += `${line}\n`;
+    });
+
+    if (current) entries.push(current);
+    return entries;
+  }
+
+  function markdownToHtml(markdown) {
+    const lines = markdown.trim().split(/\r?\n/);
+    let inList = false;
+    const html = [];
+
+    lines.forEach((line) => {
+      if (!line.trim()) {
+        if (inList) {
+          html.push("</ul>");
+          inList = false;
+        }
+        return;
+      }
+
+      if (/^###\s+/.test(line)) {
+        if (inList) {
+          html.push("</ul>");
+          inList = false;
+        }
+        html.push(`<h4>${escapeHtml(line.replace(/^###\s+/, ""))}</h4>`);
+        return;
+      }
+
+      if (/^-\s+/.test(line)) {
+        if (!inList) {
+          html.push("<ul>");
+          inList = true;
+        }
+        html.push(`<li>${escapeInlineMarkdown(line.replace(/^-\s+/, ""))}</li>`);
+        return;
+      }
+
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
+      html.push(`<p>${escapeInlineMarkdown(line)}</p>`);
+    });
+
+    if (inList) html.push("</ul>");
+    return html.join("");
+  }
+
+  function escapeInlineMarkdown(value) {
+    return escapeHtml(value).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   }
 
   function renderDataHealth() {
@@ -736,6 +821,24 @@
     `;
   }
 
+  function filteredRequirementRows(rows) {
+    return rows
+      .filter((row) => state.requirementCredit === "all" || String(row.credit || "") === state.requirementCredit)
+      .filter((row) => !state.requirementSearch || matchesText(row, state.requirementSearch) || matchesText({ name: stripCredit(row.courseLabel) }, state.requirementSearch));
+  }
+
+  function hydrateRequirementCreditFilter(rows) {
+    const creditsForRows = Array.from(new Set(rows.map((row) => row.credit).filter(Boolean)))
+      .sort((a, b) => Number(a) - Number(b));
+    els.requirementTableCreditFilter.innerHTML = [`<option value="all">All Credits</option>`]
+      .concat(creditsForRows.map((credit) => `<option value="${escapeAttr(credit)}">Credit ${escapeHtml(credit)}</option>`))
+      .join("");
+    if (state.requirementCredit !== "all" && !creditsForRows.includes(state.requirementCredit)) {
+      state.requirementCredit = "all";
+    }
+    els.requirementTableCreditFilter.value = state.requirementCredit;
+  }
+
   function hydrateSelectors() {
     const creditOptions = [`<option value="all">All Credits</option>`]
       .concat(credits().map((credit) => `<option value="${escapeAttr(credit)}">Credit ${escapeHtml(credit)}</option>`))
@@ -761,7 +864,6 @@
 
     const programOptions = filteredPrograms().map((program) => `<option value="${escapeAttr(program.name)}">${escapeHtml(program.name)}</option>`).join("");
     els.programFilter.innerHTML = programOptions;
-    els.featuredProgram.innerHTML = programs().map((program) => `<option value="${escapeAttr(program.name)}">${escapeHtml(program.name)}</option>`).join("");
   }
 
   function openCourseEditor(index) {
@@ -964,13 +1066,13 @@
       notes: "",
     };
 
-    openEditor(existing ? "Edit Program" : "Add Program", [
-      field("section", "Section", program.section, "select", sections()),
-      field("name", "Program Name", program.name),
-      field("code", "Program Code", program.code || programCode(program.name, program.section)),
+    openEditor(existing ? "Edit Curriculum" : "Add Curriculum", [
+      field("section", "Program", program.section, "select", sections()),
+      field("name", "Curriculum Name", program.name),
+      field("code", "Curriculum Code", program.code || programCode(program.name, program.section)),
       field("status", "Status", program.status || "Active", "select", ["Active", "Inactive", "Archived"]),
       field("version", "Version", program.version || "v1.0"),
-      field("description", "Description", program.description || "", "textarea"),
+      field("description", "Description", programDescription(program, program.section), "textarea"),
       field("notes", "Notes", program.notes || "", "textarea"),
     ], (values) => {
       const record = normalizePrograms([{ ...program, ...values }])[0];
@@ -1334,54 +1436,64 @@
   async function uploadProgramAttachments(event) {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
+    handleProgramAttachmentFiles(files);
+  }
+
+  async function handleProgramAttachmentFiles(files) {
     if (!files.length || !state.admin || !state.selectedProgram) return;
 
     setCloudStatus(`Uploading ${files.length} file(s)`);
-    if (!canWriteCloud() || !firebaseState.storage) {
-      files.forEach((file) => {
-        attachmentState.records.push(normalizeAttachments([{
-          _docId: slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`),
+    try {
+      if (!canWriteCloud() || !firebaseState.storage) {
+        files.forEach((file) => {
+          attachmentState.records.push(normalizeAttachments([{
+            _docId: slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`),
+            ownerType: "program",
+            ownerName: state.selectedProgram,
+            name: file.name,
+            size: file.size,
+            contentType: file.type,
+            downloadURL: "",
+            storagePath: "",
+            uploadedBy: "local-preview",
+          }])[0]);
+        });
+        setCloudStatus("Attachment preview added locally");
+        renderProgramPanel("attachments");
+        return;
+      }
+
+      const { dbRef, set, serverTimestamp, storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
+      await Promise.all(files.map(async (file) => {
+        const docId = slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`);
+        const storagePath = `attachments/programs/${slugify(state.selectedProgram)}/${docId}-${file.name}`;
+        const fileRef = storageRef(firebaseState.storage, storagePath);
+        await uploadBytes(fileRef, file);
+        const downloadURL = await getDownloadURL(fileRef);
+        const attachment = {
+          _docId: docId,
           ownerType: "program",
           ownerName: state.selectedProgram,
           name: file.name,
           size: file.size,
           contentType: file.type,
-          downloadURL: "",
-          storagePath: "",
-          uploadedBy: "local-preview",
-        }])[0]);
-      });
-      setCloudStatus("Attachment preview added locally");
+          storagePath,
+          downloadURL,
+          uploadedBy: firebaseState.user?.uid || "",
+        };
+        await set(dbRef(firebaseState.db, `attachments/${docId}`), {
+          ...archiveAttachment(attachment),
+          _docId: docId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }));
+      setCloudStatus(`Uploaded ${files.length} file(s)`);
       renderProgramPanel("attachments");
-      return;
+    } catch (error) {
+      console.warn("Attachment upload failed.", error);
+      setCloudStatus(`Upload failed: ${firebaseErrorMessage(error)}`);
     }
-
-    const { dbRef, set, serverTimestamp, storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
-    await Promise.all(files.map(async (file) => {
-      const docId = slugify(`${state.selectedProgram}-${file.name}-${Date.now()}`);
-      const storagePath = `attachments/programs/${slugify(state.selectedProgram)}/${docId}-${file.name}`;
-      const fileRef = storageRef(firebaseState.storage, storagePath);
-      await uploadBytes(fileRef, file);
-      const downloadURL = await getDownloadURL(fileRef);
-      const attachment = {
-        _docId: docId,
-        ownerType: "program",
-        ownerName: state.selectedProgram,
-        name: file.name,
-        size: file.size,
-        contentType: file.type,
-        storagePath,
-        downloadURL,
-        uploadedBy: firebaseState.user?.uid || "",
-      };
-      await set(dbRef(firebaseState.db, `attachments/${docId}`), {
-        ...archiveAttachment(attachment),
-        _docId: docId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }));
-    setCloudStatus(`Uploaded ${files.length} file(s)`);
   }
 
   async function removeAttachment(docId) {
@@ -1649,6 +1761,13 @@
     const sourceText = programShortName(programName) || section || "Program";
     const letters = sourceText.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean);
     return letters.slice(0, 3).map((word) => word[0]).join("").toUpperCase() || "NEA";
+  }
+
+  function programDescription(program, section) {
+    const saved = String(program?.description || "").trim();
+    if (saved) return saved;
+    const programSection = section || program?.section || "natural health";
+    return `A comprehensive curriculum in ${programSection.toLowerCase()} principles and practices, with course requirements maintained from the live New Eden archive.`;
   }
 
   function normalizeCourses(courses) {
