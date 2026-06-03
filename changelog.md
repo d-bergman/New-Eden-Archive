@@ -1,5 +1,26 @@
 # New Eden Archive Changelog
 
+## V1.0.4 - 2026-06-03 4:01 AM CT - Program Structure Builder
+
+### Summary
+- Reworked the Programs tab into the top-level structure workspace for major program categories and their curriculums.
+
+### New Features
+- Added a Program Builder modal for creating and editing major program categories such as Biblical Studies, Herbal Programs, and Traditional Naturopathy.
+- Added a curriculum builder area inside the Program Builder so curriculums can be added under a selected program category.
+- Added Realtime Database support for a new `programCategories` collection, while preserving existing curriculum records under the current `programs` path.
+
+### Improvements
+- Changed the Programs page heading to **Program Structure** with workflow-focused helper text.
+- Updated Programs page cards so each card represents a major program category and lists its curriculums underneath.
+- Changed the Add Program button so it no longer opens the curriculum editor.
+- Updated destructive wording so row-level removal is described as removing a curriculum, not removing a whole program.
+
+### Workflow
+- Programs tab: create major program categories and organize their curriculums.
+- Curriculums tab: edit curriculum details, notes, attachments, and required courses.
+- Courses tab: add or edit standalone course records used by curriculums.
+
 ## V1.0.3 - 2026-06-03 3:30 AM CT - Required Course Sorting Hotfix
 
 ### Summary

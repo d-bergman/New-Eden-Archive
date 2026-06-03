@@ -660,6 +660,12 @@ body[data-active-view="history"] .archive-summary {
   font-size: 0.9rem;
 }
 
+.section-subtitle {
+  margin: 4px 0 0;
+  color: var(--eden-muted);
+  font-size: 0.94rem;
+}
+
 .text-bg-sage {
   background: var(--eden-sage) !important;
   color: var(--eden-forest) !important;
@@ -938,9 +944,34 @@ body:not(.is-admin) .admin-only {
 }
 
 .directory-section h4 {
-  margin-bottom: 12px;
+  margin: 0;
   color: var(--eden-forest);
   font-family: Georgia, "Times New Roman", serif;
+}
+
+.program-category-card {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.program-category-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--eden-line);
+}
+
+.program-category-header p {
+  margin: 4px 0 0;
+  color: var(--eden-muted);
+  font-size: 0.9rem;
+}
+
+.program-curriculum-list {
+  display: grid;
 }
 
 .program-link {
@@ -968,6 +999,12 @@ body:not(.is-admin) .admin-only {
 
 .program-actions {
   gap: 6px;
+}
+
+.program-category-header .program-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .timeline {
@@ -1252,6 +1289,25 @@ mark {
   background: var(--eden-sage);
   color: var(--eden-forest);
   font-weight: 850;
+}
+
+.builder-section-title {
+  margin: 0 0 12px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.curriculum-builder-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.curriculum-builder-add .form-label {
+  margin-bottom: 0;
 }
 
 .course-picker,

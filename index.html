@@ -365,7 +365,8 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Programs</p>
-                  <h2>Programs by Section</h2>
+                  <h2>Program Structure</h2>
+                  <p class="section-subtitle">Create major program categories, then organize the curriculums that belong to each program.</p>
                 </div>
                 <button class="btn btn-eden admin-only" id="addProgram" type="button">
                   <i class="bi bi-plus-circle"></i>
@@ -431,6 +432,65 @@
         <div class="modal-actions">
           <button class="btn btn-outline-eden" id="cancelEdit" type="button" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmEdit" value="default">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native requirement-modal" id="programBuilderDialog">
+      <form method="dialog" class="modal-card" id="programBuilderForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Program Builder</p>
+            <h2 id="programBuilderTitle">Add Program</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="requirement-builder">
+          <section class="builder-pane">
+            <h3 class="builder-section-title">Program</h3>
+            <label class="form-label">
+              Program Name
+              <input class="form-control" id="programBuilderName" name="name" placeholder="Traditional Naturopathy" required />
+            </label>
+            <label class="form-label">
+              Status
+              <select class="form-select" id="programBuilderStatus" name="status">
+                <option>Active</option>
+                <option>Inactive</option>
+                <option>Archived</option>
+              </select>
+            </label>
+            <label class="form-label">
+              Notes
+              <textarea class="form-control" id="programBuilderNotes" name="notes" rows="5" placeholder="Optional notes for this program category"></textarea>
+            </label>
+          </section>
+
+          <section class="builder-pane">
+            <div class="builder-pane-header">
+              <h3>Curriculums</h3>
+              <span id="programBuilderCurriculumCount">0</span>
+            </div>
+            <div class="curriculum-builder-add">
+              <label class="form-label">
+                Curriculum Name
+                <input class="form-control" id="programBuilderCurriculumName" placeholder="Associate Degree in Naturopathy (ADN) Program" />
+              </label>
+              <button class="btn btn-outline-eden" id="addProgramBuilderCurriculum" type="button">
+                <i class="bi bi-plus-circle"></i>
+                Add Curriculum
+              </button>
+            </div>
+            <div class="selected-requirements" id="programBuilderCurriculumList"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" value="cancel">Cancel</button>
+          <button class="btn btn-eden" id="saveProgramBuilder" value="default">Save Program</button>
         </div>
       </form>
     </dialog>
