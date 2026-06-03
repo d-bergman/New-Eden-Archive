@@ -306,6 +306,9 @@
                       <i class="bi bi-pencil"></i>
                       Edit Curriculum
                     </button>
+                    <button class="btn btn-outline-danger admin-only" id="removeCurriculumButton" type="button">
+                      Remove Curriculum
+                    </button>
                   </div>
                 </div>
 
@@ -451,7 +454,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.1.6</span></p>
+            <p>Version <span id="appVersion">1.1.7</span></p>
           </footer>
         </div>
       </main>
@@ -780,6 +783,13 @@
           <p class="eyebrow" id="confirmEyebrow">Confirm</p>
           <h2 id="confirmTitle">Confirm Action</h2>
           <p class="confirm-message" id="confirmMessage"></p>
+        </div>
+        <div class="confirm-password" id="confirmPasswordGroup" hidden>
+          <label>
+            Firebase Password
+            <input class="form-control" id="confirmPassword" type="password" autocomplete="current-password" />
+          </label>
+          <p class="form-note" id="confirmPasswordMessage">Enter your Firebase password to permanently delete this archive record.</p>
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" id="confirmCancel" type="button">Cancel</button>

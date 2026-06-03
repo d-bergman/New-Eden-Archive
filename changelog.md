@@ -1,5 +1,19 @@
 # New Eden Archive Changelog
 
+## V1.1.7 - 2026-06-03 2:27 PM CT - Protected Delete Confirmation
+
+### Summary
+- Added password-protected confirmation for permanent archive deletes while keeping normal list removals quick.
+
+### New Features
+- Added a Firebase password field to destructive confirmation modals for deleting courses, curriculums, and programs.
+- Added a Remove Curriculum button to the Curriculums workspace beside Edit Curriculum.
+
+### Fixes
+- Updated course delete warning copy to explain that linked curriculum requirements stay in place until removed from their programs.
+- Kept requirement-list removals as normal confirmations without password re-entry.
+- Updated the visible app version label to V1.1.7.
+
 ## V1.1.6 - 2026-06-03 12:57 PM CT - Profile Settings Polish
 
 ### Summary

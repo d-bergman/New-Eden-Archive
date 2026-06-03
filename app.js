@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.6";
+  const appVersion = "1.1.7";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -129,6 +129,7 @@
     helpDialog: document.querySelector("#helpDialog"),
     programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
+    removeCurriculumButton: document.querySelector("#removeCurriculumButton"),
     removeBlankCourses: document.querySelector("#removeBlankCourses"),
     sectionFilter: document.querySelector("#sectionFilter"),
     programFilter: document.querySelector("#programFilter"),
@@ -188,6 +189,9 @@
     confirmEyebrow: document.querySelector("#confirmEyebrow"),
     confirmTitle: document.querySelector("#confirmTitle"),
     confirmMessage: document.querySelector("#confirmMessage"),
+    confirmPasswordGroup: document.querySelector("#confirmPasswordGroup"),
+    confirmPassword: document.querySelector("#confirmPassword"),
+    confirmPasswordMessage: document.querySelector("#confirmPasswordMessage"),
     confirmCancel: document.querySelector("#confirmCancel"),
     confirmAccept: document.querySelector("#confirmAccept"),
     profileDialog: document.querySelector("#profileDialog"),
@@ -402,6 +406,7 @@
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram?.addEventListener("click", () => openProgramBuilder());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
+    els.removeCurriculumButton?.addEventListener("click", () => removeProgram(state.selectedProgram));
     els.removeBlankCourses.addEventListener("click", removeBlankCourses);
     els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
     els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
@@ -708,14 +713,16 @@
     if (!course) return;
 
     const references = curriculumRowsForCourse(course);
+    const curriculumCount = new Set(references.map((row) => row.program).filter(Boolean)).size || references.length;
     const referenceMessage = references.length
-      ? ` This course is used in ${references.length} curriculum row(s); those requirements will stay in place until removed from their programs.`
+      ? ` This course is being used in ${curriculumCount} curriculum${curriculumCount === 1 ? "" : "s"}. Those requirements will stay in place until they are removed from their programs.`
       : "";
     const confirmed = await confirmAction({
       eyebrow: "Course Archive",
       title: "Delete Course",
       message: `Delete course "${course.name || course.id || "Untitled Course"}"?${referenceMessage}`,
-      confirmText: "Delete",
+      confirmText: "Delete Course",
+      requirePassword: true,
     });
     if (!confirmed) return;
 
@@ -878,6 +885,7 @@
     els.programTitle.textContent = programShortName(state.selectedProgram);
     els.programCode.textContent = program?.code || programCode(state.selectedProgram, section);
     els.requiredCount.textContent = rows.length;
+    if (els.removeCurriculumButton) els.removeCurriculumButton.disabled = !state.selectedProgram || !state.admin;
     els.requirementTableSearch.value = state.requirementSearch;
     hydrateRequirementCreditFilter(allRows);
     renderRequirementSortHeaders();
@@ -2500,9 +2508,10 @@
     const count = state.curriculum.filter((row) => row.program === programName).length;
     const confirmed = await confirmAction({
       eyebrow: "Programs",
-      title: "Remove Curriculum",
-      message: `Remove "${programName}" and ${count} requirement row(s)?`,
-      confirmText: "Remove",
+      title: "Delete Curriculum",
+      message: `Delete curriculum "${programName}" and ${count} requirement row(s)? This permanently removes the curriculum from the archive.`,
+      confirmText: "Delete Curriculum",
+      requirePassword: true,
     });
     if (!confirmed) return;
 
@@ -2527,9 +2536,10 @@
     const rows = state.curriculum.filter((row) => row.section === programName);
     const confirmed = await confirmAction({
       eyebrow: "Programs",
-      title: "Remove Program",
-      message: `Remove "${programName}" plus ${curriculums.length} curriculum record(s) and ${rows.length} requirement row(s)?`,
-      confirmText: "Remove",
+      title: "Delete Program",
+      message: `Delete program "${programName}" plus ${curriculums.length} curriculum record(s) and ${rows.length} requirement row(s)? This permanently removes the program from the archive.`,
+      confirmText: "Delete Program",
+      requirePassword: true,
     });
     if (!confirmed) return;
 
@@ -2664,18 +2674,47 @@
     return firebaseState.ready && firebaseState.user && state.admin;
   }
 
-  function confirmAction({ eyebrow = "Confirm", title = "Confirm Action", message = "", confirmText = "Confirm" } = {}) {
+  async function verifyCurrentFirebasePassword(password) {
+    if (!password) throw new Error("Enter your Firebase password to continue.");
+    if (firebaseDisabled) return true;
+    const {
+      EmailAuthProvider,
+      reauthenticateWithCredential,
+    } = firebaseState.modules || {};
+    if (!firebaseState.user?.email || !EmailAuthProvider || !reauthenticateWithCredential) {
+      throw new Error("Firebase authentication is not ready. Sign in again and retry.");
+    }
+    const credential = EmailAuthProvider.credential(firebaseState.user.email, password);
+    await reauthenticateWithCredential(firebaseState.user, credential);
+    return true;
+  }
+
+  function confirmAction({
+    eyebrow = "Confirm",
+    title = "Confirm Action",
+    message = "",
+    confirmText = "Confirm",
+    requirePassword = false,
+    passwordMessage = "Enter your Firebase password to permanently delete this archive record.",
+  } = {}) {
     return new Promise((resolve) => {
       els.confirmEyebrow.textContent = eyebrow;
       els.confirmTitle.textContent = title;
       els.confirmMessage.textContent = message;
       els.confirmAccept.textContent = confirmText;
+      els.confirmAccept.disabled = false;
+      if (els.confirmPasswordGroup) els.confirmPasswordGroup.hidden = !requirePassword;
+      if (els.confirmPassword) els.confirmPassword.value = "";
+      if (els.confirmPasswordMessage) els.confirmPasswordMessage.textContent = passwordMessage;
 
       const cleanup = (result) => {
         els.confirmCancel.removeEventListener("click", onCancel);
         els.confirmAccept.removeEventListener("click", onAccept);
         els.confirmDialog.removeEventListener("cancel", onNativeCancel);
         els.confirmDialog.removeEventListener("close", onClose);
+        els.confirmAccept.disabled = false;
+        if (els.confirmPasswordGroup) els.confirmPasswordGroup.hidden = true;
+        if (els.confirmPassword) els.confirmPassword.value = "";
         resolve(result);
       };
       const closeWith = (result) => {
@@ -2683,7 +2722,24 @@
         els.confirmDialog.close();
       };
       const onCancel = () => closeWith(false);
-      const onAccept = () => closeWith(true);
+      const onAccept = async () => {
+        if (!requirePassword) {
+          closeWith(true);
+          return;
+        }
+        try {
+          els.confirmAccept.disabled = true;
+          if (els.confirmPasswordMessage) els.confirmPasswordMessage.textContent = "Checking password...";
+          await verifyCurrentFirebasePassword(els.confirmPassword?.value || "");
+          closeWith(true);
+        } catch (error) {
+          els.confirmAccept.disabled = false;
+          if (els.confirmPasswordMessage) {
+            els.confirmPasswordMessage.textContent = firebaseAuthErrorMessage(error);
+          }
+          els.confirmPassword?.focus();
+        }
+      };
       const onNativeCancel = (event) => {
         event.preventDefault();
         closeWith(false);
@@ -2695,8 +2751,18 @@
       els.confirmDialog.addEventListener("cancel", onNativeCancel);
       els.confirmDialog.addEventListener("close", onClose, { once: true });
       els.confirmDialog.showModal();
-      setTimeout(() => els.confirmCancel.focus(), 0);
+      setTimeout(() => (requirePassword ? els.confirmPassword : els.confirmCancel)?.focus(), 0);
     });
+  }
+
+  function firebaseAuthErrorMessage(error) {
+    if (error?.code === "auth/invalid-credential" || error?.code === "auth/wrong-password") {
+      return "That Firebase password did not match this signed-in user.";
+    }
+    if (error?.code === "auth/too-many-requests") {
+      return "Firebase temporarily blocked password checks after too many attempts. Try again shortly.";
+    }
+    return error?.message || "Password confirmation failed. Try again.";
   }
 
   function setCloudStatus(message) {

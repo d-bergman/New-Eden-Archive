@@ -1563,6 +1563,24 @@ mark {
   grid-column: 1 / -1;
 }
 
+.confirm-password {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(166, 59, 53, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 246, 239, 0.72);
+}
+
+.confirm-password[hidden] {
+  display: none;
+}
+
+.confirm-password .form-note {
+  color: #8d4239;
+}
+
 .confirm-icon {
   display: grid;
   width: 46px;
