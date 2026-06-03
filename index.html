@@ -86,6 +86,10 @@
             <i class="bi bi-clock-history"></i>
             <span>Version History</span>
           </button>
+          <button class="nav-link" data-view="log">
+            <i class="bi bi-journal-text"></i>
+            <span>Log</span>
+          </button>
         </nav>
 
         <button class="nav-link admin-nav-link" id="profileSettingsNav" type="button">
@@ -129,6 +133,8 @@
         </header>
 
         <div class="content-canvas">
+          <div class="notice-banner" id="noticeBanner" hidden></div>
+
           <section class="hero-band">
             <div>
               <h1>New Eden Archive</h1>
@@ -447,6 +453,78 @@
             </article>
           </section>
 
+          <section class="view" id="logView">
+            <article class="archive-panel">
+              <div class="section-heading catalog-heading">
+                <div>
+                  <p class="eyebrow">Log</p>
+                  <h2>Activity Log</h2>
+                  <p class="section-subtitle">Search archive activity by user, action, record name, or details.</p>
+                </div>
+              </div>
+              <div class="catalog-toolbar">
+                <label class="search-field catalog-search">
+                  <i class="bi bi-search"></i>
+                  <input id="activityLogSearch" type="search" placeholder="Search log history" aria-label="Search activity log" />
+                </label>
+              </div>
+              <div class="table-responsive archive-table-wrap log-table-wrap">
+                <table class="table archive-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>User</th>
+                      <th>Action</th>
+                      <th>Record</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody id="activityLogRows"></tbody>
+                </table>
+              </div>
+            </article>
+
+            <div class="log-workspace">
+              <article class="archive-panel">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Notices</p>
+                    <h2>Announcements</h2>
+                    <p class="section-subtitle">Admins can broadcast one-way notices to all signed-in users.</p>
+                  </div>
+                </div>
+                <form class="notice-form admin-only" id="noticeForm">
+                  <textarea class="form-control" id="noticeMessage" rows="3" placeholder="Write a notice for all users"></textarea>
+                  <button class="btn btn-eden" type="submit">
+                    <i class="bi bi-megaphone"></i>
+                    Send Notice
+                  </button>
+                </form>
+                <div class="notice-list" id="noticeList"></div>
+              </article>
+
+              <article class="archive-panel">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Tasks</p>
+                    <h2>Task Board</h2>
+                    <p class="section-subtitle">Create assigned tasks, update status, and keep task activity in the log.</p>
+                  </div>
+                </div>
+                <form class="task-form admin-only" id="taskForm">
+                  <input class="form-control" id="taskTitle" placeholder="Task title" required />
+                  <select class="form-select" id="taskAssignee" aria-label="Assign task"></select>
+                  <textarea class="form-control" id="taskDescription" rows="3" placeholder="Task description"></textarea>
+                  <button class="btn btn-eden" type="submit">
+                    <i class="bi bi-plus-circle"></i>
+                    Create Task
+                  </button>
+                </form>
+                <div class="task-list" id="taskList"></div>
+              </article>
+            </div>
+          </section>
+
           <footer class="archive-footer">
             <div>
               <strong id="connectedUsers">Connected Users: --</strong>
@@ -454,7 +532,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.1.7</span></p>
+            <p>Version <span id="appVersion">1.2.0</span></p>
           </footer>
         </div>
       </main>
@@ -520,6 +598,13 @@
           <section>
             <h3>Interface</h3>
             <label class="settings-toggle">
+              <input class="form-check-input" id="profileDarkMode" type="checkbox" />
+              <span>
+                <strong>Dark mode</strong>
+                <small>Use a darker archive theme for your account.</small>
+              </span>
+            </label>
+            <label class="settings-toggle">
               <input class="form-check-input" id="profileShowRealtimeLoaded" type="checkbox" />
               <span>
                 <strong>Show realtime loaded summary</strong>
@@ -541,6 +626,7 @@
       <form method="dialog" class="modal-card" id="editForm">
         <h2 id="editTitle">Edit</h2>
         <div id="editFields"></div>
+        <p class="form-note modal-error" id="editMessage" hidden></p>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" id="cancelEdit" type="button" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmEdit" value="default">Save</button>

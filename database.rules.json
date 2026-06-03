@@ -16,6 +16,10 @@
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
+    "courseIds": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
     "programs": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
@@ -35,6 +39,20 @@
     "attachments": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+    "activityLog": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "notices": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+    "tasks": {
+      ".read": "auth != null",
+      "$taskId": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || data.child('assigneeUid').val() == auth.uid || newData.child('assigneeUid').val() == auth.uid)"
+      }
     },
     "presence": {
       ".read": "auth != null",

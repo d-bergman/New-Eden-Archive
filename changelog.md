@@ -1,5 +1,23 @@
 # New Eden Archive Changelog
 
+## V1.2.0 - 2026-06-03 3:43 PM CT - Log, Notices, Tasks, and Dark Mode
+
+### Summary
+- Added operational tracking and communication tools for admins and employees.
+
+### New Features
+- Added a Log tab with searchable activity history by user, action, record, and details.
+- Added activity logging for course, curriculum, program, requirement, attachment, notice, and task changes.
+- Added a realtime notice system where admins can send, edit, and delete one-way announcements.
+- Added a task system with task title, description, assignee, status, edit/delete controls, and completion logging.
+- Added a per-user dark mode toggle in Profile Settings.
+
+### Fixes
+- Added course number duplicate validation for Add Course and Edit Course.
+- Added a course ID index path so course numbers use a consistent database key.
+- Updated Realtime Database rules for activity logs, notices, tasks, and the course ID index.
+- Updated the visible app version label to V1.2.0.
+
 ## V1.1.7 - 2026-06-03 2:27 PM CT - Protected Delete Confirmation
 
 ### Summary

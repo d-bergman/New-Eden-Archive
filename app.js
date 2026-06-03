@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.7";
+  const appVersion = "1.2.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -53,7 +53,11 @@
     programCategories: [],
     programRecords: [],
     versionHistory: [],
+    activityLog: [],
+    notices: [],
+    tasks: [],
     search: "",
+    activityLogSearch: "",
     view: "overview",
     selectedCredit: "all",
     selectedSection: "all",
@@ -127,6 +131,17 @@
     addProgram: document.querySelector("#addProgram"),
     helpButton: document.querySelector("#helpButton"),
     helpDialog: document.querySelector("#helpDialog"),
+    noticeBanner: document.querySelector("#noticeBanner"),
+    activityLogSearch: document.querySelector("#activityLogSearch"),
+    activityLogRows: document.querySelector("#activityLogRows"),
+    noticeForm: document.querySelector("#noticeForm"),
+    noticeMessage: document.querySelector("#noticeMessage"),
+    noticeList: document.querySelector("#noticeList"),
+    taskForm: document.querySelector("#taskForm"),
+    taskTitle: document.querySelector("#taskTitle"),
+    taskAssignee: document.querySelector("#taskAssignee"),
+    taskDescription: document.querySelector("#taskDescription"),
+    taskList: document.querySelector("#taskList"),
     programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
     removeCurriculumButton: document.querySelector("#removeCurriculumButton"),
@@ -152,6 +167,7 @@
     editForm: document.querySelector("#editForm"),
     editTitle: document.querySelector("#editTitle"),
     editFields: document.querySelector("#editFields"),
+    editMessage: document.querySelector("#editMessage"),
     curriculumBuilderDialog: document.querySelector("#curriculumBuilderDialog"),
     curriculumBuilderProgram: document.querySelector("#curriculumBuilderProgram"),
     curriculumBuilderName: document.querySelector("#curriculumBuilderName"),
@@ -198,6 +214,7 @@
     profileForm: document.querySelector("#profileForm"),
     profileDisplayName: document.querySelector("#profileDisplayName"),
     profileEmail: document.querySelector("#profileEmail"),
+    profileDarkMode: document.querySelector("#profileDarkMode"),
     profileShowRealtimeLoaded: document.querySelector("#profileShowRealtimeLoaded"),
     profileNewPassword: document.querySelector("#profileNewPassword"),
     profileConfirmPassword: document.querySelector("#profileConfirmPassword"),
@@ -269,6 +286,11 @@
       state.courseSearch = event.target.value.trim().toLowerCase();
       state.coursePage = 1;
       renderCourses();
+    });
+
+    els.activityLogSearch?.addEventListener("input", (event) => {
+      state.activityLogSearch = event.target.value.trim().toLowerCase();
+      renderActivityLog();
     });
 
     els.overviewRowsPerPage.addEventListener("change", (event) => {
@@ -395,6 +417,16 @@
       saveProfileSettings();
     });
 
+    els.noticeForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createNotice();
+    });
+
+    els.taskForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      createTask();
+    });
+
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
       signInUser(els.adminEmail.value.trim(), els.adminPassword.value);
@@ -497,6 +529,9 @@
     renderCurriculum();
     renderPrograms();
     renderHistory();
+    renderActivityLog();
+    renderNotices();
+    renderTasks();
     renderDataHealth();
   }
 
@@ -504,6 +539,7 @@
     els.body.classList.toggle("auth-locked", !state.signedIn && !state.authChecking);
     els.body.classList.toggle("auth-checking", state.authChecking);
     els.body.classList.toggle("is-admin", state.admin);
+    els.body.classList.toggle("theme-dark", isDarkMode());
     els.body.dataset.activeView = state.view;
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
@@ -580,6 +616,10 @@
     return firebaseState.profile?.settings?.showRealtimeLoaded !== false;
   }
 
+  function isDarkMode() {
+    return firebaseState.profile?.settings?.darkMode === true;
+  }
+
   function hideAppLoader() {
     if (!els.appLoader) return;
     setTimeout(() => {
@@ -592,6 +632,106 @@
     document.querySelector("#courseCount").textContent = state.courses.length;
     document.querySelector("#programCount").textContent = programCategories().length;
     document.querySelector("#curriculumCount").textContent = programs().length;
+  }
+
+  function renderNotices() {
+    const activeNotices = state.notices
+      .filter((notice) => notice.status !== "deleted")
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+    const latest = activeNotices[0];
+    if (els.noticeBanner) {
+      els.noticeBanner.hidden = !latest;
+      els.noticeBanner.innerHTML = latest ? `
+        <div>
+          <strong><i class="bi bi-megaphone"></i> Notice</strong>
+          <span>${escapeHtml(latest.message)}</span>
+        </div>
+        <small>${escapeHtml(latest.authorName || "Admin")} - ${formatTimestamp(latest.createdAtMs)}</small>
+      ` : "";
+    }
+    if (!els.noticeList) return;
+    els.noticeList.innerHTML = activeNotices.map((notice) => `
+      <article class="notice-item">
+        <div>
+          <strong>${escapeHtml(notice.message)}</strong>
+          <small>${escapeHtml(notice.authorName || "Admin")} - ${formatTimestamp(notice.createdAtMs)}</small>
+        </div>
+        <div class="item-actions admin-only">
+          <button class="btn btn-sm btn-outline-eden" type="button" data-edit-notice="${escapeAttr(notice._docId)}">Edit</button>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-delete-notice="${escapeAttr(notice._docId)}">Delete</button>
+        </div>
+      </article>
+    `).join("") || `<div class="empty-state">No notices have been posted.</div>`;
+
+    els.noticeList.querySelectorAll("[data-edit-notice]").forEach((button) => {
+      button.addEventListener("click", () => editNotice(button.dataset.editNotice));
+    });
+    els.noticeList.querySelectorAll("[data-delete-notice]").forEach((button) => {
+      button.addEventListener("click", () => deleteNotice(button.dataset.deleteNotice));
+    });
+  }
+
+  function renderTasks() {
+    if (els.taskAssignee) {
+      const users = taskAssignees();
+      els.taskAssignee.innerHTML = users.map((user) => `
+        <option value="${escapeAttr(user.uid)}">${escapeHtml(user.name)}</option>
+      `).join("");
+    }
+    if (!els.taskList) return;
+    const visibleTasks = state.tasks
+      .filter((task) => state.admin || task.assigneeUid === firebaseState.user?.uid)
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+    els.taskList.innerHTML = visibleTasks.map((task) => `
+      <article class="task-item ${task.status === "done" ? "is-done" : ""}">
+        <div>
+          <div class="task-title-row">
+            <strong>${escapeHtml(task.title)}</strong>
+            <span class="status-badge">${escapeHtml(task.status === "done" ? "Done" : "Open")}</span>
+          </div>
+          <p>${escapeHtml(task.description || "No description added.")}</p>
+          <small>Assigned to ${escapeHtml(task.assigneeName || "Unassigned")} - Created by ${escapeHtml(task.createdByName || "Admin")} - ${formatTimestamp(task.createdAtMs)}</small>
+        </div>
+        <div class="item-actions">
+          <button class="btn btn-sm btn-outline-eden" type="button" data-toggle-task="${escapeAttr(task._docId)}">${task.status === "done" ? "Reopen" : "Done"}</button>
+          <button class="btn btn-sm btn-outline-eden admin-only" type="button" data-edit-task="${escapeAttr(task._docId)}">Edit</button>
+          <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-delete-task="${escapeAttr(task._docId)}">Delete</button>
+        </div>
+      </article>
+    `).join("") || `<div class="empty-state">No tasks match your account yet.</div>`;
+
+    els.taskList.querySelectorAll("[data-toggle-task]").forEach((button) => {
+      button.addEventListener("click", () => toggleTaskStatus(button.dataset.toggleTask));
+    });
+    els.taskList.querySelectorAll("[data-edit-task]").forEach((button) => {
+      button.addEventListener("click", () => editTask(button.dataset.editTask));
+    });
+    els.taskList.querySelectorAll("[data-delete-task]").forEach((button) => {
+      button.addEventListener("click", () => deleteTask(button.dataset.deleteTask));
+    });
+  }
+
+  function renderActivityLog() {
+    if (!els.activityLogRows) return;
+    const query = state.activityLogSearch;
+    const rows = state.activityLog
+      .filter((entry) => {
+        if (!query) return true;
+        return [entry.userName, entry.action, entry.entityType, entry.entityName, entry.details]
+          .some((value) => String(value || "").toLowerCase().includes(query));
+      })
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+      .slice(0, 250);
+
+    els.activityLogRows.innerHTML = rows.map((entry) => `
+      <tr>
+        <td>${escapeHtml(formatTimestamp(entry.createdAtMs))}</td>
+        <td>${escapeHtml(entry.userName || "Unknown")}</td>
+        <td>${escapeHtml(entry.action || "Activity")}</td>
+        <td>${escapeHtml([entry.entityType, entry.entityName].filter(Boolean).join(": "))}</td>
+        <td>${escapeHtml(entry.details || "")}</td>
+      </tr>
+    `).join("") || emptyRow(5, "No log entries match the current search.");
   }
 
   function renderOverview() {
@@ -731,8 +871,10 @@
     if (canWriteCloud() && course._docId) {
       const { dbRef, remove } = firebaseState.modules;
       await remove(dbRef(firebaseState.db, `courses/${course._docId}`));
+      if (course.id) await remove(dbRef(firebaseState.db, `courseIds/${courseDocId(course)}`)).catch(() => {});
     }
 
+    await writeActivity("Deleted Course", "Course", `${course.id} ${course.name}`.trim(), `${references.length} linked requirement row(s) retained.`);
     render();
   }
 
@@ -758,6 +900,7 @@
     }
 
     setCloudStatus(`Removed ${blankCourses.length} blank course record(s)`);
+    await writeActivity("Removed Blank Courses", "Course", "Blank course cleanup", `${blankCourses.length} blank record(s) removed.`);
     render();
   }
 
@@ -917,7 +1060,8 @@
         });
         if (!confirmed) return;
         const removed = state.curriculum.splice(Number(button.dataset.removeCurriculum), 1)[0];
-        removeCurriculumRow(removed);
+        await removeCurriculumRow(removed);
+        await writeActivity("Removed Requirement", "Curriculum Requirement", row?.program || "Curriculum", stripCredit(row?.courseLabel) || row?.courseId || "");
         render();
       });
     });
@@ -1337,12 +1481,24 @@
       field("credit", "Credit", course.credit, "select", credits()),
       field("name", "Course Name", course.name),
       field("comment", "Comment", course.comment, "textarea"),
-    ], (values) => {
-      values._docId = course._docId || values.id || slugify(values.name);
+    ], async (values) => {
+      const duplicate = findDuplicateCourseId(values.id, index);
+      if (duplicate) {
+        return {
+          ok: false,
+          field: "id",
+          message: "This course number is already in use. Please enter a unique course number.",
+        };
+      }
+      values._docId = courseDocId(values);
+      const previousDocId = course._docId;
+      const previousCourseId = course.id;
       if (index == null) state.courses.push(values);
       else state.courses[index] = values;
-      persistCourse(values);
+      await persistCourse(values, previousDocId, previousCourseId);
+      await writeActivity(index == null ? "Added Course" : "Edited Course", "Course", `${values.id} ${values.name}`.trim(), values.comment || "");
       render();
+      return { ok: true };
     });
   }
 
@@ -1360,7 +1516,7 @@
       field("credit", "Credit", row.credit, "select", credits()),
       field("courseLabel", "Course", row.courseLabel, "select", state.courses.map(courseLabel)),
       field("comment", "Comment", row.comment, "textarea"),
-    ], (values) => {
+    ], async (values) => {
       values._docId = row._docId || curriculumDocId(values, index ?? state.curriculum.length);
       const matchingCourse = state.courses.find((course) => courseLabel(course) === values.courseLabel || course.id === values.courseId);
       if (matchingCourse) {
@@ -1371,8 +1527,10 @@
       if (index == null) state.curriculum.push(values);
       else state.curriculum[index] = values;
       state.selectedProgram = values.program;
-      persistCurriculumRow(values);
+      await persistCurriculumRow(values);
+      await writeActivity(index == null ? "Added Requirement" : "Edited Requirement", "Curriculum Requirement", values.program, stripCredit(values.courseLabel) || values.courseId || "");
       render();
+      return { ok: true };
     });
   }
 
@@ -1551,6 +1709,7 @@
     state.requirementSearch = "";
     state.requirementCredit = "all";
     els.curriculumBuilderDialog.close();
+    await writeActivity("Added Curriculum", "Curriculum", record.name, `${rowsToSave.length} requirement(s) added.`);
     render();
   }
 
@@ -1689,6 +1848,7 @@
     }
 
     els.requirementsDialog.close();
+    await writeActivity("Updated Requirements", "Curriculum", requirementBuilder.programName, `${rowsToSave.length} requirement(s), ${removedRows.length} removed.`);
     render();
   }
 
@@ -1745,7 +1905,9 @@
           ]);
         }
       }
+      await writeActivity("Edited Program", "Program", nextCategory.name, oldName !== nextCategory.name ? `Renamed from ${oldName}` : "Updated program details.");
       render();
+      return { ok: true };
     });
   }
 
@@ -1943,6 +2105,7 @@
     state.selectedSection = nextCategory.name;
     state.selectedProgram = nextCurriculums[0]?.name || state.selectedProgram;
     els.programBuilderDialog.close();
+    await writeActivity(oldName ? "Edited Program" : "Added Program", "Program", nextCategory.name, `${nextCurriculums.length} curriculum record(s).`);
     render();
   }
 
@@ -1973,7 +2136,7 @@
       field("version", "Version", program.version || "v1.0"),
       field("description", "Description", programDescription(program, program.section), "textarea"),
       field("notes", "Notes", program.notes || "", "textarea"),
-    ], (values) => {
+    ], async (values) => {
       const record = normalizePrograms([{ ...program, ...values }])[0];
       const oldName = program.name;
       const index = state.programRecords.findIndex((item) => item._docId === record._docId || item.name === oldName);
@@ -1992,19 +2155,29 @@
 
       state.selectedProgram = record.name;
       state.selectedSection = record.section || state.selectedSection;
-      persistProgram(record);
+      await persistProgram(record);
+      await writeActivity(existing ? "Edited Curriculum" : "Added Curriculum", "Curriculum", record.name, record.description || "");
       render();
+      return { ok: true };
     });
   }
 
   function openEditor(title, fields, onSave) {
     els.editTitle.textContent = title;
+    if (els.editMessage) {
+      els.editMessage.hidden = true;
+      els.editMessage.textContent = "";
+    }
     els.editFields.innerHTML = fields.map((item) => {
       if (item.type === "select") {
         return `
           <label>${escapeHtml(item.label)}
             <select name="${escapeAttr(item.name)}">
-              ${item.options.map((option) => `<option value="${escapeAttr(option)}" ${option === item.value ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+              ${item.options.map((option) => {
+                const value = typeof option === "object" ? option.value : option;
+                const label = typeof option === "object" ? option.label : option;
+                return `<option value="${escapeAttr(value)}" ${value === item.value ? "selected" : ""}>${escapeHtml(label)}</option>`;
+              }).join("")}
             </select>
           </label>
         `;
@@ -2022,8 +2195,21 @@
 
     els.editForm.onsubmit = async (event) => {
       event.preventDefault();
+      els.editFields.querySelectorAll(".is-invalid").forEach((fieldEl) => fieldEl.classList.remove("is-invalid"));
       const formData = new FormData(els.editForm);
-      await onSave(Object.fromEntries(formData.entries()));
+      const result = await onSave(Object.fromEntries(formData.entries()));
+      if (result?.ok === false) {
+        if (els.editMessage) {
+          els.editMessage.hidden = false;
+          els.editMessage.textContent = result.message || "Please fix the highlighted field.";
+        }
+        if (result.field) {
+          const fieldEl = els.editForm.querySelector(`[name="${CSS.escape(result.field)}"]`);
+          fieldEl?.classList.add("is-invalid");
+          fieldEl?.focus();
+        }
+        return;
+      }
       els.editDialog.close();
     };
   }
@@ -2059,6 +2245,7 @@
         get: databaseModule.get,
         onValue: databaseModule.onValue,
         set: databaseModule.set,
+        push: databaseModule.push,
         update: databaseModule.update,
         remove: databaseModule.remove,
         onDisconnect: databaseModule.onDisconnect,
@@ -2177,6 +2364,7 @@
     }
     els.profileDisplayName.value = currentUserDisplayName() || "";
     els.profileEmail.value = firebaseState.user?.email || "";
+    els.profileDarkMode.checked = isDarkMode();
     els.profileShowRealtimeLoaded.checked = showRealtimeLoadedSummary();
     els.profileNewPassword.value = "";
     els.profileConfirmPassword.value = "";
@@ -2190,6 +2378,7 @@
     const displayName = els.profileDisplayName.value.trim();
     const newPassword = els.profileNewPassword.value;
     const confirmPassword = els.profileConfirmPassword.value;
+    const darkMode = els.profileDarkMode.checked;
     const showRealtimeLoaded = els.profileShowRealtimeLoaded.checked;
     if (!displayName) {
       els.profileMessage.textContent = "Display name is required.";
@@ -2218,6 +2407,7 @@
         email: firebaseState.user?.email || "",
         settings: {
           ...(firebaseState.profile?.settings || {}),
+          darkMode,
           showRealtimeLoaded,
         },
       };
@@ -2281,13 +2471,16 @@
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
       get(dbRef(firebaseState.db, "curriculumRows")),
       get(dbRef(firebaseState.db, "versionHistory")),
       get(dbRef(firebaseState.db, "attachments")),
+      readOptionalPath("activityLog"),
+      readOptionalPath("notices"),
+      readOptionalPath("tasks"),
     ]);
 
     const sizes = {
@@ -2297,6 +2490,9 @@
       curriculumRows: rtdbList(curriculumSnap.val()).length,
       versionHistory: rtdbList(versionSnap.val()).length,
       attachments: rtdbList(attachmentSnap.val()).length,
+      activityLog: rtdbList(activitySnap?.val()).length,
+      notices: rtdbList(noticeSnap?.val()).length,
+      tasks: rtdbList(taskSnap?.val()).length,
     };
     firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programCategories || sizes.programs || sizes.curriculumRows);
 
@@ -2311,6 +2507,9 @@
     state.curriculum = normalizeCurriculum(rtdbList(curriculumSnap.val()));
     state.versionHistory = rtdbList(versionSnap.val());
     attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
+    state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
+    state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
+    state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
 
     return sizes;
   }
@@ -2383,6 +2582,21 @@
       render();
     }, handleSnapshotError));
 
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "activityLog"), (snapshot) => {
+      state.activityLog = normalizeActivityLog(rtdbList(snapshot.val()));
+      renderActivityLog();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "notices"), (snapshot) => {
+      state.notices = normalizeNotices(rtdbList(snapshot.val()));
+      renderNotices();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "tasks"), (snapshot) => {
+      state.tasks = normalizeTasks(rtdbList(snapshot.val()));
+      renderTasks();
+    }, handleSnapshotError));
+
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "presence"), (snapshot) => {
       state.connectedUsers = normalizePresence(snapshot.val());
       renderConnectionMeta();
@@ -2439,15 +2653,24 @@
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async function persistCourse(course) {
+  async function persistCourse(course, previousDocId = "", previousCourseId = "") {
     if (!canWriteCloud()) return;
-    const { dbRef, set, serverTimestamp } = firebaseState.modules;
-    course._docId = course._docId || course.id || slugify(course.name);
+    const { dbRef, set, remove, serverTimestamp } = firebaseState.modules;
+    course._docId = courseDocId(course);
+    if (previousDocId && previousDocId !== course._docId) {
+      await remove(dbRef(firebaseState.db, `courses/${previousDocId}`)).catch(() => {});
+    }
+    if (previousCourseId && previousCourseId !== course.id) {
+      await remove(dbRef(firebaseState.db, `courseIds/${courseDocId({ id: previousCourseId })}`)).catch(() => {});
+    }
     await set(dbRef(firebaseState.db, `courses/${course._docId}`), {
       ...archiveCourse(course),
       _docId: course._docId,
       updatedAt: serverTimestamp(),
     });
+    if (course.id) {
+      await set(dbRef(firebaseState.db, `courseIds/${course._docId}`), course._docId);
+    }
   }
 
   async function persistProgram(program) {
@@ -2526,6 +2749,7 @@
     }
 
     state.selectedProgram = programs()[0]?.name || "";
+    await writeActivity("Deleted Curriculum", "Curriculum", programName, `${removedRows.length} requirement row(s) deleted.`);
     render();
   }
 
@@ -2559,6 +2783,7 @@
     if (curriculums.some((program) => program.name === state.selectedProgram)) {
       state.selectedProgram = programs()[0]?.name || "";
     }
+    await writeActivity("Deleted Program", "Program", programName, `${curriculums.length} curriculum record(s), ${rows.length} requirement row(s) deleted.`);
     render();
   }
 
@@ -2585,11 +2810,12 @@
             downloadURL: "",
             storagePath: "",
             uploadedBy: "local-preview",
-          }])[0]);
-        });
-        setCloudStatus("Attachment preview added locally");
-        renderProgramPanel("attachments");
-        return;
+        }])[0]);
+      });
+      setCloudStatus("Attachment preview added locally");
+      await writeActivity("Uploaded Attachment", "Attachment", state.selectedProgram, `${files.length} local preview file(s) added.`);
+      renderProgramPanel("attachments");
+      return;
       }
 
       const { dbRef, set, serverTimestamp, storageRef, uploadBytesResumable, getDownloadURL } = firebaseState.modules;
@@ -2623,6 +2849,7 @@
         ...uploadedAttachments,
       ]);
       setCloudStatus(`Uploaded ${files.length} file(s)`);
+      await writeActivity("Uploaded Attachment", "Attachment", state.selectedProgram, uploadedAttachments.map((attachment) => attachment.name).join(", "));
       renderProgramPanel("attachments");
     } catch (error) {
       console.warn("Attachment upload failed.", error);
@@ -2667,11 +2894,226 @@
         await deleteObject(storageRef(firebaseState.storage, attachment.storagePath)).catch(() => {});
       }
     }
+    await writeActivity("Removed Attachment", "Attachment", attachment.ownerName || "Curriculum", attachment.name);
     renderProgramPanel("attachments");
   }
 
   function canWriteCloud() {
     return firebaseState.ready && firebaseState.user && state.admin;
+  }
+
+  async function writeActivity(action, entityType, entityName, details = "") {
+    const entry = {
+      action,
+      entityType,
+      entityName,
+      details,
+      userUid: firebaseState.user?.uid || "preview",
+      userName: currentUserDisplayName() || "Local Preview",
+      userEmail: firebaseState.user?.email || "",
+      createdAtMs: Date.now(),
+    };
+    state.activityLog.push({ _docId: `local-${Date.now()}`, ...entry });
+    renderActivityLog();
+    if (!firebaseState.ready || !firebaseState.user) return;
+    const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+    const logRef = push(dbRef(firebaseState.db, "activityLog"));
+    await set(logRef, {
+      ...entry,
+      _docId: logRef.key,
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  async function createNotice() {
+    if (!state.admin) return;
+    const message = els.noticeMessage.value.trim();
+    if (!message) {
+      els.noticeMessage.focus();
+      return;
+    }
+    const notice = {
+      message,
+      status: "active",
+      authorUid: firebaseState.user?.uid || "preview",
+      authorName: currentUserDisplayName() || "Admin",
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    };
+    els.noticeMessage.value = "";
+    if (canWriteCloud()) {
+      const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+      const noticeRef = push(dbRef(firebaseState.db, "notices"));
+      notice._docId = noticeRef.key;
+      await set(noticeRef, {
+        ...notice,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      notice._docId = `local-${Date.now()}`;
+      state.notices.push(notice);
+      renderNotices();
+    }
+    await writeActivity("Created Notice", "Notice", "Announcement", message);
+  }
+
+  async function editNotice(docId) {
+    if (!state.admin) return;
+    const notice = state.notices.find((item) => item._docId === docId);
+    if (!notice) return;
+    openEditor("Edit Notice", [
+      field("message", "Notice Message", notice.message, "textarea"),
+    ], async (values) => {
+      const message = values.message.trim();
+      if (!message) return;
+      notice.message = message;
+      notice.updatedAtMs = Date.now();
+      if (canWriteCloud()) {
+        const { dbRef, update, serverTimestamp } = firebaseState.modules;
+        await update(dbRef(firebaseState.db, `notices/${notice._docId}`), {
+          message,
+          updatedAtMs: notice.updatedAtMs,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await writeActivity("Edited Notice", "Notice", "Announcement", message);
+      renderNotices();
+    });
+  }
+
+  async function deleteNotice(docId) {
+    if (!state.admin) return;
+    const notice = state.notices.find((item) => item._docId === docId);
+    if (!notice) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Notices",
+      title: "Delete Notice",
+      message: `Delete this notice: "${notice.message}"?`,
+      confirmText: "Delete Notice",
+    });
+    if (!confirmed) return;
+    state.notices = state.notices.filter((item) => item._docId !== docId);
+    if (canWriteCloud()) {
+      const { dbRef, remove } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `notices/${docId}`));
+    }
+    await writeActivity("Deleted Notice", "Notice", "Announcement", notice.message);
+    renderNotices();
+  }
+
+  async function createTask() {
+    if (!state.admin) return;
+    const title = els.taskTitle.value.trim();
+    if (!title) {
+      els.taskTitle.focus();
+      return;
+    }
+    const assignee = taskAssignees().find((user) => user.uid === els.taskAssignee.value) || taskAssignees()[0];
+    const task = {
+      title,
+      description: els.taskDescription.value.trim(),
+      assigneeUid: assignee?.uid || "",
+      assigneeName: assignee?.name || "Unassigned",
+      status: "open",
+      createdByUid: firebaseState.user?.uid || "preview",
+      createdByName: currentUserDisplayName() || "Admin",
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    };
+    els.taskTitle.value = "";
+    els.taskDescription.value = "";
+    if (canWriteCloud()) {
+      const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+      const taskRef = push(dbRef(firebaseState.db, "tasks"));
+      task._docId = taskRef.key;
+      await set(taskRef, {
+        ...task,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } else {
+      task._docId = `local-${Date.now()}`;
+      state.tasks.push(task);
+      renderTasks();
+    }
+    await writeActivity("Opened Task", "Task", title, `Assigned to ${task.assigneeName}`);
+  }
+
+  async function editTask(docId) {
+    if (!state.admin) return;
+    const task = state.tasks.find((item) => item._docId === docId);
+    if (!task) return;
+    const users = taskAssignees();
+    openEditor("Edit Task", [
+      field("title", "Task Title", task.title),
+      field("description", "Description", task.description || "", "textarea"),
+      field("assigneeUid", "Assignee", task.assigneeUid, "select", users.map((user) => ({ value: user.uid, label: user.name }))),
+      field("status", "Status", task.status || "open", "select", ["open", "done"]),
+    ], async (values) => {
+      const assignee = users.find((user) => user.uid === values.assigneeUid) || users[0];
+      Object.assign(task, {
+        title: values.title.trim(),
+        description: values.description.trim(),
+        assigneeUid: assignee?.uid || "",
+        assigneeName: assignee?.name || "Unassigned",
+        status: values.status,
+        updatedAtMs: Date.now(),
+      });
+      if (canWriteCloud()) {
+        const { dbRef, update, serverTimestamp } = firebaseState.modules;
+        await update(dbRef(firebaseState.db, `tasks/${docId}`), {
+          title: task.title,
+          description: task.description,
+          assigneeUid: task.assigneeUid,
+          assigneeName: task.assigneeName,
+          status: task.status,
+          updatedAtMs: task.updatedAtMs,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await writeActivity("Edited Task", "Task", task.title, `Assigned to ${task.assigneeName}; status ${task.status}`);
+      renderTasks();
+    });
+  }
+
+  async function toggleTaskStatus(docId) {
+    const task = state.tasks.find((item) => item._docId === docId);
+    if (!task) return;
+    if (!state.admin && task.assigneeUid !== firebaseState.user?.uid) return;
+    const nextStatus = task.status === "done" ? "open" : "done";
+    task.status = nextStatus;
+    task.updatedAtMs = Date.now();
+    if (firebaseState.ready && firebaseState.user) {
+      const { dbRef, update, serverTimestamp } = firebaseState.modules;
+      await update(dbRef(firebaseState.db, `tasks/${docId}`), {
+        status: nextStatus,
+        updatedAtMs: task.updatedAtMs,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    await writeActivity(nextStatus === "done" ? "Completed Task" : "Reopened Task", "Task", task.title, `Status changed to ${nextStatus}`);
+    renderTasks();
+  }
+
+  async function deleteTask(docId) {
+    if (!state.admin) return;
+    const task = state.tasks.find((item) => item._docId === docId);
+    if (!task) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Tasks",
+      title: "Delete Task",
+      message: `Delete task "${task.title}"?`,
+      confirmText: "Delete Task",
+    });
+    if (!confirmed) return;
+    state.tasks = state.tasks.filter((item) => item._docId !== docId);
+    if (canWriteCloud()) {
+      const { dbRef, remove } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `tasks/${docId}`));
+    }
+    await writeActivity("Deleted Task", "Task", task.title, `Assigned to ${task.assigneeName || "Unassigned"}`);
+    renderTasks();
   }
 
   async function verifyCurrentFirebasePassword(password) {
@@ -2890,6 +3332,19 @@
     ));
   }
 
+  function courseDocId(course) {
+    return slugify(course.id || course.name);
+  }
+
+  function findDuplicateCourseId(courseId, currentIndex = null) {
+    const normalized = String(courseId || "").trim().toLowerCase();
+    if (!normalized) return null;
+    return state.courses.find((course, index) => {
+      if (currentIndex != null && index === currentIndex) return false;
+      return String(course.id || "").trim().toLowerCase() === normalized;
+    }) || null;
+  }
+
   function credits() {
     return Array.from(new Set([
       "1",
@@ -3099,6 +3554,47 @@
     })).filter((attachment) => attachment.name);
   }
 
+  function normalizeActivityLog(entries) {
+    return (entries || []).map((entry) => ({
+      _docId: entry._docId || slugify(`${entry.action || "log"}-${entry.createdAtMs || Date.now()}`),
+      action: entry.action || "Activity",
+      entityType: entry.entityType || "",
+      entityName: entry.entityName || "",
+      details: entry.details || "",
+      userUid: entry.userUid || "",
+      userName: entry.userName || entry.userEmail?.split("@")[0] || "Unknown",
+      userEmail: entry.userEmail || "",
+      createdAtMs: Number(entry.createdAtMs || entry.createdAt || 0),
+    }));
+  }
+
+  function normalizeNotices(notices) {
+    return (notices || []).map((notice) => ({
+      _docId: notice._docId || slugify(`notice-${notice.createdAtMs || notice.message}`),
+      message: notice.message || "",
+      status: notice.status || "active",
+      authorUid: notice.authorUid || "",
+      authorName: notice.authorName || "Admin",
+      createdAtMs: Number(notice.createdAtMs || notice.createdAt || 0),
+      updatedAtMs: Number(notice.updatedAtMs || notice.updatedAt || 0),
+    })).filter((notice) => notice.message);
+  }
+
+  function normalizeTasks(tasks) {
+    return (tasks || []).map((task) => ({
+      _docId: task._docId || slugify(`task-${task.createdAtMs || task.title}`),
+      title: task.title || "",
+      description: task.description || "",
+      assigneeUid: task.assigneeUid || "",
+      assigneeName: task.assigneeName || "Unassigned",
+      status: task.status || "open",
+      createdByUid: task.createdByUid || "",
+      createdByName: task.createdByName || "Admin",
+      createdAtMs: Number(task.createdAtMs || task.createdAt || 0),
+      updatedAtMs: Number(task.updatedAtMs || task.updatedAt || 0),
+    })).filter((task) => task.title);
+  }
+
   function attachmentsForProgram(programName) {
     return attachmentState.records.filter((attachment) => attachment.ownerType === "program" && attachment.ownerName === programName);
   }
@@ -3113,6 +3609,36 @@
     const units = ["B", "KB", "MB", "GB"];
     const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
     return `${(value / (1024 ** index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+  }
+
+  function formatTimestamp(value) {
+    const date = value ? new Date(Number(value)) : new Date();
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleString([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  }
+
+  function taskAssignees() {
+    const users = new Map();
+    if (firebaseState.user) {
+      users.set(firebaseState.user.uid, {
+        uid: firebaseState.user.uid,
+        name: currentUserDisplayName() || firebaseState.user.email?.split("@")[0] || "Me",
+      });
+    }
+    state.connectedUsers.forEach((user) => {
+      if (!user.uid) return;
+      users.set(user.uid, {
+        uid: user.uid,
+        name: user.name || user.email?.split("@")[0] || "Employee",
+      });
+    });
+    return Array.from(users.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
 
   function curriculumDocId(row, index) {
