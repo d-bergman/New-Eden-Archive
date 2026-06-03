@@ -73,6 +73,7 @@
     requirementSortDirection: "asc",
     changelogEntries: [],
     signedIn: firebaseDisabled,
+    authChecking: true,
     admin: sessionStorage.getItem(adminKey) === "true",
   };
 
@@ -200,7 +201,6 @@
     render();
     loadChangelog();
     initFirebase();
-    hideAppLoader();
   }
 
   function bindEvents() {
@@ -454,7 +454,8 @@
   }
 
   function renderChrome() {
-    els.body.classList.toggle("auth-locked", !state.signedIn);
+    els.body.classList.toggle("auth-locked", !state.signedIn && !state.authChecking);
+    els.body.classList.toggle("auth-checking", state.authChecking);
     els.body.classList.toggle("is-admin", state.admin);
     els.body.dataset.activeView = state.view;
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
@@ -1959,8 +1960,10 @@
   async function initFirebase() {
     if (firebaseDisabled) {
       state.signedIn = true;
+      state.authChecking = false;
       setCloudStatus("Realtime Database disabled for test");
       render();
+      hideAppLoader();
       return;
     }
 
@@ -2006,13 +2009,16 @@
           stopRealtimeListeners();
           state.signedIn = false;
           state.admin = false;
+          state.authChecking = false;
           setCloudStatus("Realtime Database ready");
           render();
+          hideAppLoader();
           return;
         }
 
         state.signedIn = true;
         state.admin = false;
+        state.authChecking = false;
         els.signInMessage.textContent = "Signed in.";
         setCloudStatus("Loading realtime data");
         try {
@@ -2025,10 +2031,14 @@
           setCloudStatus(`Realtime data failed. UID: ${user.uid}`);
         }
         render();
+        hideAppLoader();
       });
     } catch (error) {
       console.warn("Firebase unavailable.", error);
+      state.authChecking = false;
       setCloudStatus("Cloud offline");
+      render();
+      hideAppLoader();
     }
   }
 

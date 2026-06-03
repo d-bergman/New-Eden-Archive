@@ -45,6 +45,10 @@ body.auth-locked .auth-gate {
   display: flex;
 }
 
+body.auth-checking .auth-gate {
+  display: none;
+}
+
 body.auth-locked .archive-shell {
   min-height: 100vh;
   filter: blur(2px);

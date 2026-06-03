@@ -1,5 +1,14 @@
 # New Eden Archive Changelog
 
+## V1.1.2 - 2026-06-03 6:05 AM CT - Startup Auth Flicker Hotfix
+
+### Summary
+- Fixed the login gate briefly flashing during page refresh.
+
+### Fixes
+- Added an auth-checking startup state so the loader remains the only visible startup surface while Firebase restores the signed-in session.
+- Delayed hiding the loader until preview mode, signed-in Firebase state, signed-out Firebase state, or Firebase offline state is actually resolved.
+
 ## V1.1.1 - 2026-06-03 5:52 AM CT - Dashboard Status and Pagination Polish
 
 ### Summary
