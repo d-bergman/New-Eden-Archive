@@ -98,6 +98,7 @@
     courseRows: document.querySelector("#courseRows"),
     addCourse: document.querySelector("#addCourse"),
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
+    addCurriculum: document.querySelector("#addCurriculum"),
     addProgram: document.querySelector("#addProgram"),
     editProgramButton: document.querySelector("#editProgramButton"),
     removeBlankCourses: document.querySelector("#removeBlankCourses"),
@@ -279,6 +280,7 @@
 
     els.addCourse.addEventListener("click", () => openCourseEditor());
     els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
+    els.addCurriculum.addEventListener("click", () => openProgramEditor());
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram.addEventListener("click", () => openProgramBuilder());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
@@ -713,7 +715,7 @@
     });
 
     els.programDirectory.querySelectorAll("[data-edit-program-category]").forEach((button) => {
-      button.addEventListener("click", () => openProgramBuilder(button.dataset.editProgramCategory));
+      button.addEventListener("click", () => openProgramCategoryEditor(button.dataset.editProgramCategory));
     });
 
     els.programDirectory.querySelectorAll("[data-remove-program-category]").forEach((button) => {
@@ -1158,6 +1160,61 @@
     render();
   }
 
+  function openProgramCategoryEditor(programName) {
+    if (!state.admin) return;
+    const existing = programCategories().find((category) => category.name === programName);
+    if (!existing) return;
+    openEditor("Edit Program", [
+      field("name", "Program Name", existing.name),
+      field("status", "Status", existing.status || "Active", "select", ["Active", "Inactive", "Archived"]),
+      field("notes", "Notes", existing.notes || "", "textarea"),
+    ], async (values) => {
+      const oldName = existing.name;
+      const nextCategory = normalizeProgramCategories([{
+        ...existing,
+        name: values.name.trim(),
+        status: values.status,
+        notes: values.notes,
+      }])[0];
+      if (!nextCategory) return;
+
+      state.programCategories = [
+        ...state.programCategories.filter((category) => category.name !== oldName && category.name !== nextCategory.name),
+        nextCategory,
+      ];
+
+      const changedPrograms = [];
+      const changedRows = [];
+      if (oldName !== nextCategory.name) {
+        state.programRecords.forEach((program) => {
+          if (program.section === oldName) {
+            program.section = nextCategory.name;
+            changedPrograms.push(program);
+          }
+        });
+        state.curriculum.forEach((row) => {
+          if (row.section === oldName) {
+            row.section = nextCategory.name;
+            changedRows.push(row);
+          }
+        });
+        if (state.selectedSection === oldName) state.selectedSection = nextCategory.name;
+      }
+
+      if (canWriteCloud()) {
+        await persistProgramCategory(nextCategory);
+        if (oldName !== nextCategory.name) {
+          await removeProgramCategoryRecord(existing._docId || slugify(oldName));
+          await Promise.all([
+            ...changedPrograms.map((program) => persistProgram(program)),
+            ...changedRows.map((row) => persistCurriculumRow(row)),
+          ]);
+        }
+      }
+      render();
+    });
+  }
+
   function openProgramBuilder(programName = "") {
     if (!state.admin) return;
     const existing = programName
@@ -1177,7 +1234,7 @@
       ? programs().filter((program) => program.section === existing.name).map((program) => ({ ...program }))
       : [];
 
-    els.programBuilderTitle.textContent = existing ? "Edit Program" : "Add Program";
+    els.programBuilderTitle.textContent = existing ? "Manage Curriculums" : "Add Program";
     els.programBuilderName.value = programBuilder.name;
     els.programBuilderStatus.value = programBuilder.status;
     els.programBuilderNotes.value = programBuilder.notes;
@@ -1345,8 +1402,11 @@
     const existing = programName
       ? programs().find((program) => program.name === programName)
       : null;
+    const defaultSection = state.selectedSection !== "all"
+      ? state.selectedSection
+      : programCategories()[0]?.name || sections()[0] || "";
     const program = existing || {
-      section: sections()[0] || "",
+      section: defaultSection,
       name: "",
       code: "",
       status: "Active",
@@ -1354,9 +1414,10 @@
       description: "",
       notes: "",
     };
+    const programOptions = programCategories().map((category) => category.name);
 
     openEditor(existing ? "Edit Curriculum" : "Add Curriculum", [
-      field("section", "Program", program.section, "select", sections()),
+      field("section", "Program", program.section, "select", programOptions.length ? programOptions : sections()),
       field("name", "Curriculum Name", program.name),
       field("code", "Curriculum Code", program.code || programCode(program.name, program.section)),
       field("status", "Status", program.status || "Active", "select", ["Active", "Inactive", "Archived"]),
@@ -1381,6 +1442,7 @@
       }
 
       state.selectedProgram = record.name;
+      state.selectedSection = record.section || state.selectedSection;
       persistProgram(record);
       render();
     });

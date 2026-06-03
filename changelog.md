@@ -1,5 +1,18 @@
 # New Eden Archive Changelog
 
+## V1.0.7 - 2026-06-03 4:34 AM CT - Program and Curriculum Action Split
+
+### Summary
+- Split Program editing from curriculum management so the Programs page actions now match the intended workflow.
+
+### Fixes
+- Changed **Edit Program** to open a category-only editor for Program Name, Status, and Notes.
+- Kept **Manage Curriculums** as the full curriculum builder for adding/removing curriculums under a program category.
+- Renamed the existing-program builder title to **Manage Curriculums** so it is not confused with Edit Program.
+- Added an **Add Curriculum** button to the Curriculums tab header.
+- Made Add Curriculum default to the currently selected program category when possible.
+- After saving a new curriculum, the Curriculums tab selects that curriculum so requirements can be added immediately.
+
 ## V1.0.6 - 2026-06-03 4:25 AM CT - Overview Metrics Cleanup
 
 ### Summary
