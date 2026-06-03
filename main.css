@@ -1202,22 +1202,22 @@ body:not(.is-admin) .admin-only {
 
 .program-curriculum-table th:nth-child(1),
 .program-curriculum-table td:nth-child(1) {
-  width: auto;
+  width: 110px;
 }
 
 .program-curriculum-table th:nth-child(2),
 .program-curriculum-table td:nth-child(2) {
-  width: 86px;
+  width: auto;
 }
 
 .program-curriculum-table th:nth-child(3),
 .program-curriculum-table td:nth-child(3) {
-  width: 112px;
+  width: 96px;
 }
 
 .program-curriculum-table th:nth-child(4),
 .program-curriculum-table td:nth-child(4) {
-  width: 220px;
+  width: 128px;
 }
 
 .program-curriculum-table .course-row-actions {

@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.1.3";
+  const appVersion = "1.1.4";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -21,6 +21,7 @@
     auth: null,
     db: null,
     storage: null,
+    presenceRef: null,
     unsubscribers: [],
     hasCloudArchive: false,
   };
@@ -72,6 +73,7 @@
     requirementSortKey: "courseId",
     requirementSortDirection: "asc",
     changelogEntries: [],
+    connectedUsers: [],
     signedIn: firebaseDisabled,
     authChecking: true,
     admin: sessionStorage.getItem(adminKey) === "true",
@@ -470,13 +472,21 @@
   }
 
   function renderUserChip() {
-    const profile = firebaseState.profile;
-    const emailName = firebaseState.user?.email?.split("@")[0] || "Employee";
-    const displayName = profile?.displayName || firebaseState.user?.displayName || emailName;
+    const displayName = currentUserDisplayName() || "Employee";
     const role = state.admin ? "Administrator" : state.signedIn ? "Standard User" : "Not signed in";
     els.userName.textContent = displayName;
     els.userRole.textContent = role;
     els.userInitials.textContent = initials(displayName);
+  }
+
+  function currentUserDisplayName() {
+    const profile = firebaseState.profile || {};
+    const emailName = firebaseState.user?.email?.split("@")[0] || "";
+    return profile.displayName
+      || profile.name
+      || profile.fullName
+      || firebaseState.user?.displayName
+      || emailName;
   }
 
   function renderConnectionMeta() {
@@ -499,12 +509,14 @@
     }
 
     if (els.connectedUsers) {
-      const profile = firebaseState.profile;
-      const emailName = firebaseState.user?.email?.split("@")[0] || "";
-      const displayName = profile?.displayName || firebaseState.user?.displayName || emailName || "Local Preview";
-      els.connectedUsers.textContent = state.signedIn
-        ? `Connected Users: 1 - ${displayName}`
-        : "Connected Users: --";
+      if (!state.signedIn) {
+        els.connectedUsers.textContent = "Connected Users: --";
+        return;
+      }
+      const names = state.connectedUsers.map((user) => user.name).filter(Boolean);
+      const uniqueNames = [...new Set(names)];
+      const displayNames = uniqueNames.length ? uniqueNames : [currentUserDisplayName() || "Local Preview"];
+      els.connectedUsers.textContent = `Connected Users: ${displayNames.length} - ${displayNames.join(" • ")}`;
     }
   }
 
@@ -1986,6 +1998,7 @@
         set: databaseModule.set,
         update: databaseModule.update,
         remove: databaseModule.remove,
+        onDisconnect: databaseModule.onDisconnect,
         serverTimestamp: databaseModule.serverTimestamp,
         getStorage: storageModule.getStorage,
         storageRef: storageModule.ref,
@@ -2025,6 +2038,7 @@
           await refreshRoleStatus();
           const sizes = await loadRealtimeData();
           startRealtimeListeners();
+          await startUserPresence();
           setCloudStatus(cloudLoadedMessage(sizes));
         } catch (error) {
           console.warn("Signed in, but realtime data lookup failed.", error);
@@ -2212,11 +2226,61 @@
       attachmentState.records = normalizeAttachments(rtdbList(snapshot.val()));
       render();
     }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "presence"), (snapshot) => {
+      state.connectedUsers = normalizePresence(snapshot.val());
+      renderConnectionMeta();
+    }, (error) => {
+      console.warn("Presence listener failed.", error);
+    }));
   }
 
   function stopRealtimeListeners() {
     firebaseState.unsubscribers.forEach((unsubscribe) => unsubscribe());
     firebaseState.unsubscribers = [];
+    stopUserPresence();
+    state.connectedUsers = [];
+  }
+
+  async function startUserPresence() {
+    if (!firebaseState.ready || !firebaseState.user) return;
+    try {
+      const { dbRef, set, remove, onDisconnect, serverTimestamp } = firebaseState.modules;
+      if (firebaseState.presenceRef) {
+        await remove(firebaseState.presenceRef).catch(() => {});
+      }
+      const user = firebaseState.user;
+      const displayName = currentUserDisplayName() || user.email?.split("@")[0] || "Employee";
+      firebaseState.presenceRef = dbRef(firebaseState.db, `presence/${user.uid}`);
+      await set(firebaseState.presenceRef, {
+        uid: user.uid,
+        name: displayName,
+        email: user.email || "",
+        role: state.admin ? "admin" : "viewer",
+        connectedAt: serverTimestamp(),
+        lastSeen: serverTimestamp(),
+      });
+      onDisconnect(firebaseState.presenceRef).remove();
+    } catch (error) {
+      console.warn("Presence registration failed.", error);
+    }
+  }
+
+  function stopUserPresence() {
+    if (!firebaseState.presenceRef || !firebaseState.modules?.remove) return;
+    firebaseState.modules.remove(firebaseState.presenceRef).catch(() => {});
+    firebaseState.presenceRef = null;
+  }
+
+  function normalizePresence(value) {
+    return rtdbList(value)
+      .filter((record) => record.name || record.email)
+      .map((record) => ({
+        uid: record.uid || record._docId,
+        name: record.name || record.email?.split("@")[0] || "Employee",
+        email: record.email || "",
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async function persistCourse(course) {

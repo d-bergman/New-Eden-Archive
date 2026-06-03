@@ -1,5 +1,20 @@
 # New Eden Archive Changelog
 
+## V1.1.4 - 2026-06-03 10:21 AM CT - Presence and Curriculum Layout Hotfix
+
+### Summary
+- Improved live connected-user display and cleaned up workspace layout issues.
+
+### New Features
+- Added Realtime Database presence tracking so the footer can show all connected archive users by name.
+- Added a Realtime Database `presence` rule so signed-in employees can publish their own online marker without admin write access.
+
+### Fixes
+- Updated the visible app version label to V1.1.4.
+- Removed the unused hamburger navigation button from the top utility bar.
+- Rebalanced the Curriculum workspace requirement table columns so Course Name has the main readable space and the action button stays visible.
+- Improved user display-name fallback so profile names such as `name` or `displayName` can show instead of only email prefixes.
+
 ## V1.1.3 - 2026-06-03 9:54 AM CT - Program Table Layout Hotfix
 
 ### Summary
