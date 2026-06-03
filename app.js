@@ -9,6 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
+  const appVersion = "1.1.1";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -62,6 +63,10 @@
     courseSearch: "",
     courseSortKey: "id",
     courseSortDirection: "asc",
+    overviewPage: 1,
+    overviewRowsPerPage: 10,
+    coursePage: 1,
+    courseRowsPerPage: 10,
     requirementSearch: "",
     requirementCredit: "all",
     requirementSortKey: "courseId",
@@ -88,6 +93,10 @@
     adminPassword: document.querySelector("#adminPassword"),
     confirmAdmin: document.querySelector("#confirmAdmin"),
     firebaseStatus: document.querySelector("#firebaseStatus"),
+    liveSyncStatus: document.querySelector("#liveSyncStatus"),
+    connectedUsers: document.querySelector("#connectedUsers"),
+    appVersion: document.querySelector("#appVersion"),
+    appLoader: document.querySelector("#appLoader"),
     signOutButton: document.querySelector("#signOutButton"),
     userInitials: document.querySelector("#userInitials"),
     userName: document.querySelector("#userName"),
@@ -97,10 +106,15 @@
     statusFilter: document.querySelector("#statusFilter"),
     overviewCourses: document.querySelector("#overviewCourses"),
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
+    overviewPagination: document.querySelector("#overviewPagination"),
+    overviewRowsPerPage: document.querySelector("#overviewRowsPerPage"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
     courseCatalogSummary: document.querySelector("#courseCatalogSummary"),
+    courseCatalogPageSummary: document.querySelector("#courseCatalogPageSummary"),
+    courseCatalogPagination: document.querySelector("#courseCatalogPagination"),
+    courseCatalogRowsPerPage: document.querySelector("#courseCatalogRowsPerPage"),
     courseRows: document.querySelector("#courseRows"),
     addCourse: document.querySelector("#addCourse"),
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
@@ -186,6 +200,7 @@
     render();
     loadChangelog();
     initFirebase();
+    hideAppLoader();
   }
 
   function bindEvents() {
@@ -203,33 +218,65 @@
 
     els.globalSearch.addEventListener("input", (event) => {
       state.search = event.target.value.trim().toLowerCase();
+      resetCoursePagination();
       render();
     });
 
     els.overviewSectionFilter.addEventListener("change", (event) => {
       state.selectedOverviewSection = event.target.value;
+      state.overviewPage = 1;
       render();
     });
 
     els.overviewCreditFilter.addEventListener("change", (event) => {
       state.selectedCredit = event.target.value;
       els.courseCreditFilter.value = event.target.value;
+      resetCoursePagination();
       render();
     });
 
     els.statusFilter.addEventListener("change", (event) => {
       state.selectedStatus = event.target.value;
+      state.overviewPage = 1;
       render();
     });
 
     els.courseCreditFilter.addEventListener("change", (event) => {
       state.selectedCredit = event.target.value;
       els.overviewCreditFilter.value = event.target.value;
+      resetCoursePagination();
       render();
     });
 
     els.courseCatalogSearch.addEventListener("input", (event) => {
       state.courseSearch = event.target.value.trim().toLowerCase();
+      state.coursePage = 1;
+      renderCourses();
+    });
+
+    els.overviewRowsPerPage.addEventListener("change", (event) => {
+      state.overviewRowsPerPage = Number(event.target.value) || 10;
+      state.overviewPage = 1;
+      renderOverview();
+    });
+
+    els.courseCatalogRowsPerPage.addEventListener("change", (event) => {
+      state.courseRowsPerPage = Number(event.target.value) || 10;
+      state.coursePage = 1;
+      renderCourses();
+    });
+
+    els.overviewPagination.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-overview-page]");
+      if (!button) return;
+      state.overviewPage = Number(button.dataset.overviewPage);
+      renderOverview();
+    });
+
+    els.courseCatalogPagination.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-course-page]");
+      if (!button) return;
+      state.coursePage = Number(button.dataset.coursePage);
       renderCourses();
     });
 
@@ -242,6 +289,7 @@
           state.courseSortKey = key;
           state.courseSortDirection = "asc";
         }
+        state.coursePage = 1;
         renderCourses();
       });
     });
@@ -315,6 +363,11 @@
     els.removeBlankCourses.addEventListener("click", removeBlankCourses);
     els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
     els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
+    document.querySelectorAll(".modal-native").forEach((dialog) => {
+      dialog.addEventListener("click", (event) => {
+        if (event.target === dialog) dialog.close("cancel");
+      });
+    });
 
     els.programTabs.forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -411,6 +464,8 @@
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
     els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.view}View`));
+    if (els.appVersion) els.appVersion.textContent = appVersion;
+    renderConnectionMeta();
   }
 
   function renderUserChip() {
@@ -423,6 +478,43 @@
     els.userInitials.textContent = initials(displayName);
   }
 
+  function renderConnectionMeta() {
+    const statusText = firebaseDisabled
+      ? "Live Sync: Preview Mode"
+      : firebaseState.ready && firebaseState.user
+        ? "Live Sync: Connected"
+        : firebaseState.ready
+          ? "Live Sync: Sign In Required"
+          : "Live Sync: Connecting...";
+    const statusKind = firebaseDisabled
+      ? "preview"
+      : firebaseState.ready && firebaseState.user
+        ? "connected"
+        : "pending";
+
+    if (els.liveSyncStatus) {
+      els.liveSyncStatus.dataset.status = statusKind;
+      els.liveSyncStatus.querySelector("span:last-child").textContent = statusText;
+    }
+
+    if (els.connectedUsers) {
+      const profile = firebaseState.profile;
+      const emailName = firebaseState.user?.email?.split("@")[0] || "";
+      const displayName = profile?.displayName || firebaseState.user?.displayName || emailName || "Local Preview";
+      els.connectedUsers.textContent = state.signedIn
+        ? `Connected Users: 1 - ${displayName}`
+        : "Connected Users: --";
+    }
+  }
+
+  function hideAppLoader() {
+    if (!els.appLoader) return;
+    setTimeout(() => {
+      els.appLoader.classList.add("is-hidden");
+      setTimeout(() => els.appLoader?.remove(), 500);
+    }, 650);
+  }
+
   function renderStats() {
     document.querySelector("#courseCount").textContent = state.courses.length;
     document.querySelector("#programCount").textContent = programCategories().length;
@@ -431,10 +523,16 @@
 
   function renderOverview() {
     const allRows = filteredCourses({ section: state.selectedOverviewSection, status: state.selectedStatus });
-    const rows = allRows.slice(0, 10);
-    const shownEnd = allRows.length ? Math.min(rows.length, allRows.length) : 0;
+    const page = normalizePage(state.overviewPage, allRows.length, state.overviewRowsPerPage);
+    state.overviewPage = page;
+    const start = (page - 1) * state.overviewRowsPerPage;
+    const rows = allRows.slice(start, start + state.overviewRowsPerPage);
+    const shownStart = allRows.length ? start + 1 : 0;
+    const shownEnd = allRows.length ? Math.min(start + rows.length, allRows.length) : 0;
 
-    els.overviewCourseTotal.textContent = `Showing ${allRows.length ? 1 : 0} to ${shownEnd} of ${allRows.length} courses`;
+    els.overviewRowsPerPage.value = String(state.overviewRowsPerPage);
+    els.overviewCourseTotal.textContent = `Showing ${shownStart} to ${shownEnd} of ${allRows.length} courses`;
+    renderPagination(els.overviewPagination, page, totalPages(allRows.length, state.overviewRowsPerPage), "overview");
 
     els.overviewCourses.innerHTML = rows.map((course, index) => {
       const courseIndex = state.courses.indexOf(course);
@@ -496,6 +594,43 @@
         deleteCourse(Number(button.dataset.deleteCourse));
       });
     });
+  }
+
+  function resetCoursePagination() {
+    state.overviewPage = 1;
+    state.coursePage = 1;
+  }
+
+  function totalPages(totalRows, rowsPerPage) {
+    return Math.max(1, Math.ceil(Number(totalRows || 0) / Number(rowsPerPage || 1)));
+  }
+
+  function normalizePage(page, totalRows, rowsPerPage) {
+    return Math.min(Math.max(1, Number(page || 1)), totalPages(totalRows, rowsPerPage));
+  }
+
+  function renderPagination(container, currentPage, pageCount, mode) {
+    if (!container) return;
+    const attr = mode === "overview" ? "data-overview-page" : "data-course-page";
+    const pages = pageNumbers(currentPage, pageCount);
+    const item = (page, label, disabled = false, active = false) => `
+      <li class="page-item ${disabled ? "disabled" : ""} ${active ? "active" : ""}">
+        <button class="page-link" type="button" ${attr}="${page}" ${disabled ? "disabled" : ""}>${label}</button>
+      </li>
+    `;
+
+    container.innerHTML = [
+      item(Math.max(1, currentPage - 1), `<i class="bi bi-chevron-left"></i>`, currentPage === 1),
+      ...pages.map((page) => item(page, page, false, page === currentPage)),
+      item(Math.min(pageCount, currentPage + 1), `<i class="bi bi-chevron-right"></i>`, currentPage === pageCount),
+    ].join("");
+  }
+
+  function pageNumbers(currentPage, pageCount) {
+    const pages = new Set([1, pageCount, currentPage - 1, currentPage, currentPage + 1]);
+    return Array.from(pages)
+      .filter((page) => page >= 1 && page <= pageCount)
+      .sort((a, b) => a - b);
   }
 
   async function deleteCourse(index) {
@@ -621,12 +756,22 @@
     });
     const totalCourses = state.courses.length;
     els.courseCatalogSearch.value = state.courseSearch;
+    const page = normalizePage(state.coursePage, rows.length, state.courseRowsPerPage);
+    state.coursePage = page;
+    const start = (page - 1) * state.courseRowsPerPage;
+    const pageRows = rows.slice(start, start + state.courseRowsPerPage);
+    const shownStart = rows.length ? start + 1 : 0;
+    const shownEnd = rows.length ? Math.min(start + pageRows.length, rows.length) : 0;
+
+    els.courseCatalogRowsPerPage.value = String(state.courseRowsPerPage);
     els.courseCatalogSummary.textContent = rows.length === totalCourses
       ? `${totalCourses} courses in catalog`
       : `Showing ${rows.length} of ${totalCourses} courses`;
+    els.courseCatalogPageSummary.textContent = `Showing ${shownStart} to ${shownEnd} of ${rows.length} courses`;
+    renderPagination(els.courseCatalogPagination, page, totalPages(rows.length, state.courseRowsPerPage), "course");
     renderCourseSortHeaders();
 
-    els.courseRows.innerHTML = rows.map((course, index) => {
+    els.courseRows.innerHTML = pageRows.map((course) => {
       const realIndex = state.courses.indexOf(course);
       return `
         <tr>

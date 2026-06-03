@@ -1,5 +1,20 @@
 # New Eden Archive Changelog
 
+## V1.1.1 - 2026-06-03 5:52 AM CT - Dashboard Status and Pagination Polish
+
+### Summary
+- Adapted several Testing Center Dashboard usability patterns into the New Eden Archive theme.
+
+### New Features
+- Added a New Eden themed startup loader inspired by the Testing Center loader.
+- Added a live sync status badge in the top utility bar.
+- Added a footer with connected-user status, app credit, archive label, and version number.
+- Added working pagination and row-count controls to the Overview course table and Course Catalog table.
+
+### Fixes
+- All native modals can now be dismissed by clicking outside the modal content.
+- Tightened the Programs workspace table layout so actions have room and the middle of the table no longer wastes excessive blank space.
+
 ## V1.1.0 - 2026-06-03 5:28 AM CT - Guided Workflow Expansion
 
 ### Summary

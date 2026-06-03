@@ -15,6 +15,19 @@
     <link rel="stylesheet" href="main.css" />
   </head>
   <body>
+    <div id="appLoader" class="app-loader" role="status" aria-live="polite">
+      <div class="loader-card">
+        <div class="loader-seal" aria-hidden="true">
+          <i class="bi bi-flower1"></i>
+        </div>
+        <h2>Loading Archive</h2>
+        <p>Preparing course and curriculum records...</p>
+        <div class="loader-bar">
+          <div class="loader-bar-fill"></div>
+        </div>
+      </div>
+    </div>
+
     <section class="auth-gate" id="authGate" aria-live="polite">
       <form class="auth-card" id="signInForm">
         <div class="brand-seal auth-seal" aria-hidden="true">
@@ -98,6 +111,10 @@
               <i class="bi bi-lock"></i>
               <span id="adminState">Admin Locked</span>
             </button>
+            <span class="live-sync-status" id="liveSyncStatus">
+              <span class="live-sync-dot"></span>
+              <span>Live Sync: Connecting...</span>
+            </span>
             <span class="cloud-status d-none d-md-inline" id="firebaseStatus">Cloud pending</span>
             <button class="btn icon-btn" id="helpButton" type="button" aria-label="Open help guide">
               <i class="bi bi-question-circle"></i>
@@ -195,16 +212,10 @@
                   <div class="panel-footer">
                     <span id="overviewCourseTotal">Showing courses</span>
                     <nav aria-label="Course pagination">
-                      <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item disabled"><span class="page-link"><i class="bi bi-chevron-double-left"></i></span></li>
-                        <li class="page-item active"><span class="page-link">1</span></li>
-                        <li class="page-item"><span class="page-link">2</span></li>
-                        <li class="page-item"><span class="page-link">3</span></li>
-                        <li class="page-item"><span class="page-link">4</span></li>
-                        <li class="page-item"><span class="page-link"><i class="bi bi-chevron-double-right"></i></span></li>
-                      </ul>
+                      <ul class="pagination pagination-sm mb-0" id="overviewPagination"></ul>
                     </nav>
-                    <select class="form-select rows-select" aria-label="Rows per page">
+                    <select class="form-select rows-select" id="overviewRowsPerPage" aria-label="Overview rows per page">
+                      <option>10</option>
                       <option>25</option>
                       <option>50</option>
                     </select>
@@ -247,6 +258,17 @@
                   </thead>
                   <tbody id="courseRows"></tbody>
                 </table>
+              </div>
+              <div class="panel-footer">
+                <span id="courseCatalogPageSummary">Showing courses</span>
+                <nav aria-label="Course catalog pagination">
+                  <ul class="pagination pagination-sm mb-0" id="courseCatalogPagination"></ul>
+                </nav>
+                <select class="form-select rows-select" id="courseCatalogRowsPerPage" aria-label="Course catalog rows per page">
+                  <option>10</option>
+                  <option>25</option>
+                  <option>50</option>
+                </select>
               </div>
             </article>
           </section>
@@ -331,7 +353,7 @@
                   <select class="form-select requirement-credit-filter" id="requirementTableCreditFilter" aria-label="Filter required courses by credit"></select>
                 </div>
                 <div class="table-responsive">
-                  <table class="table required-table align-middle mb-0">
+                  <table class="table required-table program-curriculum-table align-middle mb-0">
                     <thead>
                       <tr>
                         <th>
@@ -425,6 +447,16 @@
               <div class="data-health" id="dataHealth"></div>
             </article>
           </section>
+
+          <footer class="archive-footer">
+            <div>
+              <strong id="connectedUsers">Connected Users: --</strong>
+              <span>Archive changes are synced in real time.</span>
+            </div>
+            <p>New Eden Archive - Course & Curriculum Management</p>
+            <p>WebApp Made by Darren Bergman</p>
+            <p>Version <span id="appVersion">1.1.1</span></p>
+          </footer>
         </div>
       </main>
     </div>
