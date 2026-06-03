@@ -1,5 +1,21 @@
 # New Eden Archive Changelog
 
+## V1.1.0 - 2026-06-03 5:28 AM CT - Guided Workflow Expansion
+
+### Summary
+- Added in-app guidance, a transcript placeholder workspace, and a fuller curriculum creation flow.
+
+### New Features
+- Connected the top-bar help button to a themed guide modal with visual workflow cards and written directions for Courses, Curriculums, Programs, and Admin access.
+- Added a Transcripts tab with placeholder content for the future transcript generator merge.
+- Replaced the Add Curriculum shortcut with a full Curriculum Builder modal.
+- Added course requirement selection, ordering, removal, and save behavior inside the initial Add Curriculum flow.
+
+### Fixes
+- New curriculum creation now starts with blank optional code, version, and description fields using placeholder text instead of prefilled generated values.
+- Saved new curriculum requirements together with the curriculum record so setup can happen in one place.
+- Added default credit options so the first course can be created even when the archive is empty in local preview.
+
 ## V1.0.9 - 2026-06-03 4:58 AM CT - Programs Workspace Redesign
 
 ### Summary

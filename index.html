@@ -65,6 +65,10 @@
             <i class="bi bi-mortarboard"></i>
             <span>Programs</span>
           </button>
+          <button class="nav-link" data-view="transcripts">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>Transcripts</span>
+          </button>
           <button class="nav-link" data-view="history">
             <i class="bi bi-clock-history"></i>
             <span>Version History</span>
@@ -95,7 +99,7 @@
               <span id="adminState">Admin Locked</span>
             </button>
             <span class="cloud-status d-none d-md-inline" id="firebaseStatus">Cloud pending</span>
-            <button class="btn icon-btn" type="button" aria-label="Help">
+            <button class="btn icon-btn" id="helpButton" type="button" aria-label="Open help guide">
               <i class="bi bi-question-circle"></i>
             </button>
             <div class="user-chip">
@@ -371,6 +375,32 @@
             <div class="program-directory" id="programDirectory"></div>
           </section>
 
+          <section class="view" id="transcriptsView">
+            <article class="archive-panel transcript-panel">
+              <div class="section-heading catalog-heading">
+                <div>
+                  <p class="eyebrow">Transcripts</p>
+                  <h2>Transcript Generator</h2>
+                  <p class="section-subtitle">Placeholder workspace for the transcript generator that will be merged from the existing desktop tool later.</p>
+                </div>
+              </div>
+              <div class="transcript-placeholder">
+                <div class="transcript-icon" aria-hidden="true">
+                  <i class="bi bi-file-earmark-richtext"></i>
+                </div>
+                <div>
+                  <h3>Generator coming in a future update</h3>
+                  <p>This tab is reserved for building student transcripts from archive data, course requirements, and the existing Electron generator workflow.</p>
+                  <div class="placeholder-grid">
+                    <span><i class="bi bi-person-vcard"></i> Student profile inputs</span>
+                    <span><i class="bi bi-list-check"></i> Completed course selection</span>
+                    <span><i class="bi bi-printer"></i> Printable transcript output</span>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </section>
+
           <section class="view" id="historyView">
             <article class="archive-panel">
               <div class="section-heading">
@@ -426,6 +456,132 @@
         <div class="modal-actions">
           <button class="btn btn-outline-eden" id="cancelEdit" type="button" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="confirmEdit" value="default">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native guide-modal" id="helpDialog">
+      <form method="dialog" class="modal-card guide-card">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Archive Guide</p>
+            <h2>How to Use New Eden Archive</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close help guide">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="guide-hero">
+          <div class="guide-step-card">
+            <span>1</span>
+            <i class="bi bi-mortarboard"></i>
+            <strong>Programs</strong>
+            <p>Create the main school categories, then attach curriculums to each program.</p>
+          </div>
+          <div class="guide-arrow"><i class="bi bi-arrow-right"></i></div>
+          <div class="guide-step-card">
+            <span>2</span>
+            <i class="bi bi-clipboard2-data"></i>
+            <strong>Curriculums</strong>
+            <p>Build each curriculum, add course requirements, notes, and attachments.</p>
+          </div>
+          <div class="guide-arrow"><i class="bi bi-arrow-right"></i></div>
+          <div class="guide-step-card">
+            <span>3</span>
+            <i class="bi bi-book"></i>
+            <strong>Courses</strong>
+            <p>Maintain the master course catalog used by curriculum requirements.</p>
+          </div>
+        </div>
+
+        <div class="guide-sections">
+          <section>
+            <h3><i class="bi bi-book"></i> Courses Tab</h3>
+            <p>Use Courses as the master catalog. Add a course here before attaching it to a curriculum. Search, filter by credits, sort by ID, credit, or course name, and use Edit/Delete actions when admin access is unlocked.</p>
+          </section>
+          <section>
+            <h3><i class="bi bi-clipboard2-data"></i> Curriculums Tab</h3>
+            <p>Select a curriculum from the top dropdowns to review its overview, notes, attachments, and required courses. Add Curriculum opens a builder where you can create the curriculum and choose course requirements in one place. Manage Requirements is for later edits.</p>
+          </section>
+          <section>
+            <h3><i class="bi bi-mortarboard"></i> Programs Tab</h3>
+            <p>Use Programs for the main school categories. Select a program to see its details on the left and the curriculums that belong to it on the right. Manage Curriculums organizes which curriculums belong under that program.</p>
+          </section>
+          <section>
+            <h3><i class="bi bi-lock"></i> Admin Access</h3>
+            <p>Viewers can search and read archive data. Admins can add, edit, remove, upload attachments, and save changes to Firebase. If a button is hidden, check that Admin is unlocked in the top bar.</p>
+          </section>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native requirement-modal" id="curriculumBuilderDialog">
+      <form method="dialog" class="modal-card" id="curriculumBuilderForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Curriculum Builder</p>
+            <h2>Add Curriculum</h2>
+          </div>
+          <button class="btn icon-btn" data-close-curriculum-builder type="button" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="requirement-builder">
+          <section class="builder-pane">
+            <h3 class="builder-section-title">Curriculum Details</h3>
+            <label class="form-label">
+              Program
+              <select class="form-select" id="curriculumBuilderProgram" required></select>
+            </label>
+            <label class="form-label">
+              Curriculum Name
+              <input class="form-control" id="curriculumBuilderName" placeholder="Associate Degree in Naturopathy (ADN) Program" required />
+            </label>
+            <label class="form-label">
+              Curriculum Code
+              <input class="form-control" id="curriculumBuilderCode" placeholder="Optional, such as ADN" />
+            </label>
+            <label class="form-label">
+              Status
+              <select class="form-select" id="curriculumBuilderStatus">
+                <option>Active</option>
+                <option>Inactive</option>
+                <option>Archived</option>
+              </select>
+            </label>
+            <label class="form-label">
+              Version
+              <input class="form-control" id="curriculumBuilderVersion" placeholder="Optional, such as v1.0" />
+            </label>
+            <label class="form-label">
+              Description
+              <textarea class="form-control" id="curriculumBuilderDescription" rows="4" placeholder="Optional curriculum overview"></textarea>
+            </label>
+            <label class="form-label">
+              Notes
+              <textarea class="form-control" id="curriculumBuilderNotes" rows="4" placeholder="Optional internal notes"></textarea>
+            </label>
+          </section>
+
+          <section class="builder-pane">
+            <div class="builder-pane-header">
+              <h3>Course Requirements</h3>
+              <span id="curriculumBuilderSelectedCount">0</span>
+            </div>
+            <label class="form-label">
+              Search Courses
+              <input class="form-control" id="curriculumBuilderCourseSearch" type="search" placeholder="Search by course name or ID" />
+            </label>
+            <div class="course-picker" id="curriculumBuilderCoursePicker"></div>
+            <div class="selected-requirements" id="curriculumBuilderSelectedRequirements"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" data-close-curriculum-builder type="button">Cancel</button>
+          <button class="btn btn-eden" id="saveCurriculumBuilder" type="button">Save Curriculum</button>
         </div>
       </form>
     </dialog>

@@ -322,6 +322,8 @@ body[data-active-view="curriculums"] .hero-band,
 body[data-active-view="curriculums"] .archive-summary,
 body[data-active-view="programs"] .hero-band,
 body[data-active-view="programs"] .archive-summary,
+body[data-active-view="transcripts"] .hero-band,
+body[data-active-view="transcripts"] .archive-summary,
 body[data-active-view="history"] .hero-band,
 body[data-active-view="history"] .archive-summary {
   display: none;
@@ -1192,6 +1194,10 @@ mark {
   width: min(1120px, calc(100vw - 32px));
 }
 
+.guide-modal {
+  width: min(1040px, calc(100vw - 32px));
+}
+
 .modal-native::backdrop {
   background: rgba(15, 47, 33, 0.45);
 }
@@ -1266,6 +1272,156 @@ mark {
   margin: 8px 0 0;
   color: var(--eden-muted);
   line-height: 1.45;
+}
+
+.guide-card {
+  gap: 20px;
+}
+
+.guide-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+  padding: 14px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.86)),
+    repeating-linear-gradient(45deg, transparent 0 16px, rgba(23, 61, 42, 0.035) 16px 17px);
+}
+
+.guide-step-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-height: 180px;
+  padding: 18px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.9);
+}
+
+.guide-step-card span {
+  display: inline-grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--eden-forest);
+  color: #fff;
+  font-weight: 850;
+}
+
+.guide-step-card i {
+  color: var(--eden-gold);
+  font-size: 2rem;
+}
+
+.guide-step-card strong {
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+}
+
+.guide-step-card p,
+.guide-sections p {
+  margin: 0;
+  color: var(--eden-muted);
+  line-height: 1.45;
+}
+
+.guide-arrow {
+  display: grid;
+  place-items: center;
+  color: var(--eden-forest);
+  font-size: 1.35rem;
+}
+
+.guide-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.guide-sections section,
+.transcript-placeholder {
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.guide-sections section {
+  padding: 16px;
+}
+
+.guide-sections h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 8px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+}
+
+.guide-sections h3 i {
+  color: var(--eden-sage-strong);
+}
+
+.transcript-panel {
+  min-height: 520px;
+}
+
+.transcript-placeholder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  margin: 18px;
+  padding: 28px;
+}
+
+.transcript-icon {
+  display: grid;
+  width: 86px;
+  height: 86px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+  font-size: 2.4rem;
+}
+
+.transcript-placeholder h3 {
+  margin: 0 0 8px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.6rem;
+}
+
+.transcript-placeholder p {
+  max-width: 720px;
+  color: var(--eden-muted);
+}
+
+.placeholder-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.placeholder-grid span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 62px;
+  padding: 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: var(--eden-paper);
+  color: var(--eden-forest);
+  font-weight: 800;
 }
 
 .modal-heading {
@@ -1451,12 +1607,20 @@ mark {
   }
 
   .filter-bar,
+  .guide-hero,
+  .guide-sections,
   .program-meta,
   .program-overview dl,
+  .placeholder-grid,
   .requirement-builder,
   .curriculum-workspace,
+  .transcript-placeholder,
   .programs-workspace {
     grid-template-columns: 1fr;
+  }
+
+  .guide-arrow {
+    transform: rotate(90deg);
   }
 
   .panel-footer,

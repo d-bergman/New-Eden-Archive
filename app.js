@@ -32,6 +32,10 @@
     rows: [],
     search: "",
   };
+  const curriculumBuilder = {
+    rows: [],
+    search: "",
+  };
   const programBuilder = {
     originalName: "",
     name: "",
@@ -102,6 +106,8 @@
     addCourseCatalog: document.querySelector("#addCourseCatalog"),
     addCurriculum: document.querySelector("#addCurriculum"),
     addProgram: document.querySelector("#addProgram"),
+    helpButton: document.querySelector("#helpButton"),
+    helpDialog: document.querySelector("#helpDialog"),
     programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
     removeBlankCourses: document.querySelector("#removeBlankCourses"),
@@ -126,6 +132,19 @@
     editForm: document.querySelector("#editForm"),
     editTitle: document.querySelector("#editTitle"),
     editFields: document.querySelector("#editFields"),
+    curriculumBuilderDialog: document.querySelector("#curriculumBuilderDialog"),
+    curriculumBuilderProgram: document.querySelector("#curriculumBuilderProgram"),
+    curriculumBuilderName: document.querySelector("#curriculumBuilderName"),
+    curriculumBuilderCode: document.querySelector("#curriculumBuilderCode"),
+    curriculumBuilderStatus: document.querySelector("#curriculumBuilderStatus"),
+    curriculumBuilderVersion: document.querySelector("#curriculumBuilderVersion"),
+    curriculumBuilderDescription: document.querySelector("#curriculumBuilderDescription"),
+    curriculumBuilderNotes: document.querySelector("#curriculumBuilderNotes"),
+    curriculumBuilderCourseSearch: document.querySelector("#curriculumBuilderCourseSearch"),
+    curriculumBuilderCoursePicker: document.querySelector("#curriculumBuilderCoursePicker"),
+    curriculumBuilderSelectedRequirements: document.querySelector("#curriculumBuilderSelectedRequirements"),
+    curriculumBuilderSelectedCount: document.querySelector("#curriculumBuilderSelectedCount"),
+    saveCurriculumBuilder: document.querySelector("#saveCurriculumBuilder"),
     requirementsDialog: document.querySelector("#requirementsDialog"),
     requirementsForm: document.querySelector("#requirementsForm"),
     requirementsTitle: document.querySelector("#requirementsTitle"),
@@ -289,12 +308,13 @@
 
     els.addCourse.addEventListener("click", () => openCourseEditor());
     els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
-    els.addCurriculum.addEventListener("click", () => openProgramEditor());
+    els.addCurriculum.addEventListener("click", () => openCurriculumBuilder());
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram?.addEventListener("click", () => openProgramBuilder());
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
     els.removeBlankCourses.addEventListener("click", removeBlankCourses);
     els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
+    els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
 
     els.programTabs.forEach((tab) => {
       tab.addEventListener("click", () => {
@@ -321,6 +341,20 @@
     els.saveRequirements.addEventListener("click", (event) => {
       event.preventDefault();
       saveRequirementBuilder();
+    });
+
+    els.curriculumBuilderCourseSearch.addEventListener("input", (event) => {
+      curriculumBuilder.search = event.target.value.trim().toLowerCase();
+      renderCurriculumBuilder();
+    });
+
+    els.saveCurriculumBuilder.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveCurriculumBuilder();
+    });
+
+    document.querySelectorAll("[data-close-curriculum-builder]").forEach((button) => {
+      button.addEventListener("click", () => els.curriculumBuilderDialog.close("cancel"));
     });
 
     els.addProgramBuilderCurriculum.addEventListener("click", addProgramBuilderCurriculum);
@@ -1119,6 +1153,184 @@
       persistCurriculumRow(values);
       render();
     });
+  }
+
+  function openCurriculumBuilder() {
+    if (!state.admin) return;
+    const categoryNames = programCategories().map((category) => category.name);
+    const selectedCategory = state.selectedSection !== "all" && categoryNames.includes(state.selectedSection)
+      ? state.selectedSection
+      : categoryNames[0] || "";
+
+    els.curriculumBuilderProgram.innerHTML = categoryNames.map((name) => `
+      <option value="${escapeAttr(name)}">${escapeHtml(name)}</option>
+    `).join("");
+    els.curriculumBuilderProgram.value = selectedCategory;
+    els.curriculumBuilderName.value = "";
+    els.curriculumBuilderCode.value = "";
+    els.curriculumBuilderStatus.value = "Active";
+    els.curriculumBuilderVersion.value = "";
+    els.curriculumBuilderDescription.value = "";
+    els.curriculumBuilderNotes.value = "";
+    els.curriculumBuilderCourseSearch.value = "";
+    curriculumBuilder.search = "";
+    curriculumBuilder.rows = [];
+    renderCurriculumBuilder();
+    els.curriculumBuilderDialog.showModal();
+    setTimeout(() => els.curriculumBuilderName.focus(), 0);
+  }
+
+  function renderCurriculumBuilder() {
+    const selectedIds = new Set(curriculumBuilder.rows.map((row) => row.courseId));
+    const courseMatches = state.courses
+      .filter((course) => !selectedIds.has(course.id))
+      .filter((course) => !curriculumBuilder.search || matchesText(course, curriculumBuilder.search))
+      .slice(0, 16);
+
+    els.curriculumBuilderCoursePicker.innerHTML = courseMatches.map((course) => `
+      <button class="course-picker-row" type="button" data-add-curriculum-requirement="${escapeAttr(course.id)}">
+        <span>
+          <strong>${escapeHtml(course.name)}</strong>
+          <small>${escapeHtml(course.id)} &bull; Credit ${escapeHtml(course.credit)}</small>
+        </span>
+        <i class="bi bi-plus-circle"></i>
+      </button>
+    `).join("") || `<div class="empty-state">No available courses match the search.</div>`;
+
+    sortCurriculumBuilderRows();
+    els.curriculumBuilderSelectedRequirements.innerHTML = curriculumBuilder.rows.map((row, index) => `
+      <div class="selected-requirement-row">
+        <span class="requirement-order">${index + 1}</span>
+        <span>
+          <strong>${escapeHtml(stripCredit(row.courseLabel))}</strong>
+          <small>${escapeHtml(row.courseId)} &bull; Credit ${escapeHtml(row.credit)}</small>
+        </span>
+        <span class="requirement-row-actions">
+          <button class="table-action" type="button" data-move-curriculum-requirement="${escapeAttr(row.courseId)}" data-direction="up" ${index === 0 ? "disabled" : ""} aria-label="Move requirement up">
+            <i class="bi bi-arrow-up"></i>
+          </button>
+          <button class="table-action" type="button" data-move-curriculum-requirement="${escapeAttr(row.courseId)}" data-direction="down" ${index === curriculumBuilder.rows.length - 1 ? "disabled" : ""} aria-label="Move requirement down">
+            <i class="bi bi-arrow-down"></i>
+          </button>
+          <button class="table-action" type="button" data-remove-curriculum-requirement="${escapeAttr(row.courseId)}" aria-label="Remove requirement">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </span>
+      </div>
+    `).join("") || `<div class="empty-state">No course requirements selected yet.</div>`;
+
+    els.curriculumBuilderSelectedCount.textContent = curriculumBuilder.rows.length;
+
+    els.curriculumBuilderCoursePicker.querySelectorAll("[data-add-curriculum-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const course = state.courses.find((item) => item.id === button.dataset.addCurriculumRequirement);
+        if (!course) return;
+        curriculumBuilder.rows.push({
+          courseLabel: courseLabel(course),
+          courseId: course.id,
+          credit: course.credit,
+          comment: "",
+          status: "Active",
+          type: "Required",
+          order: curriculumBuilder.rows.length + 1,
+        });
+        renderCurriculumBuilder();
+      });
+    });
+
+    els.curriculumBuilderSelectedRequirements.querySelectorAll("[data-remove-curriculum-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        curriculumBuilder.rows = curriculumBuilder.rows.filter((row) => row.courseId !== button.dataset.removeCurriculumRequirement);
+        curriculumBuilder.rows.forEach((row, index) => { row.order = index + 1; });
+        renderCurriculumBuilder();
+      });
+    });
+
+    els.curriculumBuilderSelectedRequirements.querySelectorAll("[data-move-curriculum-requirement]").forEach((button) => {
+      button.addEventListener("click", () => {
+        moveCurriculumBuilderRequirement(button.dataset.moveCurriculumRequirement, button.dataset.direction);
+      });
+    });
+  }
+
+  function sortCurriculumBuilderRows() {
+    curriculumBuilder.rows.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+    curriculumBuilder.rows.forEach((row, index) => { row.order = index + 1; });
+  }
+
+  function moveCurriculumBuilderRequirement(courseId, direction) {
+    sortCurriculumBuilderRows();
+    const index = curriculumBuilder.rows.findIndex((row) => row.courseId === courseId);
+    if (index < 0) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= curriculumBuilder.rows.length) return;
+    const [row] = curriculumBuilder.rows.splice(index, 1);
+    curriculumBuilder.rows.splice(targetIndex, 0, row);
+    curriculumBuilder.rows.forEach((item, itemIndex) => { item.order = itemIndex + 1; });
+    renderCurriculumBuilder();
+  }
+
+  async function saveCurriculumBuilder() {
+    if (!state.admin) return;
+    const section = els.curriculumBuilderProgram.value.trim();
+    const shortName = els.curriculumBuilderName.value.trim();
+    if (!section) {
+      els.curriculumBuilderProgram.reportValidity();
+      return;
+    }
+    if (!shortName) {
+      els.curriculumBuilderName.reportValidity();
+      return;
+    }
+
+    const fullName = curriculumFullName(section, shortName);
+    const existing = programs().find((program) => program.name.toLowerCase() === fullName.toLowerCase());
+    if (existing) {
+      setCloudStatus(`Curriculum already exists: ${fullName}`);
+      return;
+    }
+
+    const record = normalizePrograms([{
+      section,
+      name: fullName,
+      code: els.curriculumBuilderCode.value.trim(),
+      status: els.curriculumBuilderStatus.value,
+      version: els.curriculumBuilderVersion.value.trim() || "v1.0",
+      description: els.curriculumBuilderDescription.value.trim(),
+      notes: els.curriculumBuilderNotes.value.trim(),
+    }])[0];
+    if (!record) return;
+
+    sortCurriculumBuilderRows();
+    const rowsToSave = curriculumBuilder.rows.map((row, index) => ({
+      ...row,
+      section,
+      program: record.name,
+      order: index + 1,
+      type: row.type || "Required",
+      _docId: curriculumDocId({ ...row, section, program: record.name }, index),
+    }));
+
+    state.programRecords.push(record);
+    state.curriculum.push(...rowsToSave);
+
+    if (canWriteCloud()) {
+      try {
+        await persistProgram(record);
+        await Promise.all(rowsToSave.map((row) => persistCurriculumRow(row)));
+        setCloudStatus(`Saved curriculum: ${record.name}`);
+      } catch (error) {
+        console.warn("Curriculum save failed.", error);
+        setCloudStatus(`Curriculum saved locally; Firebase save failed: ${firebaseErrorMessage(error)}`);
+      }
+    }
+
+    state.selectedSection = section;
+    state.selectedProgram = record.name;
+    state.requirementSearch = "";
+    state.requirementCredit = "all";
+    els.curriculumBuilderDialog.close();
+    render();
   }
 
   function openRequirementBuilder() {
@@ -2244,7 +2456,15 @@
   }
 
   function credits() {
-    return Array.from(new Set(state.courses.map((course) => course.credit).filter(Boolean)))
+    return Array.from(new Set([
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      ...state.courses.map((course) => course.credit).filter(Boolean),
+    ]))
       .sort((a, b) => Number(a) - Number(b));
   }
 
