@@ -50,6 +50,8 @@
     courseSortDirection: "asc",
     requirementSearch: "",
     requirementCredit: "all",
+    requirementSortKey: "courseId",
+    requirementSortDirection: "asc",
     changelogEntries: [],
     signedIn: firebaseDisabled,
     admin: sessionStorage.getItem(adminKey) === "true",
@@ -198,6 +200,19 @@
           state.courseSortDirection = "asc";
         }
         renderCourses();
+      });
+    });
+
+    document.querySelectorAll("[data-requirement-sort]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const key = button.dataset.requirementSort;
+        if (state.requirementSortKey === key) {
+          state.requirementSortDirection = state.requirementSortDirection === "asc" ? "desc" : "asc";
+        } else {
+          state.requirementSortKey = key;
+          state.requirementSortDirection = "asc";
+        }
+        renderCurriculum();
       });
     });
 
@@ -574,6 +589,7 @@
     els.requiredCount.textContent = rows.length;
     els.requirementTableSearch.value = state.requirementSearch;
     hydrateRequirementCreditFilter(allRows);
+    renderRequirementSortHeaders();
     renderProgramPanel(activeProgramTab());
 
     els.curriculumRows.innerHTML = rows.map((row) => {
@@ -656,6 +672,21 @@
       const icon = button.querySelector("i");
       if (icon) {
         icon.className = active && state.courseSortDirection === "asc"
+          ? "bi bi-chevron-up"
+          : active
+            ? "bi bi-chevron-down"
+            : "bi bi-chevron-expand";
+      }
+    });
+  }
+
+  function renderRequirementSortHeaders() {
+    document.querySelectorAll("[data-requirement-sort]").forEach((button) => {
+      const active = button.dataset.requirementSort === state.requirementSortKey;
+      button.classList.toggle("active", active);
+      const icon = button.querySelector("i");
+      if (icon) {
+        icon.className = active && state.requirementSortDirection === "asc"
           ? "bi bi-chevron-up"
           : active
             ? "bi bi-chevron-down"
@@ -824,7 +855,23 @@
   function filteredRequirementRows(rows) {
     return rows
       .filter((row) => state.requirementCredit === "all" || String(row.credit || "") === state.requirementCredit)
-      .filter((row) => !state.requirementSearch || matchesText(row, state.requirementSearch) || matchesText({ name: stripCredit(row.courseLabel) }, state.requirementSearch));
+      .filter((row) => !state.requirementSearch || matchesText(row, state.requirementSearch) || matchesText({ name: stripCredit(row.courseLabel) }, state.requirementSearch))
+      .sort((a, b) => compareRequirementRows(a, b, state.requirementSortKey, state.requirementSortDirection));
+  }
+
+  function compareRequirementRows(a, b, key, direction = "asc") {
+    const multiplier = direction === "desc" ? -1 : 1;
+    const compare = (() => {
+      if (key === "credit") {
+        const creditCompare = Number(a.credit || 0) - Number(b.credit || 0);
+        return creditCompare || naturalCompare(a.courseId, b.courseId) || naturalCompare(stripCredit(a.courseLabel), stripCredit(b.courseLabel));
+      }
+      if (key === "courseName") {
+        return naturalCompare(stripCredit(a.courseLabel), stripCredit(b.courseLabel)) || naturalCompare(a.courseId, b.courseId);
+      }
+      return naturalCompare(a.courseId, b.courseId) || naturalCompare(stripCredit(a.courseLabel), stripCredit(b.courseLabel));
+    })();
+    return compare * multiplier;
   }
 
   function hydrateRequirementCreditFilter(rows) {

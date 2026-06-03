@@ -1,5 +1,16 @@
 # New Eden Archive Changelog
 
+## V1.0.3 - 2026-06-03 3:30 AM CT - Required Course Sorting Hotfix
+
+### Summary
+- Added the missing ascending/descending sort controls to the Required Courses table in the Curriculums workspace.
+
+### Fixes
+- Made Course ID, Course Name, and Credit headers clickable with chevron indicators.
+- Set Required Courses to default-sort by Course ID ascending.
+- Added numeric-aware sorting for course IDs and credits so values sort in the expected order.
+- Preserved the existing required-course search and credit filter behavior.
+
 ## V1.0.2 - 2026-06-03 3:21 AM CT - Attachment Upload Hotfix
 
 ### Summary
