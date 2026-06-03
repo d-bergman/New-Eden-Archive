@@ -1,5 +1,17 @@
 # New Eden Archive Changelog
 
+## V1.2.2 - 2026-06-03 4:23 PM CT - Dark Reader Theme Match
+
+### Summary
+- Reworked dark mode to match the warmer Dark Reader reference styling.
+
+### Fixes
+- Changed dark mode to use olive-black page surfaces, near-black table rows, muted cream text, and gold hairline borders.
+- Updated dark mode table headers and selected rows so they stay dark instead of switching to a bright header treatment.
+- Matched dark mode form fields, search bars, modals, login, guide, loader, status badges, and notice surfaces to the same palette.
+- Kept the New Eden green sidebar while making active navigation and highlight states closer to the provided screenshots.
+- Updated the visible app version label to V1.2.2.
+
 ## V1.2.1 - 2026-06-03 4:13 PM CT - Log and Dark Mode Hotfix
 
 ### Summary

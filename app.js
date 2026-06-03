@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.2.1";
+  const appVersion = "1.2.2";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {

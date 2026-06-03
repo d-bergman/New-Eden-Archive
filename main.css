@@ -29,22 +29,22 @@ body {
 }
 
 body.theme-dark {
-  --eden-forest: #e8f3df;
-  --eden-deep: #06120c;
-  --eden-ink: #f5f8ef;
-  --eden-muted: #c5cfbd;
-  --eden-line: #466154;
-  --eden-paper: #142318;
-  --eden-cream: #0b160f;
-  --eden-sage: #2f4b38;
-  --eden-sage-strong: #a8d18c;
-  --eden-gold: #f0d27a;
-  --eden-shadow: 0 18px 45px rgba(0, 0, 0, 0.34);
+  --eden-forest: #d8d3cc;
+  --eden-deep: #11130f;
+  --eden-ink: #d2cec7;
+  --eden-muted: #a49f93;
+  --eden-line: #4a4527;
+  --eden-paper: #181a14;
+  --eden-cream: #1d1d0d;
+  --eden-sage: #21301b;
+  --eden-sage-strong: #8ea56a;
+  --eden-gold: #c6ad57;
+  --eden-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
   --bs-body-color: var(--eden-ink);
   background:
-    linear-gradient(rgba(11, 22, 15, 0.96), rgba(11, 22, 15, 0.98)),
-    radial-gradient(circle at 78% 4%, rgba(240, 210, 122, 0.1), transparent 32%),
-    linear-gradient(135deg, #06120c 0%, #142318 100%);
+    linear-gradient(rgba(29, 29, 13, 0.96), rgba(29, 29, 13, 0.98)),
+    radial-gradient(circle at 78% 4%, rgba(198, 173, 87, 0.08), transparent 32%),
+    linear-gradient(135deg, #11130f 0%, #1d1d0d 100%);
 }
 
 body.theme-dark .archive-main,
@@ -60,20 +60,51 @@ body.theme-dark .task-item {
   color: var(--eden-ink);
 }
 
+body.theme-dark .archive-main,
+body.theme-dark .content-canvas {
+  background:
+    linear-gradient(rgba(29, 29, 13, 0.93), rgba(29, 29, 13, 0.96)),
+    radial-gradient(circle at 73% 6%, rgba(198, 173, 87, 0.08), transparent 28%);
+}
+
+body.theme-dark .archive-sidebar {
+  background:
+    linear-gradient(180deg, rgba(12, 42, 24, 0.98), rgba(13, 47, 27, 0.98)),
+    radial-gradient(circle at 32% 25%, rgba(198, 173, 87, 0.08), transparent 32%);
+}
+
+body.theme-dark .archive-nav .nav-link:hover,
+body.theme-dark .archive-nav .nav-link.active,
+body.theme-dark .admin-nav-link:hover {
+  background: rgba(82, 121, 65, 0.34);
+}
+
+body.theme-dark .archive-panel,
+body.theme-dark .stat-card,
+body.theme-dark .archive-footer,
+body.theme-dark .modal-card,
+body.theme-dark .loader-card,
+body.theme-dark .notice-item,
+body.theme-dark .task-item,
+body.theme-dark .guide-step-card,
+body.theme-dark .guide-sections section {
+  border-color: var(--eden-line);
+}
+
 body.theme-dark .archive-table,
 body.theme-dark .required-table {
   --bs-table-bg: var(--eden-paper);
   --bs-table-color: var(--eden-ink);
   --bs-table-border-color: var(--eden-line);
-  --bs-table-striped-bg: #1b2f20;
-  --bs-table-hover-bg: #223b2a;
+  --bs-table-striped-bg: #1e2517;
+  --bs-table-hover-bg: #232b1b;
   color: var(--eden-ink);
 }
 
 body.theme-dark .archive-table thead th,
 body.theme-dark .required-table thead th {
-  background: #e2edd8;
-  color: #0b160f;
+  background: #181a14;
+  color: #d8d3cc;
 }
 
 body.theme-dark .archive-table tbody tr,
@@ -83,8 +114,13 @@ body.theme-dark .required-table tbody tr {
 
 body.theme-dark .archive-table tbody tr.is-selected,
 body.theme-dark .required-table tbody tr.is-selected {
-  background: #304735;
-  color: #ffffff;
+  background: linear-gradient(90deg, #1e2517, #181a14 82%);
+  color: #ddd8cf;
+}
+
+body.theme-dark .archive-table tbody tr.is-selected td,
+body.theme-dark .required-table tbody tr.is-selected td {
+  background: transparent;
 }
 
 body.theme-dark .form-control,
@@ -93,21 +129,21 @@ body.theme-dark input,
 body.theme-dark textarea,
 body.theme-dark select {
   border-color: var(--eden-line);
-  background-color: #0f2016;
+  background-color: #161814;
   color: var(--eden-ink);
 }
 
 body.theme-dark .form-control::placeholder,
 body.theme-dark textarea::placeholder,
 body.theme-dark input::placeholder {
-  color: #d6dece;
-  opacity: 0.82;
+  color: #807b71;
+  opacity: 1;
 }
 
 body.theme-dark .search-field,
 body.theme-dark .search-control {
-  background: #0f2016;
-  border-color: #5e7a66;
+  background: #161814;
+  border-color: var(--eden-line);
   color: var(--eden-ink);
 }
 
@@ -122,32 +158,95 @@ body.theme-dark small {
 }
 
 body.theme-dark .btn-eden {
-  background: #dbe8cf;
-  border-color: #dbe8cf;
-  color: #0b160f;
+  background: #173823;
+  border-color: #7b8f65;
+  color: #f0ece3;
 }
 
 body.theme-dark .btn-outline-eden {
-  border-color: #a8d18c;
-  color: #edf7e8;
+  border-color: #777248;
+  color: #d8d3cc;
+  background: transparent;
 }
 
 body.theme-dark .btn-eden:disabled,
 body.theme-dark .btn-eden.disabled {
-  background: #7c8d77;
-  border-color: #7c8d77;
-  color: #18231a;
+  background: #2f342b;
+  border-color: #4f513d;
+  color: #888276;
   opacity: 0.68;
 }
 
 body.theme-dark .status-badge,
 body.theme-dark .text-bg-sage {
-  background: #dbe8cf !important;
-  color: #14311f !important;
+  background: #30451f !important;
+  color: #a7d08c !important;
 }
 
 body.theme-dark .notice-banner {
-  background: linear-gradient(90deg, rgba(41, 69, 54, 0.96), rgba(18, 37, 26, 0.96));
+  background: linear-gradient(90deg, rgba(30, 37, 23, 0.96), rgba(24, 26, 20, 0.96));
+  border-color: var(--eden-line);
+}
+
+body.theme-dark .form-check-input {
+  background-color: #161814;
+  border-color: #4e5141;
+}
+
+body.theme-dark .form-check-input:checked {
+  background-color: #4d5bd7;
+  border-color: #6971d8;
+}
+
+body.theme-dark .btn-danger-eden,
+body.theme-dark .btn-outline-danger {
+  color: #f06c72;
+}
+
+body.theme-dark .btn-danger-eden {
+  background: #6e2a29;
+  border-color: #a33d3f;
+  color: #fff2f0;
+}
+
+body.theme-dark .confirm-password {
+  background: rgba(67, 38, 31, 0.38);
+  border-color: rgba(240, 108, 114, 0.38);
+}
+
+body.theme-dark .auth-gate {
+  background:
+    linear-gradient(rgba(13, 43, 25, 0.86), rgba(13, 43, 25, 0.9)),
+    radial-gradient(circle at 72% 10%, rgba(198, 173, 87, 0.12), transparent 30%);
+}
+
+body.theme-dark .auth-card {
+  background: #1d1d0d;
+  border-color: var(--eden-line);
+  color: var(--eden-ink);
+}
+
+body.theme-dark .auth-card h1,
+body.theme-dark .modal-card h2,
+body.theme-dark .section-heading h2,
+body.theme-dark .program-heading h2,
+body.theme-dark h1,
+body.theme-dark h2,
+body.theme-dark h3 {
+  color: #d8d3cc;
+}
+
+body.theme-dark .loader-seal,
+body.theme-dark .stat-icon,
+body.theme-dark .guide-step-card span,
+body.theme-dark .confirm-icon {
+  background: radial-gradient(circle, rgba(236, 236, 217, 0.9), rgba(142, 165, 106, 0.35));
+  color: #f1eee6;
+}
+
+body.theme-dark mark {
+  background: rgba(198, 173, 87, 0.35);
+  color: #f3ecd7;
 }
 
 .auth-gate {
