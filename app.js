@@ -323,6 +323,9 @@
       event.preventDefault();
       saveProgramBuilder();
     });
+    document.querySelectorAll("[data-close-program-builder]").forEach((button) => {
+      button.addEventListener("click", () => els.programBuilderDialog.close("cancel"));
+    });
 
     els.attachmentDropZone.addEventListener("dragover", (event) => {
       event.preventDefault();
@@ -1560,9 +1563,13 @@
   async function loadRealtimeData() {
     if (!firebaseState.ready) return;
     const { dbRef, get } = firebaseState.modules;
+    const readOptionalPath = (path) => get(dbRef(firebaseState.db, path)).catch((error) => {
+      console.warn(`Optional Realtime Database path failed: ${path}`, error);
+      return null;
+    });
     const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
-      get(dbRef(firebaseState.db, "programCategories")),
+      readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
       get(dbRef(firebaseState.db, "curriculumRows")),
       get(dbRef(firebaseState.db, "versionHistory")),
@@ -1571,7 +1578,7 @@
 
     const sizes = {
       courses: rtdbList(courseSnap.val()).length,
-      programCategories: rtdbList(programCategorySnap.val()).length,
+      programCategories: rtdbList(programCategorySnap?.val()).length,
       programs: rtdbList(programSnap.val()).length,
       curriculumRows: rtdbList(curriculumSnap.val()).length,
       versionHistory: rtdbList(versionSnap.val()).length,
@@ -1585,7 +1592,7 @@
     }
 
     state.courses = normalizeCourses(rtdbList(courseSnap.val()));
-    state.programCategories = normalizeProgramCategories(rtdbList(programCategorySnap.val()));
+    state.programCategories = normalizeProgramCategories(rtdbList(programCategorySnap?.val()));
     state.programRecords = normalizePrograms(rtdbList(programSnap.val()));
     state.curriculum = normalizeCurriculum(rtdbList(curriculumSnap.val()));
     state.versionHistory = rtdbList(versionSnap.val());
@@ -1639,7 +1646,9 @@
       if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;
       state.programCategories = normalizeProgramCategories(rtdbList(snapshot.val()));
       render();
-    }, handleSnapshotError));
+    }, (error) => {
+      console.warn("Optional programCategories listener failed.", error);
+    }));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "curriculumRows"), (snapshot) => {
       if (!snapshot.exists() && !firebaseState.hasCloudArchive) return;

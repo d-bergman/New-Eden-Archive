@@ -1,5 +1,18 @@
 # New Eden Archive Changelog
 
+## V1.0.5 - 2026-06-03 4:16 AM CT - Program Builder Load Hotfix
+
+### Summary
+- Fixed a Realtime Database loading regression caused by the new program category path being treated as required data.
+
+### Fixes
+- Made `programCategories` an optional Realtime Database read so existing courses, curriculums, and program records still load if that new path is missing or not yet allowed by published rules.
+- Added `programCategories` to the checked-in Realtime Database rules file.
+- Fixed Program Builder X and Cancel buttons so they close the modal without triggering required-field validation.
+
+### Notes
+- The app can now derive program categories from existing curriculum/program data until the new `programCategories` path is available in Firebase.
+
 ## V1.0.4 - 2026-06-03 4:01 AM CT - Program Structure Builder
 
 ### Summary

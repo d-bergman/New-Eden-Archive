@@ -20,6 +20,10 @@
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
+    "programCategories": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
     "curriculumRows": {
       ".read": "auth != null",
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
