@@ -380,9 +380,8 @@
 
   function renderStats() {
     document.querySelector("#courseCount").textContent = state.courses.length;
-    document.querySelector("#programCount").textContent = programs().length;
-    document.querySelector("#curriculumCount").textContent = state.curriculum.length;
-    document.querySelector("#sectionCount").textContent = sections().length;
+    document.querySelector("#programCount").textContent = programCategories().length;
+    document.querySelector("#curriculumCount").textContent = programs().length;
   }
 
   function renderOverview() {
@@ -1605,11 +1604,13 @@
     if (!firebaseState.hasCloudArchive) {
       return "Realtime Database empty; add or import records";
     }
+    const programCount = programCategories().length;
+    const curriculumCount = programs().length;
     const warnings = [];
     if (!sizes.courses) warnings.push("0 courses");
-    if (!sizes.programs) warnings.push("0 programs");
-    if (!sizes.curriculumRows) warnings.push("0 curriculum rows");
-    const summary = `Realtime loaded: ${sizes.courses || 0} courses, ${sizes.programs || 0} programs, ${sizes.curriculumRows || 0} curriculum rows`;
+    if (!programCount) warnings.push("0 programs");
+    if (!curriculumCount) warnings.push("0 curriculums");
+    const summary = `Realtime loaded: ${sizes.courses || 0} courses, ${programCount} programs, ${curriculumCount} curriculums`;
     return warnings.length ? `${summary}. Check ${warnings.join(", ")}.` : summary;
   }
 

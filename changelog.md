@@ -1,5 +1,18 @@
 # New Eden Archive Changelog
 
+## V1.0.6 - 2026-06-03 4:25 AM CT - Overview Metrics Cleanup
+
+### Summary
+- Cleaned up the archive metrics so they match the current app workflow and only appear on the Overview tab.
+
+### Fixes
+- Reduced the Overview metric strip to Courses, Programs, and Curriculums.
+- Changed Programs to count major program categories instead of curriculum records.
+- Changed Curriculums to count curriculum records instead of imported requirement rows.
+- Removed the outdated Curriculum Rows and Sections cards from the Overview metrics.
+- Hid the shared hero and metric strip on the Programs page.
+- Updated the realtime status summary to use Courses, Programs, and Curriculums terminology.
+
 ## V1.0.5 - 2026-06-03 4:16 AM CT - Program Builder Load Hotfix
 
 ### Summary

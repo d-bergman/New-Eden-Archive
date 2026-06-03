@@ -320,6 +320,8 @@ body[data-active-view="courses"] .hero-band,
 body[data-active-view="courses"] .archive-summary,
 body[data-active-view="curriculums"] .hero-band,
 body[data-active-view="curriculums"] .archive-summary,
+body[data-active-view="programs"] .hero-band,
+body[data-active-view="programs"] .archive-summary,
 body[data-active-view="history"] .hero-band,
 body[data-active-view="history"] .archive-summary {
   display: none;
