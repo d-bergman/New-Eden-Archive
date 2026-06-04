@@ -176,16 +176,84 @@
           </section>
 
           <section class="view active" id="overviewView">
-            <article class="archive-panel overview-placeholder">
-              <div class="transcript-icon" aria-hidden="true">
-                <i class="bi bi-columns-gap"></i>
-              </div>
-              <div>
-                <p class="eyebrow">Overview</p>
-                <h2>Overview Workspace Coming Next</h2>
-                <p>This page is intentionally cleared out for a future dashboard redesign. Use Courses, Curriculums, Programs, Transcripts, Log, and Version History for the active tools.</p>
-              </div>
-            </article>
+            <div class="overview-dashboard">
+              <article class="archive-panel overview-panel overview-activity-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Recent Activity</p>
+                    <h2>Latest Archive Changes</h2>
+                    <p class="section-subtitle">The most recent edits, additions, deletions, and transcript work.</p>
+                  </div>
+                </div>
+                <div class="overview-list" id="overviewActivityList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Needs Attention</p>
+                    <h2>Archive Review</h2>
+                    <p class="section-subtitle">Data quality checks that may need cleanup.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-attention-list" id="overviewAttentionList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Tasks</p>
+                    <h2>Assigned to Me</h2>
+                    <p class="section-subtitle">Open work assigned to your account.</p>
+                  </div>
+                </div>
+                <div class="overview-list" id="overviewTasksList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Notices</p>
+                    <h2>Latest Notices</h2>
+                    <p class="section-subtitle">Current admin announcements for signed-in users.</p>
+                  </div>
+                </div>
+                <div class="overview-list" id="overviewNoticesList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Health Snapshot</p>
+                    <h2>Archive Health</h2>
+                    <p class="section-subtitle">Usage and completeness checks across the archive.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-health-list" id="overviewHealthList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Transcripts</p>
+                    <h2>Recent Drafts</h2>
+                    <p class="section-subtitle">Recently saved transcript drafts.</p>
+                  </div>
+                </div>
+                <div class="overview-list" id="overviewDraftList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel overview-trends-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Summary</p>
+                    <h2>This Month</h2>
+                    <p class="section-subtitle">Small counters for current archive movement.</p>
+                  </div>
+                </div>
+                <div class="overview-trend-grid" id="overviewTrendCards"></div>
+              </article>
+            </div>
           </section>
 
           <section class="view" id="coursesView">
@@ -578,7 +646,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.3.4</span></p>
+            <p>Version <span id="appVersion">1.3.5</span></p>
           </footer>
         </div>
       </main>

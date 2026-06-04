@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.4";
+  const appVersion = "1.3.5";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -134,6 +134,13 @@
     overviewCourseTotal: document.querySelector("#overviewCourseTotal"),
     overviewPagination: document.querySelector("#overviewPagination"),
     overviewRowsPerPage: document.querySelector("#overviewRowsPerPage"),
+    overviewActivityList: document.querySelector("#overviewActivityList"),
+    overviewAttentionList: document.querySelector("#overviewAttentionList"),
+    overviewTasksList: document.querySelector("#overviewTasksList"),
+    overviewNoticesList: document.querySelector("#overviewNoticesList"),
+    overviewHealthList: document.querySelector("#overviewHealthList"),
+    overviewDraftList: document.querySelector("#overviewDraftList"),
+    overviewTrendCards: document.querySelector("#overviewTrendCards"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
@@ -1424,52 +1431,207 @@
   }
 
   function renderOverview() {
-    if (!els.overviewCourses) return;
-    const allRows = filteredCourses({ section: state.selectedOverviewSection, status: state.selectedStatus });
-    const page = normalizePage(state.overviewPage, allRows.length, state.overviewRowsPerPage);
-    state.overviewPage = page;
-    const start = (page - 1) * state.overviewRowsPerPage;
-    const rows = allRows.slice(start, start + state.overviewRowsPerPage);
-    const shownStart = allRows.length ? start + 1 : 0;
-    const shownEnd = allRows.length ? Math.min(start + rows.length, allRows.length) : 0;
+    renderOverviewActivity();
+    renderOverviewAttention();
+    renderOverviewTasks();
+    renderOverviewNotices();
+    renderOverviewHealth();
+    renderOverviewDrafts();
+    renderOverviewTrends();
+  }
 
-    if (els.overviewRowsPerPage) els.overviewRowsPerPage.value = String(state.overviewRowsPerPage);
-    if (els.overviewCourseTotal) els.overviewCourseTotal.textContent = `Showing ${shownStart} to ${shownEnd} of ${allRows.length} courses`;
-    if (els.overviewPagination) renderPagination(els.overviewPagination, page, totalPages(allRows.length, state.overviewRowsPerPage), "overview");
+  function renderOverviewActivity() {
+    if (!els.overviewActivityList) return;
+    const entries = state.activityLog
+      .slice()
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+      .slice(0, 10);
 
-    els.overviewCourses.innerHTML = rows.map((course, index) => {
-      const courseIndex = state.courses.indexOf(course);
-      const status = course.status || "Active";
+    els.overviewActivityList.innerHTML = entries.map((entry) => overviewListItem({
+      icon: "bi-clock-history",
+      title: entry.action || "Activity",
+      meta: [entry.userName || "Unknown", formatTimestamp(entry.createdAtMs)].filter(Boolean).join(" - "),
+      detail: [entry.entityType, entry.entityName].filter(Boolean).join(": ") || entry.details || "Archive activity",
+    })).join("") || overviewEmptyState("No recent activity has been logged yet.");
+  }
 
-      return `
-        <tr class="${index === 0 ? "is-selected" : ""}">
-          <td><input class="form-check-input" type="checkbox" ${index === 0 ? "checked" : ""} aria-label="Select ${escapeAttr(course.name)}" /></td>
-          <td>${escapeHtml(course.id)}</td>
-          <td>${escapeHtml(course.credit)}</td>
-          <td>${highlight(course.name)}</td>
-          <td>${escapeHtml(course.comment || "Course archive record.")}</td>
-          <td><span class="status-badge">${escapeHtml(status)}</span></td>
-          <td class="text-end">
-            <div class="action-menu-wrap">
-              <button class="table-action" data-toggle-course-menu="${courseIndex}" type="button" aria-label="Course actions">
-                <i class="bi bi-three-dots"></i>
-              </button>
-              <div class="action-menu" hidden>
-                <button type="button" data-edit-course="${courseIndex}">
-                  <i class="bi bi-pencil"></i> Edit
-                </button>
-                <button type="button" class="danger" data-delete-course="${courseIndex}">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
-              </div>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join("") || emptyRow(7, "No courses match the current filters.");
+  function renderOverviewAttention() {
+    if (!els.overviewAttentionList) return;
+    const report = archiveHealthReport();
+    const zeroRequirementPrograms = programs().filter((program) => curriculumForProgram(program.name).length === 0);
+    const inactiveCourses = state.courses.filter((course) => (course.status || "Active") !== "Active");
+    const inactivePrograms = programs().filter((program) => (program.status || "Active") !== "Active");
+    const items = [
+      {
+        icon: "bi-exclamation-triangle",
+        title: "Duplicate course IDs",
+        count: report.duplicateCourseIds.length,
+        detail: report.duplicateCourseIds.length
+          ? report.duplicateCourseIds.map((item) => `${item.id} (${item.count})`).join(", ")
+          : "No duplicate course IDs found.",
+      },
+      {
+        icon: "bi-file-earmark-x",
+        title: "Blank course records",
+        count: report.blankCourses.length,
+        detail: report.blankCourses.length
+          ? report.blankCourses.map((course) => course._docId || "unknown-doc").join(", ")
+          : "No blank course records found.",
+      },
+      {
+        icon: "bi-clipboard-x",
+        title: "Curriculums with zero requirements",
+        count: zeroRequirementPrograms.length,
+        detail: zeroRequirementPrograms.length
+          ? zeroRequirementPrograms.slice(0, 5).map((program) => program.name).join(", ")
+          : "Every listed curriculum has at least one requirement.",
+      },
+      {
+        icon: "bi-pause-circle",
+        title: "Inactive items",
+        count: inactiveCourses.length + inactivePrograms.length,
+        detail: `${inactiveCourses.length} inactive courses and ${inactivePrograms.length} inactive curriculums.`,
+      },
+    ];
 
-    bindCourseActionMenus(els.overviewCourses);
+    els.overviewAttentionList.innerHTML = items.map((item) => overviewListItem({
+      icon: item.icon,
+      title: item.title,
+      meta: `${item.count} found`,
+      detail: item.detail,
+      warning: item.count > 0,
+    })).join("");
+  }
 
+  function renderOverviewTasks() {
+    if (!els.overviewTasksList) return;
+    const displayName = currentUserDisplayName();
+    const tasks = state.tasks
+      .filter((task) => task.status !== "done")
+      .filter((task) => task.assigneeUid === firebaseState.user?.uid || (displayName && task.assigneeName === displayName))
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+      .slice(0, 5);
+
+    els.overviewTasksList.innerHTML = tasks.map((task) => overviewListItem({
+      icon: "bi-list-task",
+      title: task.title,
+      meta: `Assigned by ${task.createdByName || "Admin"} - ${formatTimestamp(task.createdAtMs)}`,
+      detail: task.description || "No description added.",
+    })).join("") || overviewEmptyState("No open tasks are assigned to you.");
+  }
+
+  function renderOverviewNotices() {
+    if (!els.overviewNoticesList) return;
+    const notices = state.notices
+      .filter((notice) => notice.status !== "deleted")
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
+      .slice(0, 3);
+
+    els.overviewNoticesList.innerHTML = notices.map((notice) => overviewListItem({
+      icon: "bi-megaphone",
+      title: notice.message,
+      meta: `${notice.authorName || "Admin"} - ${formatTimestamp(notice.createdAtMs)}`,
+      detail: "Active notice",
+    })).join("") || overviewEmptyState("No active notices have been posted.");
+  }
+
+  function renderOverviewHealth() {
+    if (!els.overviewHealthList) return;
+    const courseIdsInCurriculum = new Set(state.curriculum.map((row) => String(row.courseId || "").trim()).filter(Boolean));
+    const coursesWithoutUse = state.courses.filter((course) => course.id && !courseIdsInCurriculum.has(String(course.id)));
+    const programsWithoutCurriculums = programCategories().filter((category) => !programs().some((program) => program.section === category.name));
+    const curriculumsMissingNotes = programs().filter((program) => !String(program.notes || "").trim());
+    const curriculumsMissingAttachments = programs().filter((program) => attachmentsForProgram(program.name).length === 0);
+    const items = [
+      {
+        icon: "bi-bookmark-x",
+        title: "Courses without curriculum use",
+        count: coursesWithoutUse.length,
+        detail: coursesWithoutUse.length ? coursesWithoutUse.slice(0, 5).map((course) => course.name || course.id).join(", ") : "Every course is used by at least one curriculum.",
+      },
+      {
+        icon: "bi-mortarboard",
+        title: "Programs without curriculums",
+        count: programsWithoutCurriculums.length,
+        detail: programsWithoutCurriculums.length ? programsWithoutCurriculums.slice(0, 5).map((program) => program.name).join(", ") : "Every program contains at least one curriculum.",
+      },
+      {
+        icon: "bi-journal-text",
+        title: "Curriculums missing notes",
+        count: curriculumsMissingNotes.length,
+        detail: curriculumsMissingNotes.length ? `${curriculumsMissingNotes.length} curriculums do not have notes yet.` : "All curriculums have notes.",
+      },
+      {
+        icon: "bi-paperclip",
+        title: "Curriculums missing attachments",
+        count: curriculumsMissingAttachments.length,
+        detail: curriculumsMissingAttachments.length ? `${curriculumsMissingAttachments.length} curriculums do not have attachments yet.` : "All curriculums have attachments.",
+      },
+    ];
+
+    els.overviewHealthList.innerHTML = items.map((item) => overviewListItem({
+      icon: item.icon,
+      title: item.title,
+      meta: `${item.count} found`,
+      detail: item.detail,
+      warning: item.count > 0,
+    })).join("");
+  }
+
+  function renderOverviewDrafts() {
+    if (!els.overviewDraftList) return;
+    const drafts = state.transcriptDrafts
+      .slice()
+      .sort((a, b) => Number(b.updatedAtMs || b.createdAtMs || 0) - Number(a.updatedAtMs || a.createdAtMs || 0))
+      .slice(0, 5);
+
+    els.overviewDraftList.innerHTML = drafts.map((draft) => overviewListItem({
+      icon: "bi-file-earmark-text",
+      title: draft.studentName || "Unnamed Student",
+      meta: [draft.program || "No program selected", formatTimestamp(draft.updatedAtMs || draft.createdAtMs)].filter(Boolean).join(" - "),
+      detail: `${draft.rows?.length || 0} transcript rows`,
+    })).join("") || overviewEmptyState("No transcript drafts have been saved yet.");
+  }
+
+  function renderOverviewTrends() {
+    if (!els.overviewTrendCards) return;
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthStartMs = monthStart.getTime();
+    const recentLog = state.activityLog.filter((entry) => Number(entry.createdAtMs || 0) >= monthStartMs);
+    const countActions = (patterns) => recentLog.filter((entry) => patterns.some((pattern) => pattern.test(entry.action || ""))).length;
+    const openTasks = state.tasks.filter((task) => task.status !== "done").length;
+    const cards = [
+      ["Courses Added", countActions([/added course/i])],
+      ["Curriculums Edited", countActions([/edited curriculum/i, /saved requirements/i, /added curriculum/i])],
+      ["Open Tasks", openTasks],
+      ["Transcript Drafts", state.transcriptDrafts.length],
+    ];
+
+    els.overviewTrendCards.innerHTML = cards.map(([label, value]) => `
+      <div class="overview-trend-card">
+        <strong>${escapeHtml(value)}</strong>
+        <span>${escapeHtml(label)}</span>
+      </div>
+    `).join("");
+  }
+
+  function overviewListItem({ icon, title, meta, detail, warning = false }) {
+    return `
+      <article class="overview-list-item ${warning ? "has-warning" : ""}">
+        <div class="overview-item-icon"><i class="bi ${escapeAttr(icon || "bi-dot")}"></i></div>
+        <div>
+          <strong>${escapeHtml(title || "Untitled")}</strong>
+          <small>${escapeHtml(meta || "")}</small>
+          <p>${escapeHtml(detail || "")}</p>
+        </div>
+      </article>
+    `;
+  }
+
+  function overviewEmptyState(message) {
+    return `<div class="empty-state overview-empty">${escapeHtml(message)}</div>`;
   }
 
   function bindCourseActionMenus(container) {
@@ -4604,22 +4766,28 @@
 
   function taskAssignees() {
     const users = new Map();
+    const nameKeys = new Map();
     const addUser = (user) => {
       const name = user?.name || user?.displayName || user?.fullName || user?.email?.split("@")[0] || "";
       if (!name) return;
       const uid = user?.uid || user?._docId || `staff:${slugify(name)}`;
-      users.set(uid, {
-        uid,
+      const normalizedName = normalizePersonName(name);
+      const existingKey = nameKeys.get(normalizedName);
+      const key = existingKey || uid;
+      const existing = users.get(key) || {};
+      users.set(key, {
+        uid: existing.uid && !String(existing.uid).startsWith("staff:") ? existing.uid : uid,
         name,
-        email: user?.email || "",
+        email: user?.email || existing.email || "",
       });
+      nameKeys.set(normalizedName, key);
     };
     staffDirectory.forEach(addUser);
     state.directoryUsers.forEach((user) => {
       addUser(user);
     });
     if (firebaseState.user) {
-      users.set(firebaseState.user.uid, {
+      addUser({
         uid: firebaseState.user.uid,
         name: currentUserDisplayName() || firebaseState.user.email?.split("@")[0] || "Me",
         email: firebaseState.user.email || "",
@@ -4639,6 +4807,13 @@
       addUser({ uid: notice.authorUid, name: notice.authorName });
     });
     return Array.from(users.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function normalizePersonName(name) {
+    return String(name || "")
+      .trim()
+      .replace(/\s+/g, " ")
+      .toLowerCase();
   }
 
   function curriculumDocId(row, index) {

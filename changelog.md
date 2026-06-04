@@ -1,5 +1,16 @@
 # New Eden Archive Changelog
 
+## V1.3.5 - 2026-06-04 1:35 PM CT - Overview Dashboard and Staff Dedupe
+
+### Summary
+- Rebuilt the Overview tab into a working dashboard and cleaned up duplicated staff names in task assignee lists.
+
+### Fixes
+- Deduped the task assignee directory by normalized display name so fixed staff entries and live Firebase profile users do not show twice.
+- Replaced the Overview placeholder with recent activity, needs-attention checks, assigned tasks, latest notices, archive health, recent transcript drafts, and monthly summary cards.
+- Added responsive and dark-mode styling for the new Overview dashboard panels.
+- Updated the visible app version label to V1.3.5.
+
 ## V1.3.4 - 2026-06-04 12:36 PM CT - Storage Upload Path Cleanup
 
 ### Summary
