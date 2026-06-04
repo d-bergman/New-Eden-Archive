@@ -1,5 +1,23 @@
 # New Eden Archive Changelog
 
+## V1.4.1 - 2026-06-04 5:58 PM CT - File Send Backend Scaffold
+
+### Summary
+- Tightened the File Manager UI and added the first Firebase Cloud Function scaffold for automated student file emails.
+
+### New Features
+- Added a callable Cloud Function named `sendStudentFilesEmail` that verifies Firebase Auth, checks admin access in Realtime Database, loads File Manager metadata, attaches Cloud Storage files, renders markdown email bodies, sends through SMTP environment variables, and writes activity log entries.
+- Connected the frontend Send button to the callable function when Firebase is live.
+- Enabled editable markdown for the student email subject and body fields.
+- Added multi-file upload support in the File Manager Add File builder.
+
+### Fixes
+- Reordered the sidebar to Overview, Courses, Curriculums, Programs, Transcripts, Log, File Manager, Version History, and Profile Settings.
+- Hid the hero and metric cards from the File Manager page.
+- Removed the permanent email backend warning from the page and only shows send status after action.
+- Reduced File Send and File Manager action button sizing so Add File, Send, Download, and Delete align better.
+- Updated the visible app version label to V1.4.1.
+
 ## V1.4.0 - 2026-06-04 5:26 PM CT - Central File Manager
 
 ### Summary

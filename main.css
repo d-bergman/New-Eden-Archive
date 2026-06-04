@@ -881,6 +881,8 @@ body[data-active-view="programs"] .hero-band,
 body[data-active-view="programs"] .archive-summary,
 body[data-active-view="transcripts"] .hero-band,
 body[data-active-view="transcripts"] .archive-summary,
+body[data-active-view="files"] .hero-band,
+body[data-active-view="files"] .archive-summary,
 body[data-active-view="overview"] .hero-band,
 body[data-active-view="history"] .hero-band,
 body[data-active-view="history"] .archive-summary {
@@ -2784,23 +2786,38 @@ body.theme-dark .transcript-icon {
 
 .file-send-form {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1.1fr) minmax(260px, 1.4fr) auto auto;
+  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1fr) minmax(320px, 1.6fr) auto;
   gap: 12px;
-  align-items: stretch;
+  align-items: end;
+  padding: 0 16px 16px;
 }
 
 .file-send-body {
-  min-height: 86px;
+  min-height: 74px;
   resize: vertical;
 }
 
 .file-send-actions {
   display: flex;
-  align-items: stretch;
+  gap: 8px;
+  align-items: end;
 }
 
 .file-send-actions .btn {
-  min-width: 120px;
+  min-width: 96px;
+  min-height: 42px;
+  padding: 8px 12px;
+}
+
+.file-send-message:empty {
+  display: none;
+}
+
+.file-manager-actions .btn {
+  min-width: 76px;
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.88rem;
 }
 
 .file-selector-grid {

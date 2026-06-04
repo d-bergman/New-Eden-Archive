@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.4.0";
+  const appVersion = "1.4.1";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -21,6 +21,7 @@
     auth: null,
     db: null,
     storage: null,
+    functions: null,
     presenceRef: null,
     unsubscribers: [],
     hasCloudArchive: false,
@@ -31,7 +32,7 @@
   };
   const fileManagerState = {
     records: [],
-    selectedFile: null,
+    selectedFiles: [],
     selectedCourseIds: [],
     courseSearch: "",
     search: "",
@@ -551,7 +552,7 @@
       renderFileManager();
     });
     els.managedFileInput?.addEventListener("change", (event) => {
-      fileManagerState.selectedFile = event.target.files?.[0] || null;
+      fileManagerState.selectedFiles = Array.from(event.target.files || []);
       renderFileBuilder();
     });
     els.fileCourseSearch?.addEventListener("input", (event) => {
@@ -977,7 +978,7 @@
         <td>${escapeHtml(formatBytes(file.size))}</td>
         <td>${escapeHtml(formatTimestamp(file.createdAtMs || file.updatedAtMs))}</td>
         <td class="text-end">
-          <div class="item-actions justify-content-end">
+          <div class="item-actions file-manager-actions justify-content-end">
             <a class="btn btn-sm btn-outline-eden" href="${escapeAttr(file.downloadURL || "#")}" target="_blank" rel="noopener" ${file.downloadURL ? "" : "aria-disabled=\"true\""}>
               Download
             </a>
@@ -1025,7 +1026,7 @@
 
   function openFileBuilder() {
     if (!state.admin) return;
-    fileManagerState.selectedFile = null;
+    fileManagerState.selectedFiles = [];
     fileManagerState.selectedCourseIds = [];
     fileManagerState.courseSearch = "";
     if (els.managedFileInput) els.managedFileInput.value = "";
@@ -1036,16 +1037,16 @@
 
   function renderFileBuilder() {
     if (!els.managedFilePreview) return;
-    const file = fileManagerState.selectedFile;
-    els.managedFilePreview.innerHTML = file ? `
-      <article class="managed-file-card">
+    const files = fileManagerState.selectedFiles || [];
+    els.managedFilePreview.innerHTML = files.length ? files.map((file) => `
+      <article class="managed-file-card managed-file-card-compact">
         <i class="bi bi-file-earmark-check"></i>
         <div>
           <strong>${escapeHtml(file.name)}</strong>
           <span>${escapeHtml(file.type || "Unknown type")} - ${escapeHtml(formatBytes(file.size))}</span>
         </div>
       </article>
-    ` : `<div class="empty-state">No file selected yet.</div>`;
+    `).join("") : `<div class="empty-state">No files selected yet.</div>`;
 
     const selectedIds = new Set(fileManagerState.selectedCourseIds);
     const query = fileManagerState.courseSearch;
@@ -1088,16 +1089,15 @@
 
   async function saveManagedFile() {
     if (!state.admin) return;
-    const file = fileManagerState.selectedFile;
-    if (!file) {
-      setCloudStatus("Choose a file before saving.");
+    const files = fileManagerState.selectedFiles || [];
+    if (!files.length) {
+      setCloudStatus("Choose at least one file before saving.");
       return;
     }
     if (!fileManagerState.selectedCourseIds.length) {
       setCloudStatus("Link the file to at least one course.");
       return;
     }
-    const docId = slugify(`${Date.now()}-${file.name}`);
     const courseIds = uniqueValues(fileManagerState.selectedCourseIds);
     const courseLabels = courseIds.map((id) => {
       const course = courseById(id);
@@ -1105,8 +1105,9 @@
     });
 
     if (firebaseDisabled || !firebaseState.ready || !firebaseState.user) {
-      const record = normalizeFiles([{
-        _docId: docId,
+      const createdAtMs = Date.now();
+      const records = files.map((file, index) => normalizeFiles([{
+        _docId: slugify(`${createdAtMs}-${index}-${file.name}`),
         name: file.name,
         size: file.size,
         contentType: file.type,
@@ -1115,11 +1116,11 @@
         downloadURL: "",
         storagePath: "",
         uploadedBy: "local-preview",
-        createdAtMs: Date.now(),
-        updatedAtMs: Date.now(),
-      }])[0];
-      fileManagerState.records.unshift(record);
-      await writeActivity("Uploaded File", "File", record.name, `${courseIds.length} linked course(s).`);
+        createdAtMs,
+        updatedAtMs: createdAtMs,
+      }])[0]);
+      fileManagerState.records.unshift(...records);
+      await writeActivity("Uploaded Files", "File", `${records.length} file(s)`, `${courseIds.length} linked course(s).`);
       els.fileBuilderDialog?.close("saved");
       render();
       return;
@@ -1127,28 +1128,34 @@
 
     try {
       const { dbRef, set, serverTimestamp, storageRef, uploadBytesResumable, getDownloadURL } = firebaseState.modules;
-      const storagePath = `courseFiles/${docId}-${file.name}`;
-      const fileRef = storageRef(firebaseState.storage, storagePath);
-      await uploadTaskWithTimeout(uploadBytesResumable(fileRef, file), 45000);
-      const downloadURL = await getDownloadURL(fileRef);
-      const record = {
-        name: file.name,
-        size: file.size,
-        contentType: file.type || "",
-        storagePath,
-        downloadURL,
-        courseIds,
-        courseLabels,
-        uploadedBy: firebaseState.user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-      await set(dbRef(firebaseState.db, `files/${docId}`), record);
+      const now = Date.now();
+      const uploadedRecords = [];
+      for (const [index, file] of files.entries()) {
+        const docId = slugify(`${now}-${index}-${file.name}`);
+        const storagePath = `courseFiles/${docId}-${file.name}`;
+        const fileRef = storageRef(firebaseState.storage, storagePath);
+        await uploadTaskWithTimeout(uploadBytesResumable(fileRef, file), 45000);
+        const downloadURL = await getDownloadURL(fileRef);
+        const record = {
+          name: file.name,
+          size: file.size,
+          contentType: file.type || "",
+          storagePath,
+          downloadURL,
+          courseIds,
+          courseLabels,
+          uploadedBy: firebaseState.user.uid,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+        await set(dbRef(firebaseState.db, `files/${docId}`), record);
+        uploadedRecords.push({ _docId: docId, ...record, createdAtMs: now, updatedAtMs: now });
+      }
       fileManagerState.records = normalizeFiles([
-        ...fileManagerState.records.filter((item) => item._docId !== docId),
-        { _docId: docId, ...record, createdAtMs: Date.now(), updatedAtMs: Date.now() },
+        ...fileManagerState.records.filter((item) => !uploadedRecords.some((record) => record._docId === item._docId)),
+        ...uploadedRecords,
       ]);
-      await writeActivity("Uploaded File", "File", file.name, `${courseIds.length} linked course(s): ${courseIds.join(", ")}`);
+      await writeActivity("Uploaded Files", "File", `${uploadedRecords.length} file(s)`, `${courseIds.length} linked course(s): ${courseIds.join(", ")}`);
       els.fileBuilderDialog?.close("saved");
       render();
     } catch (error) {
@@ -1281,6 +1288,8 @@
 
   async function prepareStudentFileEmail() {
     const email = els.studentEmail?.value.trim() || "";
+    const subject = els.studentEmailSubject?.value.trim() || "Requested New Eden Course Materials";
+    const bodyMarkdown = els.studentEmailBody?.value.trim() || "";
     const selectedFiles = fileManagerState.emailSelectedFileIds
       .map((docId) => fileManagerState.records.find((file) => file._docId === docId))
       .filter(Boolean);
@@ -1288,10 +1297,34 @@
       if (els.fileSendMessage) els.fileSendMessage.textContent = "Enter a student email and select at least one file.";
       return;
     }
-    if (els.fileSendMessage) {
-      els.fileSendMessage.textContent = "Email backend is not connected yet. Add a Firebase Cloud Function to send selected file IDs securely.";
+    if (!subject || !bodyMarkdown) {
+      if (els.fileSendMessage) els.fileSendMessage.textContent = "Add a subject and email body before sending.";
+      return;
     }
-    await writeActivity("Prepared File Email", "Student Email", email, `${selectedFiles.length} file(s) selected: ${selectedFiles.map((file) => file.name).join(", ")}`);
+    if (firebaseDisabled || !firebaseState.ready || !firebaseState.functions) {
+      if (els.fileSendMessage) {
+        els.fileSendMessage.textContent = "Email backend is not connected in local preview. Deploy the Firebase Cloud Function before sending live email.";
+      }
+      await writeActivity("Prepared File Email", "Student Email", email, `${selectedFiles.length} file(s) selected: ${selectedFiles.map((file) => file.name).join(", ")}`);
+      return;
+    }
+    try {
+      if (els.fileSendMessage) els.fileSendMessage.textContent = "Sending email...";
+      const sendStudentFilesEmail = firebaseState.modules.httpsCallable(firebaseState.functions, "sendStudentFilesEmail");
+      const result = await sendStudentFilesEmail({
+        recipientEmail: email,
+        selectedFileIds: selectedFiles.map((file) => file._docId),
+        subject,
+        bodyMarkdown,
+      });
+      const message = result?.data?.message || `Email sent to ${email}.`;
+      if (els.fileSendMessage) els.fileSendMessage.textContent = message;
+      fileManagerState.emailSelectedFileIds = [];
+      renderSelectedEmailFiles();
+    } catch (error) {
+      console.warn("Student file email failed.", error);
+      if (els.fileSendMessage) els.fileSendMessage.textContent = firebaseErrorMessage(error);
+    }
   }
 
   function renderTranscripts() {
@@ -3558,11 +3591,12 @@
 
     try {
       setCloudStatus("Realtime Database connecting");
-      const [appModule, authModule, databaseModule, storageModule] = await Promise.all([
+      const [appModule, authModule, databaseModule, storageModule, functionsModule] = await Promise.all([
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-app.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-auth.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-database.js`),
         import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-storage.js`),
+        import(`https://www.gstatic.com/firebasejs/${firebaseVersion}/firebase-functions.js`),
       ]);
 
       firebaseState.modules = {
@@ -3584,11 +3618,14 @@
         uploadBytesResumable: storageModule.uploadBytesResumable,
         getDownloadURL: storageModule.getDownloadURL,
         deleteObject: storageModule.deleteObject,
+        getFunctions: functionsModule.getFunctions,
+        httpsCallable: functionsModule.httpsCallable,
       };
       firebaseState.app = appModule.initializeApp(firebaseConfig);
       firebaseState.auth = authModule.getAuth(firebaseState.app);
       firebaseState.db = databaseModule.getDatabase(firebaseState.app);
       firebaseState.storage = storageModule.getStorage(firebaseState.app);
+      firebaseState.functions = functionsModule.getFunctions(firebaseState.app);
       firebaseState.ready = true;
       setCloudStatus("Realtime Database ready");
 

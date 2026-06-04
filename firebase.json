@@ -4,6 +4,7 @@
     "ignore": [
       "firebase.json",
       "database.rules.json",
+      "functions/**",
       "**/.*",
       "**/node_modules/**"
     ],
@@ -19,5 +20,8 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "functions": {
+    "source": "functions"
   }
 }

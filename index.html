@@ -82,10 +82,6 @@
             <i class="bi bi-file-earmark-text"></i>
             <span>Transcripts</span>
           </button>
-          <button class="nav-link" data-view="history">
-            <i class="bi bi-clock-history"></i>
-            <span>Version History</span>
-          </button>
           <button class="nav-link" data-view="log">
             <i class="bi bi-journal-text"></i>
             <span>Log</span>
@@ -93,6 +89,10 @@
           <button class="nav-link" data-view="files">
             <i class="bi bi-folder2-open"></i>
             <span>File Manager</span>
+          </button>
+          <button class="nav-link" data-view="history">
+            <i class="bi bi-clock-history"></i>
+            <span>Version History</span>
           </button>
         </nav>
 
@@ -700,11 +700,15 @@
                 </label>
                 <label class="form-label">
                   Subject
-                  <input class="form-control" id="studentEmailSubject" type="text" value="Requested New Eden Course Materials" readonly />
+                  <input class="form-control" id="studentEmailSubject" type="text" value="Requested New Eden Course Materials" />
                 </label>
                 <label class="form-label file-send-body">
-                  Email Body
-                  <textarea class="form-control" id="studentEmailBody" rows="4" readonly>Your requested New Eden course material files are attached. Please contact the school office if you need anything else.</textarea>
+                  Email Body Markdown
+                  <textarea class="form-control" id="studentEmailBody" rows="4">Hello,
+
+Your requested New Eden course material files are attached.
+
+Please contact the school office if you need anything else.</textarea>
                 </label>
                 <div class="file-send-actions">
                   <button class="btn btn-outline-eden" id="openFileSelector" type="button">
@@ -718,7 +722,7 @@
                 </div>
               </form>
               <div class="selected-email-files" id="selectedEmailFiles"></div>
-              <p class="form-note" id="fileSendMessage">Email sending is not connected yet. A Firebase Cloud Function will be needed for live delivery.</p>
+              <p class="form-note file-send-message" id="fileSendMessage" aria-live="polite"></p>
             </article>
           </section>
 
@@ -729,7 +733,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.4.0</span></p>
+            <p>Version <span id="appVersion">1.4.1</span></p>
           </footer>
         </div>
       </main>
@@ -1142,9 +1146,9 @@
           <section class="builder-pane">
             <label class="file-upload-card" for="managedFileInput">
               <i class="bi bi-cloud-arrow-up"></i>
-              <strong>Upload File</strong>
-              <span>PDFs, ebooks, documents, and course files.</span>
-              <input class="visually-hidden" id="managedFileInput" type="file" />
+              <strong>Upload Files</strong>
+              <span>PDFs, ebooks, documents, and course files. Multiple files are allowed.</span>
+              <input class="visually-hidden" id="managedFileInput" type="file" multiple />
             </label>
             <div class="managed-file-preview" id="managedFilePreview"></div>
           </section>
