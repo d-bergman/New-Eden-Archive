@@ -6,7 +6,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    match /{allPaths=**} {
+    match /profilePictures/{uid}/avatar.png {
+      allow read, write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /attachments/{allPaths=**} {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }

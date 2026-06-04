@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.3";
+  const appVersion = "1.3.4";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -3240,11 +3240,46 @@
     if (file.size > 2 * 1024 * 1024) {
       throw new Error("Profile picture must be under 2 MB.");
     }
-    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const pngBlob = await imageFileToPngBlob(file);
     const { storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
-    const avatarRef = storageRef(firebaseState.storage, `profilePictures/${firebaseState.user.uid}/avatar.${extension}`);
-    await uploadBytes(avatarRef, file, { contentType: file.type });
+    const avatarRef = storageRef(firebaseState.storage, `profilePictures/${firebaseState.user.uid}/avatar.png`);
+    await uploadBytes(avatarRef, pngBlob, { contentType: "image/png" });
     return getDownloadURL(avatarRef);
+  }
+
+  function imageFileToPngBlob(file) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const size = 320;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Could not prepare the profile picture."));
+          return;
+        }
+        const scale = Math.max(size / image.width, size / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        const x = (size - width) / 2;
+        const y = (size - height) / 2;
+        context.clearRect(0, 0, size, size);
+        context.drawImage(image, x, y, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Could not convert the profile picture to PNG."));
+        }, "image/png", 0.92);
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Could not read the selected profile picture."));
+      };
+      image.src = objectUrl;
+    });
   }
 
   async function refreshRoleStatus() {

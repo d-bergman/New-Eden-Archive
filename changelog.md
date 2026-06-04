@@ -1,5 +1,17 @@
 # New Eden Archive Changelog
 
+## V1.3.4 - 2026-06-04 12:36 PM CT - Storage Upload Path Cleanup
+
+### Summary
+- Tightened file upload handling so file bytes stay in Cloud Storage and RTDB keeps metadata only.
+
+### Fixes
+- Updated profile picture uploads to always convert selected JPG, PNG, or WebP images into `avatar.png`.
+- Matched the profile picture Storage path to `profilePictures/{uid}/avatar.png`.
+- Updated local Firebase Storage rules with the user-owned profile picture rule and an archive attachment Storage path.
+- Confirmed archive attachments continue to upload to Cloud Storage while RTDB stores only attachment metadata.
+- Updated the visible app version label to V1.3.4.
+
 ## V1.3.3 - 2026-06-04 11:55 AM CT - Profile Preferences Expansion
 
 ### Summary
