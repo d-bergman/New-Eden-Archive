@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.2";
+  const appVersion = "1.3.3";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -91,6 +91,9 @@
     requirementSortDirection: "asc",
     changelogEntries: [],
     connectedUsers: [],
+    knownNoticeIds: new Set(),
+    knownTaskStates: new Map(),
+    notificationsReady: false,
     signedIn: firebaseDisabled,
     authChecking: true,
     admin: sessionStorage.getItem(adminKey) === "true",
@@ -121,6 +124,7 @@
     userChip: document.querySelector("#userChip"),
     signOutButton: document.querySelector("#signOutButton"),
     userInitials: document.querySelector("#userInitials"),
+    userAvatarImage: document.querySelector("#userAvatarImage"),
     userName: document.querySelector("#userName"),
     userRole: document.querySelector("#userRole"),
     overviewSectionFilter: document.querySelector("#overviewSectionFilter"),
@@ -248,8 +252,19 @@
     profileForm: document.querySelector("#profileForm"),
     profileDisplayName: document.querySelector("#profileDisplayName"),
     profileEmail: document.querySelector("#profileEmail"),
+    profilePhotoInput: document.querySelector("#profilePhotoInput"),
+    profilePhotoButton: document.querySelector("#profilePhotoButton"),
+    profileAvatarImage: document.querySelector("#profileAvatarImage"),
+    profileAvatarInitials: document.querySelector("#profileAvatarInitials"),
     profileDarkMode: document.querySelector("#profileDarkMode"),
     profileShowRealtimeLoaded: document.querySelector("#profileShowRealtimeLoaded"),
+    profileLandingPage: document.querySelector("#profileLandingPage"),
+    profileMyTasksOnly: document.querySelector("#profileMyTasksOnly"),
+    profileNotifyNotices: document.querySelector("#profileNotifyNotices"),
+    profileNotifyTasks: document.querySelector("#profileNotifyTasks"),
+    profileLastLogin: document.querySelector("#profileLastLogin"),
+    profileUid: document.querySelector("#profileUid"),
+    profileAccountRole: document.querySelector("#profileAccountRole"),
     profileNewPassword: document.querySelector("#profileNewPassword"),
     profileConfirmPassword: document.querySelector("#profileConfirmPassword"),
     profileMessage: document.querySelector("#profileMessage"),
@@ -446,6 +461,9 @@
       event.preventDefault();
       openProfileSettings();
     });
+    els.profilePhotoButton?.addEventListener("click", () => els.profilePhotoInput?.click());
+    els.profilePhotoInput?.addEventListener("change", renderProfilePhotoPreview);
+    els.profileDisplayName?.addEventListener("input", renderProfilePhotoPreview);
     els.saveProfileSettings.addEventListener("click", (event) => {
       event.preventDefault();
       saveProfileSettings();
@@ -642,9 +660,15 @@
   function renderUserChip() {
     const displayName = currentUserDisplayName() || "Employee";
     const role = state.admin ? "Administrator" : state.signedIn ? "Standard User" : "Not signed in";
+    const photoURL = firebaseState.profile?.photoURL || firebaseState.user?.photoURL || "";
     els.userName.textContent = displayName;
     els.userRole.textContent = role;
     els.userInitials.textContent = initials(displayName);
+    if (els.userAvatarImage) {
+      els.userAvatarImage.src = photoURL;
+      els.userAvatarImage.hidden = !photoURL;
+      els.userInitials.hidden = Boolean(photoURL);
+    }
   }
 
   function currentUserDisplayName() {
@@ -708,6 +732,22 @@
     return firebaseState.profile?.settings?.darkMode === true;
   }
 
+  function userSettings() {
+    return firebaseState.profile?.settings || {};
+  }
+
+  function noticeModalsEnabled() {
+    return userSettings().notifyNotices === true;
+  }
+
+  function taskModalsEnabled() {
+    return userSettings().notifyTasks === true;
+  }
+
+  function myTasksOnlyEnabled() {
+    return userSettings().myTasksOnly === true;
+  }
+
   function hideAppLoader() {
     if (!els.appLoader) return;
     setTimeout(() => {
@@ -768,10 +808,13 @@
     }
     if (!els.taskList) return;
     const displayName = currentUserDisplayName();
+    const myTasksOnly = myTasksOnlyEnabled();
     const visibleTasks = state.tasks
-      .filter((task) => state.admin
-        || task.assigneeUid === firebaseState.user?.uid
-        || (displayName && task.assigneeName === displayName))
+      .filter((task) => {
+        const assignedToMe = task.assigneeUid === firebaseState.user?.uid
+          || (displayName && task.assigneeName === displayName);
+        return myTasksOnly ? assignedToMe : state.admin || assignedToMe;
+      })
       .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
     els.taskList.innerHTML = visibleTasks.map((task) => `
       <article class="task-item ${task.status === "done" ? "is-done" : ""}">
@@ -2960,6 +3003,8 @@
         setCloudStatus("Loading realtime data");
         try {
           await refreshRoleStatus();
+          await recordLastLogin();
+          applyDefaultLandingPage();
           const sizes = await loadRealtimeData();
           startRealtimeListeners();
           await startUserPresence();
@@ -3038,9 +3083,18 @@
     els.profileEmail.value = firebaseState.user?.email || "";
     els.profileDarkMode.checked = isDarkMode();
     els.profileShowRealtimeLoaded.checked = showRealtimeLoadedSummary();
+    els.profileLandingPage.value = userSettings().landingPage || "overview";
+    els.profileMyTasksOnly.checked = myTasksOnlyEnabled();
+    els.profileNotifyNotices.checked = noticeModalsEnabled();
+    els.profileNotifyTasks.checked = taskModalsEnabled();
+    if (els.profileLastLogin) els.profileLastLogin.textContent = formatTimestamp(firebaseState.profile?.lastLoginAtMs || Date.parse(firebaseState.user?.metadata?.lastSignInTime || ""));
+    if (els.profileUid) els.profileUid.textContent = firebaseState.user?.uid || "Preview";
+    if (els.profileAccountRole) els.profileAccountRole.textContent = state.admin ? "Administrator" : "Standard User";
+    if (els.profilePhotoInput) els.profilePhotoInput.value = "";
     els.profileNewPassword.value = "";
     els.profileConfirmPassword.value = "";
     els.profileMessage.textContent = "Profile names appear in Connected Users.";
+    renderProfilePhotoPreview();
     els.profileDialog.showModal();
     setTimeout(() => els.profileDisplayName.focus(), 0);
   }
@@ -3052,6 +3106,10 @@
     const confirmPassword = els.profileConfirmPassword.value;
     const darkMode = els.profileDarkMode.checked;
     const showRealtimeLoaded = els.profileShowRealtimeLoaded.checked;
+    const landingPage = els.profileLandingPage?.value || "overview";
+    const myTasksOnly = Boolean(els.profileMyTasksOnly?.checked);
+    const notifyNotices = Boolean(els.profileNotifyNotices?.checked);
+    const notifyTasks = Boolean(els.profileNotifyTasks?.checked);
     if (!displayName) {
       els.profileMessage.textContent = "Display name is required.";
       els.profileDisplayName.focus();
@@ -3072,21 +3130,27 @@
 
     els.profileMessage.textContent = "Saving profile...";
     try {
+      const photoURL = await saveProfilePhotoIfNeeded();
       const profile = {
         ...(firebaseState.profile || {}),
         displayName,
         name: displayName,
         email: firebaseState.user?.email || "",
+        photoURL: photoURL || firebaseState.profile?.photoURL || "",
         settings: {
           ...(firebaseState.profile?.settings || {}),
           darkMode,
           showRealtimeLoaded,
+          landingPage,
+          myTasksOnly,
+          notifyNotices,
+          notifyTasks,
         },
       };
       if (firebaseState.ready && firebaseState.user) {
         const { dbRef, set, updateProfile, updatePassword, serverTimestamp } = firebaseState.modules;
         await Promise.all([
-          updateProfile(firebaseState.user, { displayName }).catch(() => {}),
+          updateProfile(firebaseState.user, { displayName, photoURL: profile.photoURL || null }).catch(() => {}),
           set(dbRef(firebaseState.db, `users/${firebaseState.user.uid}`), {
             ...profile,
             updatedAt: serverTimestamp(),
@@ -3115,6 +3179,72 @@
     if (error?.code === "auth/weak-password") return "Password must be at least 6 characters.";
     if (error?.code === "permission-denied" || error?.code === "PERMISSION_DENIED") return "Realtime Database denied profile saving. Publish the updated rules.";
     return error?.message || "Profile save failed.";
+  }
+
+  async function recordLastLogin() {
+    if (!firebaseState.ready || !firebaseState.user) return;
+    const previousLogin = firebaseState.profile?.lastLoginAtMs || Date.parse(firebaseState.user.metadata?.lastSignInTime || "");
+    const profile = {
+      ...(firebaseState.profile || {}),
+      displayName: currentUserDisplayName(),
+      name: currentUserDisplayName(),
+      email: firebaseState.user.email || "",
+      lastLoginAtMs: Date.now(),
+      previousLoginAtMs: Number(previousLogin || 0),
+      settings: {
+        ...(firebaseState.profile?.settings || {}),
+      },
+    };
+    firebaseState.profile = profile;
+    try {
+      const { dbRef, set, serverTimestamp } = firebaseState.modules;
+      await set(dbRef(firebaseState.db, `users/${firebaseState.user.uid}`), {
+        ...profile,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.warn("Last login save failed.", error);
+    }
+  }
+
+  function applyDefaultLandingPage() {
+    const landingPage = userSettings().landingPage || "overview";
+    if ([...els.navItems].some((button) => button.dataset.view === landingPage)) {
+      state.view = landingPage;
+    }
+  }
+
+  function renderProfilePhotoPreview() {
+    const file = els.profilePhotoInput?.files?.[0];
+    const photoURL = file ? URL.createObjectURL(file) : firebaseState.profile?.photoURL || firebaseState.user?.photoURL || "";
+    const displayName = els.profileDisplayName?.value.trim() || currentUserDisplayName() || "Employee";
+    if (els.profileAvatarImage) {
+      els.profileAvatarImage.src = photoURL;
+      els.profileAvatarImage.hidden = !photoURL;
+    }
+    if (els.profileAvatarInitials) {
+      els.profileAvatarInitials.textContent = initials(displayName);
+      els.profileAvatarInitials.hidden = Boolean(photoURL);
+    }
+  }
+
+  async function saveProfilePhotoIfNeeded() {
+    const file = els.profilePhotoInput?.files?.[0];
+    if (!file) return "";
+    if (!firebaseState.ready || !firebaseState.user || !firebaseState.storage) {
+      throw new Error("Firebase Storage is not ready for profile picture uploads.");
+    }
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      throw new Error("Profile picture must be a PNG, JPG, or WebP image.");
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      throw new Error("Profile picture must be under 2 MB.");
+    }
+    const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+    const { storageRef, uploadBytes, getDownloadURL } = firebaseState.modules;
+    const avatarRef = storageRef(firebaseState.storage, `profilePictures/${firebaseState.user.uid}/avatar.${extension}`);
+    await uploadBytes(avatarRef, file, { contentType: file.type });
+    return getDownloadURL(avatarRef);
   }
 
   async function refreshRoleStatus() {
@@ -3186,6 +3316,7 @@
     state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
+    primeNotificationBaselines();
     state.directoryUsers = normalizeDirectoryUsers(rtdbList(usersSnap?.val()));
     state.transcriptDrafts = normalizeTranscriptDrafts(rtdbList(transcriptSnap?.val()));
 
@@ -3266,12 +3397,16 @@
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "notices"), (snapshot) => {
-      state.notices = normalizeNotices(rtdbList(snapshot.val()));
+      const notices = normalizeNotices(rtdbList(snapshot.val()));
+      handleNoticeNotifications(notices);
+      state.notices = notices;
       renderNotices();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "tasks"), (snapshot) => {
-      state.tasks = normalizeTasks(rtdbList(snapshot.val()));
+      const tasks = normalizeTasks(rtdbList(snapshot.val()));
+      handleTaskNotifications(tasks);
+      state.tasks = tasks;
       renderTasks();
     }, handleSnapshotError));
 
@@ -3299,6 +3434,71 @@
     firebaseState.unsubscribers = [];
     stopUserPresence();
     state.connectedUsers = [];
+    state.notificationsReady = false;
+  }
+
+  function primeNotificationBaselines() {
+    state.knownNoticeIds = new Set(state.notices.map((notice) => notice._docId));
+    state.knownTaskStates = new Map(state.tasks.map((task) => [task._docId, taskNotificationSignature(task)]));
+    state.notificationsReady = true;
+  }
+
+  function handleNoticeNotifications(notices) {
+    if (!state.notificationsReady) {
+      state.knownNoticeIds = new Set(notices.map((notice) => notice._docId));
+      return;
+    }
+    const activeNotices = notices.filter((notice) => notice.status !== "deleted");
+    const newNotice = activeNotices
+      .filter((notice) => !state.knownNoticeIds.has(notice._docId))
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))[0];
+    state.knownNoticeIds = new Set(notices.map((notice) => notice._docId));
+    if (!newNotice || !noticeModalsEnabled()) return;
+    showThemedNotification({
+      eyebrow: "Notice",
+      title: "New Archive Notice",
+      message: newNotice.message,
+      confirmText: "OK",
+    });
+  }
+
+  function handleTaskNotifications(tasks) {
+    if (!state.notificationsReady) {
+      state.knownTaskStates = new Map(tasks.map((task) => [task._docId, taskNotificationSignature(task)]));
+      return;
+    }
+    const previous = state.knownTaskStates;
+    const displayName = currentUserDisplayName();
+    const changedTask = tasks
+      .filter((task) => task.assigneeUid === firebaseState.user?.uid || (displayName && task.assigneeName === displayName))
+      .find((task) => previous.has(task._docId) && previous.get(task._docId) !== taskNotificationSignature(task));
+    const newTask = tasks
+      .filter((task) => task.assigneeUid === firebaseState.user?.uid || (displayName && task.assigneeName === displayName))
+      .find((task) => !previous.has(task._docId));
+    state.knownTaskStates = new Map(tasks.map((task) => [task._docId, taskNotificationSignature(task)]));
+    if (!taskModalsEnabled()) return;
+    const task = newTask || changedTask;
+    if (!task) return;
+    showThemedNotification({
+      eyebrow: "Task",
+      title: newTask ? "New Task Assigned" : "Task Updated",
+      message: `${task.title} - ${task.status === "done" ? "Done" : "Open"}`,
+      confirmText: "OK",
+    });
+  }
+
+  function taskNotificationSignature(task) {
+    return [
+      task.status || "open",
+      task.assigneeUid || "",
+      task.assigneeName || "",
+      task.updatedAtMs || task.createdAtMs || "",
+    ].join("|");
+  }
+
+  function showThemedNotification(options) {
+    if (document.querySelector("dialog[open]")) return;
+    void alertAction(options);
   }
 
   async function startUserPresence() {

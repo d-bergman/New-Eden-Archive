@@ -1,5 +1,21 @@
 # New Eden Archive Changelog
 
+## V1.3.3 - 2026-06-04 11:55 AM CT - Profile Preferences Expansion
+
+### Summary
+- Expanded Profile Settings and improved transcript draft controls.
+
+### New Features
+- Added profile picture upload with top-bar avatar display and initials fallback.
+- Added notification preferences for new notices and assigned task updates using the existing themed modal style.
+- Added a default landing page preference after login.
+- Added a My Assigned Tasks Only preference for the task board.
+- Added account info readouts for last login, UID, and role.
+
+### Fixes
+- Matched the Saved Drafts Open and Delete buttons to the same compact size.
+- Updated the visible app version label to V1.3.3.
+
 ## V1.3.2 - 2026-06-04 11:20 AM CT - Transcript PDF Import and Draft Controls
 
 ### Summary

@@ -665,6 +665,13 @@ textarea {
   background: var(--eden-forest);
   color: #fff;
   font-family: Georgia, "Times New Roman", serif;
+  overflow: hidden;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .user-chip strong,
@@ -740,6 +747,41 @@ textarea {
 .profile-card .form-control {
   width: 100%;
   min-width: 0;
+}
+
+.profile-photo-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-avatar {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  font-size: 1.4rem;
+}
+
+.account-info-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.account-info-list div {
+  display: grid;
+  gap: 2px;
+}
+
+.account-info-list dt {
+  color: var(--eden-muted);
+  font-weight: 800;
+}
+
+.account-info-list dd {
+  margin: 0;
+  color: var(--eden-ink);
+  overflow-wrap: anywhere;
 }
 
 .profile-card .form-note {
@@ -2263,6 +2305,12 @@ mark {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
+}
+
+.transcript-draft-actions .btn {
+  min-width: 68px;
+  min-height: 42px;
+  justify-content: center;
 }
 
 body.theme-dark .overview-placeholder,
