@@ -425,6 +425,11 @@
                       <p class="section-subtitle">Imported rows stay editable. Add, remove, and enter percentages before generating.</p>
                     </div>
                     <div class="transcript-actions">
+                      <input id="transcriptPdfFile" type="file" accept="application/pdf,.pdf" hidden />
+                      <button class="btn btn-outline-eden" id="importTranscriptPdf" type="button">
+                        <i class="bi bi-file-earmark-arrow-up"></i>
+                        Import PDF
+                      </button>
                       <button class="btn btn-outline-eden" id="clearTranscript" type="button">Clear</button>
                       <button class="btn btn-outline-eden" id="saveTranscriptDraft" type="button">
                         <i class="bi bi-save"></i>
@@ -570,7 +575,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.3.1</span></p>
+            <p>Version <span id="appVersion">1.3.2</span></p>
           </footer>
         </div>
       </main>

@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.1";
+  const appVersion = "1.3.2";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -170,6 +170,8 @@
     transcriptTo: document.querySelector("#transcriptTo"),
     transcriptGraduated: document.querySelector("#transcriptGraduated"),
     printTranscript: document.querySelector("#printTranscript"),
+    importTranscriptPdf: document.querySelector("#importTranscriptPdf"),
+    transcriptPdfFile: document.querySelector("#transcriptPdfFile"),
     saveTranscriptDraft: document.querySelector("#saveTranscriptDraft"),
     transcriptDraftList: document.querySelector("#transcriptDraftList"),
     clearTranscript: document.querySelector("#clearTranscript"),
@@ -496,6 +498,16 @@
       state.transcriptRows = [];
       state.activeTranscriptDraftId = "";
       renderTranscriptRows();
+    });
+
+    els.importTranscriptPdf?.addEventListener("click", () => {
+      if (els.transcriptPdfFile) els.transcriptPdfFile.value = "";
+      els.transcriptPdfFile?.click();
+    });
+
+    els.transcriptPdfFile?.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      if (file) importTranscriptPdf(file);
     });
 
     els.saveTranscriptDraft?.addEventListener("click", saveTranscriptDraft);
@@ -859,12 +871,18 @@
           <strong>${escapeHtml(draft.studentName || "Unnamed Student")}</strong>
           <small>${escapeHtml(draft.program || "No curriculum selected")} &bull; ${escapeHtml(formatTimestamp(draft.updatedAtMs || draft.createdAtMs))}</small>
         </div>
-        <button class="btn btn-sm btn-outline-eden" type="button" data-load-transcript-draft="${escapeAttr(draft._docId)}">Open</button>
+        <div class="transcript-draft-actions">
+          <button class="btn btn-sm btn-outline-eden" type="button" data-load-transcript-draft="${escapeAttr(draft._docId)}">Open</button>
+          <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-delete-transcript-draft="${escapeAttr(draft._docId)}">Delete</button>
+        </div>
       </article>
     `).join("") || `<div class="empty-state">No transcript drafts have been saved yet.</div>`;
 
     els.transcriptDraftList.querySelectorAll("[data-load-transcript-draft]").forEach((button) => {
       button.addEventListener("click", () => loadTranscriptDraft(button.dataset.loadTranscriptDraft));
+    });
+    els.transcriptDraftList.querySelectorAll("[data-delete-transcript-draft]").forEach((button) => {
+      button.addEventListener("click", () => deleteTranscriptDraft(button.dataset.deleteTranscriptDraft));
     });
   }
 
@@ -945,6 +963,163 @@
       ...row,
       key: row.key || slugify(`${row.courseId || row.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`),
     }));
+    renderTranscripts();
+  }
+
+  async function deleteTranscriptDraft(docId) {
+    if (!state.admin) return;
+    const draft = state.transcriptDrafts.find((item) => item._docId === docId);
+    if (!draft) return;
+    const confirmed = await confirmAction({
+      eyebrow: "Transcripts",
+      title: "Delete Transcript Draft?",
+      message: `Delete the saved transcript draft for "${draft.studentName || "Unnamed Student"}"? This will not remove generated PDF files you already downloaded.`,
+      confirmText: "Delete Draft",
+    });
+    if (!confirmed) return;
+    state.transcriptDrafts = state.transcriptDrafts.filter((item) => item._docId !== docId);
+    if (state.activeTranscriptDraftId === docId) state.activeTranscriptDraftId = "";
+    renderTranscriptDrafts();
+    if (canWriteCloud()) {
+      const { dbRef, remove } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `transcripts/${docId}`));
+    }
+    await writeActivity("Deleted Transcript Draft", "Transcript", draft.studentName || draft.studentId || "Unnamed Student", `${draft.rows?.length || 0} course row(s) removed from saved drafts.`);
+  }
+
+  async function importTranscriptPdf(file) {
+    if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "PDF Required",
+        message: "Choose a transcript PDF file to import.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    try {
+      setCloudStatus(`Importing transcript PDF: ${file.name}`);
+      const parsed = parseTranscriptPdfText(await extractPdfText(file));
+      applyImportedTranscript(parsed);
+      await writeActivity("Imported Transcript PDF", "Transcript", parsed.studentName || parsed.studentId || file.name, `${parsed.rows.length} course row(s) reconstructed.`);
+      setCloudStatus("Transcript PDF imported for editing.");
+    } catch (error) {
+      console.warn("Transcript PDF import failed.", error);
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "Could Not Import PDF",
+        message: error?.message || "The PDF could not be read. Image-only scans need OCR before the archive can rebuild editable rows.",
+        confirmText: "OK",
+      });
+      setCloudStatus("PDF import failed.");
+    }
+  }
+
+  async function extractPdfText(file) {
+    const pdfjs = await loadPdfJs();
+    const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
+    const lines = [];
+    const textParts = [];
+    for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
+      const page = await pdf.getPage(pageNumber);
+      const content = await page.getTextContent();
+      textParts.push(...content.items.map((item) => item.str).filter(Boolean));
+      const grouped = new Map();
+      content.items.forEach((item) => {
+        const y = Math.round(item.transform?.[5] || 0);
+        const bucket = Array.from(grouped.keys()).find((key) => Math.abs(key - y) <= 2) ?? y;
+        const row = grouped.get(bucket) || [];
+        row.push({ x: item.transform?.[4] || 0, text: item.str || "" });
+        grouped.set(bucket, row);
+      });
+      Array.from(grouped.entries())
+        .sort((a, b) => b[0] - a[0])
+        .forEach(([, row]) => {
+          const line = row
+            .sort((a, b) => a.x - b.x)
+            .map((item) => item.text.trim())
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (line) lines.push(line);
+        });
+    }
+    if (!lines.length && !textParts.length) {
+      throw new Error("No readable transcript text was found in that PDF.");
+    }
+    return { lines, text: textParts.join(" ").replace(/\s+/g, " ").trim() };
+  }
+
+  async function loadPdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    const pdfjs = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs");
+    pdfjs.GlobalWorkerOptions.workerSrc = "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs";
+    window.pdfjsLib = pdfjs;
+    return pdfjs;
+  }
+
+  function parseTranscriptPdfText({ lines, text }) {
+    const fullText = text || lines.join(" ");
+    const studentName = matchTranscriptField(fullText, /Name:\s*(.*?)(?=\s+Student ID:|$)/i);
+    const studentId = matchTranscriptField(fullText, /Student ID:\s*(.*?)(?=\s+Date of Birth:|$)/i);
+    const dob = normalizeTranscriptInputDate(matchTranscriptField(fullText, /Date of Birth:\s*(.*?)(?=\s+Date Created:|$)/i));
+    const program = matchTranscriptField(fullText, /Program\s+(.*?)(?=\s+Attended From\/To|$)/i);
+    const attended = matchTranscriptField(fullText, /Attended From\/To\s+([^\s]+(?:\s*\/\s*[^\s]+)?)/i);
+    const [attendedFrom, attendedTo] = attended.split("/").map((part) => normalizeTranscriptInputDate(part));
+    const rows = parseTranscriptCourseRows(lines, fullText);
+    if (!studentName && !studentId && !program && !rows.length) {
+      throw new Error("No New Eden transcript fields were found in that PDF.");
+    }
+    return {
+      studentName,
+      studentId,
+      dob,
+      attendedFrom: attendedFrom || "",
+      attendedTo: attendedTo || "",
+      graduated: !/\bnot graduated\b/i.test(fullText),
+      program: normalizeImportedProgram(program),
+      rows,
+    };
+  }
+
+  function parseTranscriptCourseRows(lines, fullText) {
+    const rows = [];
+    const consume = (courseId, title, credit, percent) => {
+      const course = state.courses.find((item) => String(item.id) === String(courseId));
+      rows.push({
+        key: slugify(`${courseId || title}-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+        courseId: course?.id || courseId || "",
+        name: course?.name || title || "Course",
+        credit: course?.credit || credit || "",
+        percent: String(percent || "").replace("%", ""),
+      });
+    };
+    lines.forEach((line) => {
+      const match = line.match(/^NES\s+([A-Za-z0-9.-]+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+([0-9.]+%?|PASS)?\s*(A|B|C|D|PASS)?$/i);
+      if (match) consume(match[1], match[2], match[3], match[4]);
+    });
+    if (!rows.length) {
+      const rowPattern = /NES\s+([A-Za-z0-9.-]+)\s+(.+?)\s+(\d+(?:\.\d+)?)\s+([0-9.]+%?|PASS)\s+(A|B|C|D|PASS)/gi;
+      let match = rowPattern.exec(fullText);
+      while (match) {
+        consume(match[1], match[2], match[3], match[4]);
+        match = rowPattern.exec(fullText);
+      }
+    }
+    return dedupeTranscriptRows(rows);
+  }
+
+  function applyImportedTranscript(parsed) {
+    if (els.transcriptStudentName) els.transcriptStudentName.value = parsed.studentName || "";
+    if (els.transcriptStudentId) els.transcriptStudentId.value = parsed.studentId || "";
+    if (els.transcriptDob) els.transcriptDob.value = parsed.dob || "";
+    if (els.transcriptFrom) els.transcriptFrom.value = parsed.attendedFrom || "";
+    if (els.transcriptTo) els.transcriptTo.value = parsed.attendedTo || "";
+    if (els.transcriptGraduated) els.transcriptGraduated.checked = parsed.graduated !== false;
+    if (parsed.program) state.transcriptSelectedProgram = parsed.program;
+    state.transcriptRows = parsed.rows;
+    state.activeTranscriptDraftId = "";
     renderTranscripts();
   }
 
@@ -1145,6 +1320,41 @@
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function matchTranscriptField(text, pattern) {
+    return String(text || "").match(pattern)?.[1]?.replace(/\s+/g, " ").trim() || "";
+  }
+
+  function normalizeTranscriptInputDate(value) {
+    const raw = String(value || "").trim();
+    if (!raw || /^na$/i.test(raw)) return "";
+    const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (iso) return raw;
+    const dotted = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+    if (dotted) {
+      const year = dotted[3].length === 2 ? `20${dotted[3]}` : dotted[3];
+      return `${year}-${dotted[1].padStart(2, "0")}-${dotted[2].padStart(2, "0")}`;
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) return "";
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+  }
+
+  function normalizeImportedProgram(programName) {
+    const imported = String(programName || "").trim();
+    if (!imported) return "";
+    const lowered = imported.toLowerCase();
+    return programs().find((program) => program.name.toLowerCase() === lowered)?.name
+      || programs().find((program) => (
+        program.name.toLowerCase().includes(lowered)
+        || lowered.includes(program.name.toLowerCase())
+      ))?.name
+      || imported;
   }
 
   function renderActivityLog() {

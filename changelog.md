@@ -1,5 +1,19 @@
 # New Eden Archive Changelog
 
+## V1.3.2 - 2026-06-04 11:20 AM CT - Transcript PDF Import and Draft Controls
+
+### Summary
+- Added transcript PDF importing and draft deletion, then tightened small task board alignment issues.
+
+### New Features
+- Added an Import PDF action in Transcripts that reads a generated New Eden transcript PDF and rebuilds editable student fields and course rows.
+- Added Delete controls for saved transcript drafts with a themed confirmation modal.
+- Logged imported transcript PDFs and deleted transcript drafts to the Activity Log.
+
+### Fixes
+- Centered the Task Description field placeholder and height so it lines up with the task title, assignee, and Create Task button.
+- Updated the visible app version label to V1.3.2.
+
 ## V1.3.1 - 2026-06-03 8:51 PM CT - Transcript Drafts and Overview Cleanup
 
 ### Summary

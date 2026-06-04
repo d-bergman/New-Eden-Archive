@@ -1178,6 +1178,10 @@ body[data-active-view="history"] .archive-summary {
 }
 
 .task-form textarea {
+  min-height: 56px;
+  height: 56px;
+  padding-top: 16px;
+  line-height: 1.25;
   resize: vertical;
 }
 
@@ -2252,6 +2256,13 @@ mark {
   display: block;
   margin-top: 2px;
   color: var(--eden-muted);
+}
+
+.transcript-draft-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 body.theme-dark .overview-placeholder,
