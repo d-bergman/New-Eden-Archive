@@ -2692,6 +2692,143 @@ body.theme-dark .transcript-icon {
   color: var(--eden-muted);
 }
 
+.attachment-readonly-note {
+  cursor: default;
+}
+
+.attachment-readonly-note.is-dragover {
+  border-color: var(--eden-gold);
+  background: rgba(200, 168, 94, 0.1);
+}
+
+.file-cell {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  align-items: center;
+}
+
+.file-cell i {
+  color: var(--eden-forest);
+  font-size: 1.4rem;
+}
+
+.file-cell strong,
+.file-cell small {
+  display: block;
+}
+
+.file-cell small {
+  color: var(--eden-muted);
+}
+
+.linked-course-badge {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin: 0 6px 6px 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.file-upload-card {
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+  padding: 18px;
+  border: 1px dashed var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.76);
+  text-align: center;
+}
+
+.managed-file-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.managed-file-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(223, 232, 215, 0.42);
+}
+
+.managed-file-card i {
+  color: var(--eden-forest);
+  font-size: 1.6rem;
+}
+
+.managed-file-card strong,
+.managed-file-card span {
+  display: block;
+}
+
+.managed-file-card span {
+  color: var(--eden-muted);
+  font-size: 0.88rem;
+}
+
+.course-picker-row.is-selected {
+  border-color: var(--eden-forest);
+  background: rgba(223, 232, 215, 0.82);
+}
+
+.file-send-form {
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1.1fr) minmax(260px, 1.4fr) auto auto;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.file-send-body {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.file-send-actions {
+  display: flex;
+  align-items: stretch;
+}
+
+.file-send-actions .btn {
+  min-width: 120px;
+}
+
+.file-selector-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.file-selector-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(240px, 1fr);
+  gap: 10px;
+  min-height: 420px;
+}
+
+body.theme-dark .file-upload-card,
+body.theme-dark .managed-file-card,
+body.theme-dark .attachment-drop-zone,
+body.theme-dark .attachment-item,
+body.theme-dark .course-picker-row.is-selected {
+  background: rgba(28, 31, 20, 0.94);
+}
+
+body.theme-dark .linked-course-badge {
+  background: #2f411e;
+  color: #e8e2d7;
+}
+
 .button {
   display: inline-flex;
   align-items: center;
@@ -2772,7 +2909,9 @@ body.theme-dark .transcript-icon {
   .notice-item,
   .task-item,
   .notice-form,
-  .task-form {
+  .task-form,
+  .file-send-form,
+  .file-selector-grid {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;

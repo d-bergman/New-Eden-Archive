@@ -90,6 +90,10 @@
             <i class="bi bi-journal-text"></i>
             <span>Log</span>
           </button>
+          <button class="nav-link" data-view="files">
+            <i class="bi bi-folder2-open"></i>
+            <span>File Manager</span>
+          </button>
         </nav>
 
         <button class="nav-link admin-nav-link" id="profileSettingsNav" type="button">
@@ -360,15 +364,11 @@
 
                 <div id="featuredProgramDetail" class="program-overview"></div>
                 <div class="program-attachments" id="programAttachments">
-                  <div class="attachment-drop-zone admin-only" id="attachmentDropZone">
-                    <i class="bi bi-cloud-arrow-up"></i>
-                    <strong>Drop files here</strong>
-                    <span>or browse to upload documents for this curriculum.</span>
-                    <label class="btn btn-outline-eden mb-0">
-                      <i class="bi bi-upload"></i>
-                      Upload Files
-                      <input class="visually-hidden" id="attachmentUpload" type="file" multiple />
-                    </label>
+                  <div class="attachment-drop-zone attachment-readonly-note" id="attachmentDropZone">
+                    <i class="bi bi-folder2-open"></i>
+                    <strong>Managed in File Manager</strong>
+                    <span>Files shown here are linked to the courses in this curriculum. Upload and delete files from File Manager.</span>
+                    <input class="visually-hidden" id="attachmentUpload" type="file" multiple disabled />
                   </div>
                   <div id="attachmentList" class="attachment-list"></div>
                 </div>
@@ -644,6 +644,84 @@
             </div>
           </section>
 
+          <section class="view" id="filesView">
+            <article class="archive-panel">
+              <div class="section-heading catalog-heading">
+                <div>
+                  <p class="eyebrow">Files</p>
+                  <h2>File Manager</h2>
+                  <p class="section-subtitle">Upload course files once, link them to course IDs, and reuse them automatically across curriculums.</p>
+                </div>
+                <button class="btn btn-eden admin-only" id="addManagedFile" type="button">
+                  <i class="bi bi-plus-circle"></i>
+                  Add File
+                </button>
+              </div>
+              <div class="catalog-toolbar">
+                <label class="search-field catalog-search">
+                  <i class="bi bi-search"></i>
+                  <input id="fileManagerSearch" type="search" placeholder="Search files, courses, or IDs" aria-label="Search file manager" />
+                </label>
+              </div>
+              <div class="table-responsive archive-table-wrap">
+                <table class="table archive-table align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>File</th>
+                      <th>Linked Courses</th>
+                      <th>Size</th>
+                      <th>Uploaded</th>
+                      <th class="text-end">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fileManagerRows"></tbody>
+                </table>
+              </div>
+              <div class="panel-footer">
+                <span id="fileManagerPageSummary">Showing files</span>
+                <nav aria-label="File manager pagination">
+                  <ul class="pagination pagination-sm mb-0" id="fileManagerPagination"></ul>
+                </nav>
+              </div>
+            </article>
+
+            <article class="archive-panel mt-3">
+              <div class="section-heading catalog-heading">
+                <div>
+                  <p class="eyebrow">Student Email</p>
+                  <h2>File Send Tool</h2>
+                  <p class="section-subtitle">Select stored files and prepare a student email. Sending requires a secure Firebase Cloud Function.</p>
+                </div>
+              </div>
+              <form class="file-send-form admin-only" id="fileSendForm">
+                <label class="form-label">
+                  Student Email
+                  <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
+                </label>
+                <label class="form-label">
+                  Subject
+                  <input class="form-control" id="studentEmailSubject" type="text" value="Requested New Eden Course Materials" readonly />
+                </label>
+                <label class="form-label file-send-body">
+                  Email Body
+                  <textarea class="form-control" id="studentEmailBody" rows="4" readonly>Your requested New Eden course material files are attached. Please contact the school office if you need anything else.</textarea>
+                </label>
+                <div class="file-send-actions">
+                  <button class="btn btn-outline-eden" id="openFileSelector" type="button">
+                    <i class="bi bi-paperclip"></i>
+                    Add File
+                  </button>
+                  <button class="btn btn-eden" type="submit">
+                    <i class="bi bi-send"></i>
+                    Send
+                  </button>
+                </div>
+              </form>
+              <div class="selected-email-files" id="selectedEmailFiles"></div>
+              <p class="form-note" id="fileSendMessage">Email sending is not connected yet. A Firebase Cloud Function will be needed for live delivery.</p>
+            </article>
+          </section>
+
           <footer class="archive-footer">
             <div>
               <strong id="connectedUsers">Connected Users: --</strong>
@@ -651,7 +729,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.3.6</span></p>
+            <p>Version <span id="appVersion">1.4.0</span></p>
           </footer>
         </div>
       </main>
@@ -1044,6 +1122,92 @@
         <div class="modal-actions">
           <button class="btn btn-outline-eden" value="cancel">Cancel</button>
           <button class="btn btn-eden" id="saveRequirements" value="default">Save Requirements</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native requirement-modal" id="fileBuilderDialog">
+      <form method="dialog" class="modal-card" id="fileBuilderForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">File Builder</p>
+            <h2>Add Course File</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="requirement-builder">
+          <section class="builder-pane">
+            <label class="file-upload-card" for="managedFileInput">
+              <i class="bi bi-cloud-arrow-up"></i>
+              <strong>Upload File</strong>
+              <span>PDFs, ebooks, documents, and course files.</span>
+              <input class="visually-hidden" id="managedFileInput" type="file" />
+            </label>
+            <div class="managed-file-preview" id="managedFilePreview"></div>
+          </section>
+
+          <section class="builder-pane">
+            <label class="form-label">
+              Search Courses
+              <input class="form-control" id="fileCourseSearch" type="search" placeholder="Search by course name or ID" />
+            </label>
+            <div class="course-picker" id="fileCoursePicker"></div>
+            <div class="builder-pane-header mt-3">
+              <h3>Linked Courses</h3>
+              <span id="fileCourseSelectedCount">0</span>
+            </div>
+            <div class="selected-requirements" id="fileSelectedCourses"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" data-close-file-builder type="button">Cancel</button>
+          <button class="btn btn-eden" id="saveManagedFile" type="button">Save File</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native requirement-modal" id="fileSelectorDialog">
+      <form method="dialog" class="modal-card" id="fileSelectorForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">File Selector</p>
+            <h2>Select Student Email Files</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+
+        <div class="requirement-builder">
+          <section class="builder-pane">
+            <label class="form-label">
+              Search All Files
+              <input class="form-control" id="emailFileSearch" type="search" placeholder="Search by file, course, or ID" />
+            </label>
+            <div class="course-picker" id="emailFilePicker"></div>
+          </section>
+
+          <section class="builder-pane">
+            <label class="form-label">
+              Browse by Curriculum
+              <select class="form-select" id="emailCurriculumFilter"></select>
+            </label>
+            <div class="course-picker" id="emailCurriculumFiles"></div>
+            <div class="builder-pane-header mt-3">
+              <h3>Selected Files</h3>
+              <span id="emailSelectedFileCount">0</span>
+            </div>
+            <div class="selected-requirements" id="emailSelectedFiles"></div>
+          </section>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" data-close-file-selector type="button">Cancel</button>
+          <button class="btn btn-eden" id="attachSelectedFiles" type="button">Attach Selected Files</button>
         </div>
       </form>
     </dialog>

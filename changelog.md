@@ -1,5 +1,24 @@
 # New Eden Archive Changelog
 
+## V1.4.0 - 2026-06-04 5:26 PM CT - Central File Manager
+
+### Summary
+- Moved archive file handling toward a centralized File Manager so course files can be uploaded once and reused across every curriculum that contains the linked course.
+
+### New Features
+- Added a File Manager sidebar tab with search, pagination, download actions, and admin-only delete controls.
+- Added an Add File builder that uploads to Firebase Cloud Storage and stores file metadata in Realtime Database under `files`.
+- Added course association selection inside the File Builder so each stored file can link to one or more course IDs.
+- Added a Student Email / File Send tool UI that can select existing File Manager records for a future secure Firebase Cloud Function email sender.
+- Added a multi-select File Selector builder with file search and browse-by-curriculum lookup.
+
+### Fixes
+- Changed the Curriculum Attachments tab to read-only so it automatically displays files attached to the selected curriculum's required course IDs.
+- Disabled direct curriculum attachment uploads to prevent duplicate files across curriculums.
+- Added local RTDB and Storage rules for the new `files` metadata path and `courseFiles` Storage path.
+- Updated the startup loader so it no longer blocks clicks after preview startup finishes.
+- Updated the visible app version label to V1.4.0.
+
 ## V1.3.6 - 2026-06-04 1:50 PM CT - Compact Overview Dashboard
 
 ### Summary

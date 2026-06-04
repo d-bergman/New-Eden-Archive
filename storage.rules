@@ -14,5 +14,10 @@ service firebase.storage {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
+
+    match /courseFiles/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
   }
 }

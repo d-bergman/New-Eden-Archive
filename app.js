@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.6";
+  const appVersion = "1.4.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -28,6 +28,19 @@
   const attachmentState = {
     records: [],
     activeProgram: "",
+  };
+  const fileManagerState = {
+    records: [],
+    selectedFile: null,
+    selectedCourseIds: [],
+    courseSearch: "",
+    search: "",
+    page: 1,
+    rowsPerPage: 10,
+    emailSelectedFileIds: [],
+    emailPickerSelectedIds: [],
+    emailSearch: "",
+    emailCurriculum: "",
   };
   const requirementBuilder = {
     programName: "",
@@ -168,6 +181,18 @@
     taskAssignee: document.querySelector("#taskAssignee"),
     taskDescription: document.querySelector("#taskDescription"),
     taskList: document.querySelector("#taskList"),
+    addManagedFile: document.querySelector("#addManagedFile"),
+    fileManagerSearch: document.querySelector("#fileManagerSearch"),
+    fileManagerRows: document.querySelector("#fileManagerRows"),
+    fileManagerPageSummary: document.querySelector("#fileManagerPageSummary"),
+    fileManagerPagination: document.querySelector("#fileManagerPagination"),
+    fileSendForm: document.querySelector("#fileSendForm"),
+    studentEmail: document.querySelector("#studentEmail"),
+    studentEmailSubject: document.querySelector("#studentEmailSubject"),
+    studentEmailBody: document.querySelector("#studentEmailBody"),
+    openFileSelector: document.querySelector("#openFileSelector"),
+    selectedEmailFiles: document.querySelector("#selectedEmailFiles"),
+    fileSendMessage: document.querySelector("#fileSendMessage"),
     transcriptProgram: document.querySelector("#transcriptProgram"),
     importTranscriptProgram: document.querySelector("#importTranscriptProgram"),
     transcriptCourseSearch: document.querySelector("#transcriptCourseSearch"),
@@ -236,6 +261,24 @@
     selectedRequirements: document.querySelector("#selectedRequirements"),
     requirementSelectedCount: document.querySelector("#requirementSelectedCount"),
     saveRequirements: document.querySelector("#saveRequirements"),
+    fileBuilderDialog: document.querySelector("#fileBuilderDialog"),
+    fileBuilderForm: document.querySelector("#fileBuilderForm"),
+    managedFileInput: document.querySelector("#managedFileInput"),
+    managedFilePreview: document.querySelector("#managedFilePreview"),
+    fileCourseSearch: document.querySelector("#fileCourseSearch"),
+    fileCoursePicker: document.querySelector("#fileCoursePicker"),
+    fileCourseSelectedCount: document.querySelector("#fileCourseSelectedCount"),
+    fileSelectedCourses: document.querySelector("#fileSelectedCourses"),
+    saveManagedFile: document.querySelector("#saveManagedFile"),
+    fileSelectorDialog: document.querySelector("#fileSelectorDialog"),
+    fileSelectorForm: document.querySelector("#fileSelectorForm"),
+    emailFileSearch: document.querySelector("#emailFileSearch"),
+    emailFilePicker: document.querySelector("#emailFilePicker"),
+    emailCurriculumFilter: document.querySelector("#emailCurriculumFilter"),
+    emailCurriculumFiles: document.querySelector("#emailCurriculumFiles"),
+    emailSelectedFileCount: document.querySelector("#emailSelectedFileCount"),
+    emailSelectedFiles: document.querySelector("#emailSelectedFiles"),
+    attachSelectedFiles: document.querySelector("#attachSelectedFiles"),
     programBuilderDialog: document.querySelector("#programBuilderDialog"),
     programBuilderForm: document.querySelector("#programBuilderForm"),
     programBuilderTitle: document.querySelector("#programBuilderTitle"),
@@ -495,6 +538,51 @@
       createTask();
     });
 
+    els.addManagedFile?.addEventListener("click", openFileBuilder);
+    els.fileManagerSearch?.addEventListener("input", (event) => {
+      fileManagerState.search = event.target.value.trim().toLowerCase();
+      fileManagerState.page = 1;
+      renderFileManager();
+    });
+    els.fileManagerPagination?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-file-page]");
+      if (!button) return;
+      fileManagerState.page = Number(button.dataset.filePage);
+      renderFileManager();
+    });
+    els.managedFileInput?.addEventListener("change", (event) => {
+      fileManagerState.selectedFile = event.target.files?.[0] || null;
+      renderFileBuilder();
+    });
+    els.fileCourseSearch?.addEventListener("input", (event) => {
+      fileManagerState.courseSearch = event.target.value.trim().toLowerCase();
+      renderFileBuilder();
+    });
+    els.saveManagedFile?.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveManagedFile();
+    });
+    document.querySelectorAll("[data-close-file-builder]").forEach((button) => {
+      button.addEventListener("click", () => els.fileBuilderDialog?.close("cancel"));
+    });
+    els.openFileSelector?.addEventListener("click", openEmailFileSelector);
+    els.emailFileSearch?.addEventListener("input", (event) => {
+      fileManagerState.emailSearch = event.target.value.trim().toLowerCase();
+      renderEmailFileSelector();
+    });
+    els.emailCurriculumFilter?.addEventListener("change", (event) => {
+      fileManagerState.emailCurriculum = event.target.value;
+      renderEmailFileSelector();
+    });
+    els.attachSelectedFiles?.addEventListener("click", attachEmailFiles);
+    document.querySelectorAll("[data-close-file-selector]").forEach((button) => {
+      button.addEventListener("click", () => els.fileSelectorDialog?.close("cancel"));
+    });
+    els.fileSendForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      prepareStudentFileEmail();
+    });
+
     els.transcriptProgram?.addEventListener("change", (event) => {
       state.transcriptSelectedProgram = event.target.value;
       renderTranscripts();
@@ -561,7 +649,10 @@
     els.editProgramButton.addEventListener("click", () => openProgramEditor(state.selectedProgram));
     els.removeCurriculumButton?.addEventListener("click", () => removeProgram(state.selectedProgram));
     els.removeBlankCourses.addEventListener("click", removeBlankCourses);
-    els.attachmentUpload.addEventListener("change", uploadProgramAttachments);
+    els.attachmentUpload.addEventListener("change", () => {
+      setCloudStatus("Upload course files from File Manager.");
+      els.attachmentUpload.value = "";
+    });
     els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
     document.querySelectorAll(".modal-native").forEach((dialog) => {
       dialog.addEventListener("click", (event) => {
@@ -637,7 +728,7 @@
     els.attachmentDropZone.addEventListener("drop", (event) => {
       event.preventDefault();
       els.attachmentDropZone.classList.remove("is-dragover");
-      handleProgramAttachmentFiles(Array.from(event.dataTransfer?.files || []));
+      setCloudStatus("Upload course files from File Manager.");
     });
   }
 
@@ -654,6 +745,8 @@
     renderNotices();
     renderTasks();
     renderTranscripts();
+    renderFileManager();
+    renderSelectedEmailFiles();
     renderDataHealth();
   }
 
@@ -766,10 +859,8 @@
 
   function hideAppLoader() {
     if (!els.appLoader) return;
-    setTimeout(() => {
-      els.appLoader.classList.add("is-hidden");
-      setTimeout(() => els.appLoader?.remove(), 500);
-    }, 650);
+    els.appLoader.classList.add("is-hidden");
+    setTimeout(() => els.appLoader?.remove(), 500);
   }
 
   function renderStats() {
@@ -859,6 +950,348 @@
     els.taskList.querySelectorAll("[data-delete-task]").forEach((button) => {
       button.addEventListener("click", () => deleteTask(button.dataset.deleteTask));
     });
+  }
+
+  function renderFileManager() {
+    if (!els.fileManagerRows) return;
+    const allFiles = filteredManagedFiles();
+    const page = normalizePage(fileManagerState.page, allFiles.length, fileManagerState.rowsPerPage);
+    fileManagerState.page = page;
+    const start = (page - 1) * fileManagerState.rowsPerPage;
+    const rows = allFiles.slice(start, start + fileManagerState.rowsPerPage);
+    const shownStart = allFiles.length ? start + 1 : 0;
+    const shownEnd = allFiles.length ? Math.min(start + rows.length, allFiles.length) : 0;
+
+    els.fileManagerRows.innerHTML = rows.map((file) => `
+      <tr>
+        <td>
+          <div class="file-cell">
+            <i class="bi bi-file-earmark-text"></i>
+            <div>
+              <strong>${escapeHtml(file.name)}</strong>
+              <small>${escapeHtml(file.contentType || "Stored file")}</small>
+            </div>
+          </div>
+        </td>
+        <td>${linkedCourseBadges(file).join("") || `<span class="text-muted">No linked courses</span>`}</td>
+        <td>${escapeHtml(formatBytes(file.size))}</td>
+        <td>${escapeHtml(formatTimestamp(file.createdAtMs || file.updatedAtMs))}</td>
+        <td class="text-end">
+          <div class="item-actions justify-content-end">
+            <a class="btn btn-sm btn-outline-eden" href="${escapeAttr(file.downloadURL || "#")}" target="_blank" rel="noopener" ${file.downloadURL ? "" : "aria-disabled=\"true\""}>
+              Download
+            </a>
+            <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-delete-managed-file="${escapeAttr(file._docId)}">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `).join("") || emptyRow(5, "No files match the current search.");
+
+    if (els.fileManagerPageSummary) {
+      els.fileManagerPageSummary.textContent = `Showing ${shownStart} to ${shownEnd} of ${allFiles.length} files`;
+    }
+    if (els.fileManagerPagination) {
+      renderPagination(els.fileManagerPagination, page, totalPages(allFiles.length, fileManagerState.rowsPerPage), "files");
+    }
+    els.fileManagerRows.querySelectorAll("[data-delete-managed-file]").forEach((button) => {
+      button.addEventListener("click", () => deleteManagedFile(button.dataset.deleteManagedFile));
+    });
+    renderSelectedEmailFiles();
+  }
+
+  function filteredManagedFiles() {
+    const query = fileManagerState.search;
+    return fileManagerState.records
+      .filter((file) => !query || fileSearchText(file).includes(query))
+      .sort((a, b) => Number(b.createdAtMs || b.updatedAtMs || 0) - Number(a.createdAtMs || a.updatedAtMs || 0));
+  }
+
+  function fileSearchText(file) {
+    return [
+      file.name,
+      file.contentType,
+      ...(file.courseIds || []),
+      ...(file.courseLabels || []),
+    ].join(" ").toLowerCase();
+  }
+
+  function linkedCourseBadges(file) {
+    return (file.courseIds || []).slice(0, 4).map((courseId) => {
+      const course = courseById(courseId);
+      const label = course ? `${course.id} ${course.name}` : courseId;
+      return `<span class="linked-course-badge">${escapeHtml(label)}</span>`;
+    }).concat((file.courseIds || []).length > 4 ? [`<span class="linked-course-badge">+${file.courseIds.length - 4} more</span>`] : []);
+  }
+
+  function openFileBuilder() {
+    if (!state.admin) return;
+    fileManagerState.selectedFile = null;
+    fileManagerState.selectedCourseIds = [];
+    fileManagerState.courseSearch = "";
+    if (els.managedFileInput) els.managedFileInput.value = "";
+    if (els.fileCourseSearch) els.fileCourseSearch.value = "";
+    renderFileBuilder();
+    els.fileBuilderDialog?.showModal();
+  }
+
+  function renderFileBuilder() {
+    if (!els.managedFilePreview) return;
+    const file = fileManagerState.selectedFile;
+    els.managedFilePreview.innerHTML = file ? `
+      <article class="managed-file-card">
+        <i class="bi bi-file-earmark-check"></i>
+        <div>
+          <strong>${escapeHtml(file.name)}</strong>
+          <span>${escapeHtml(file.type || "Unknown type")} - ${escapeHtml(formatBytes(file.size))}</span>
+        </div>
+      </article>
+    ` : `<div class="empty-state">No file selected yet.</div>`;
+
+    const selectedIds = new Set(fileManagerState.selectedCourseIds);
+    const query = fileManagerState.courseSearch;
+    const matches = state.courses
+      .filter((course) => !selectedIds.has(course.id))
+      .filter((course) => !query || matchesText(course, query))
+      .sort((a, b) => naturalCompare(a.id, b.id))
+      .slice(0, 20);
+    els.fileCoursePicker.innerHTML = matches.map((course) => `
+      <button class="course-picker-row" type="button" data-add-file-course="${escapeAttr(course.id)}">
+        <span><strong>${escapeHtml(course.name)}</strong><small>${escapeHtml(course.id)} - Credit ${escapeHtml(course.credit)}</small></span>
+        <i class="bi bi-plus-circle"></i>
+      </button>
+    `).join("") || `<div class="empty-state">No courses match that search.</div>`;
+    els.fileCoursePicker.querySelectorAll("[data-add-file-course]").forEach((button) => {
+      button.addEventListener("click", () => {
+        fileManagerState.selectedCourseIds.push(button.dataset.addFileCourse);
+        renderFileBuilder();
+      });
+    });
+
+    els.fileCourseSelectedCount.textContent = String(fileManagerState.selectedCourseIds.length);
+    els.fileSelectedCourses.innerHTML = fileManagerState.selectedCourseIds.map((courseId) => {
+      const course = courseById(courseId);
+      return `
+        <article class="selected-requirement-row">
+          <span class="requirement-order"><i class="bi bi-link-45deg"></i></span>
+          <span><strong>${escapeHtml(course?.name || courseId)}</strong><small>${escapeHtml(courseId)}${course?.credit ? ` - Credit ${escapeHtml(course.credit)}` : ""}</small></span>
+          <button class="button" type="button" data-remove-file-course="${escapeAttr(courseId)}"><i class="bi bi-x-lg"></i></button>
+        </article>
+      `;
+    }).join("") || `<div class="empty-state">Select at least one course for this file.</div>`;
+    els.fileSelectedCourses.querySelectorAll("[data-remove-file-course]").forEach((button) => {
+      button.addEventListener("click", () => {
+        fileManagerState.selectedCourseIds = fileManagerState.selectedCourseIds.filter((id) => id !== button.dataset.removeFileCourse);
+        renderFileBuilder();
+      });
+    });
+  }
+
+  async function saveManagedFile() {
+    if (!state.admin) return;
+    const file = fileManagerState.selectedFile;
+    if (!file) {
+      setCloudStatus("Choose a file before saving.");
+      return;
+    }
+    if (!fileManagerState.selectedCourseIds.length) {
+      setCloudStatus("Link the file to at least one course.");
+      return;
+    }
+    const docId = slugify(`${Date.now()}-${file.name}`);
+    const courseIds = uniqueValues(fileManagerState.selectedCourseIds);
+    const courseLabels = courseIds.map((id) => {
+      const course = courseById(id);
+      return course ? `${course.id} ${course.name} Credit ${course.credit}` : id;
+    });
+
+    if (firebaseDisabled || !firebaseState.ready || !firebaseState.user) {
+      const record = normalizeFiles([{
+        _docId: docId,
+        name: file.name,
+        size: file.size,
+        contentType: file.type,
+        courseIds,
+        courseLabels,
+        downloadURL: "",
+        storagePath: "",
+        uploadedBy: "local-preview",
+        createdAtMs: Date.now(),
+        updatedAtMs: Date.now(),
+      }])[0];
+      fileManagerState.records.unshift(record);
+      await writeActivity("Uploaded File", "File", record.name, `${courseIds.length} linked course(s).`);
+      els.fileBuilderDialog?.close("saved");
+      render();
+      return;
+    }
+
+    try {
+      const { dbRef, set, serverTimestamp, storageRef, uploadBytesResumable, getDownloadURL } = firebaseState.modules;
+      const storagePath = `courseFiles/${docId}-${file.name}`;
+      const fileRef = storageRef(firebaseState.storage, storagePath);
+      await uploadTaskWithTimeout(uploadBytesResumable(fileRef, file), 45000);
+      const downloadURL = await getDownloadURL(fileRef);
+      const record = {
+        name: file.name,
+        size: file.size,
+        contentType: file.type || "",
+        storagePath,
+        downloadURL,
+        courseIds,
+        courseLabels,
+        uploadedBy: firebaseState.user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await set(dbRef(firebaseState.db, `files/${docId}`), record);
+      fileManagerState.records = normalizeFiles([
+        ...fileManagerState.records.filter((item) => item._docId !== docId),
+        { _docId: docId, ...record, createdAtMs: Date.now(), updatedAtMs: Date.now() },
+      ]);
+      await writeActivity("Uploaded File", "File", file.name, `${courseIds.length} linked course(s): ${courseIds.join(", ")}`);
+      els.fileBuilderDialog?.close("saved");
+      render();
+    } catch (error) {
+      console.warn("Managed file upload failed.", error);
+      setCloudStatus(`File upload failed: ${error.message}`);
+    }
+  }
+
+  async function deleteManagedFile(docId) {
+    if (!state.admin) return;
+    const file = fileManagerState.records.find((item) => item._docId === docId);
+    if (!file) return;
+    const confirmed = await confirmAction({
+      eyebrow: "File Manager",
+      title: "Delete File",
+      message: `Delete "${file.name}" from the File Manager? This removes the stored file and its course associations.`,
+      confirmText: "Delete File",
+      requirePassword: true,
+    });
+    if (!confirmed) return;
+
+    fileManagerState.records = fileManagerState.records.filter((item) => item._docId !== docId);
+    fileManagerState.emailSelectedFileIds = fileManagerState.emailSelectedFileIds.filter((id) => id !== docId);
+    if (canWriteCloud()) {
+      const { dbRef, remove, storageRef, deleteObject } = firebaseState.modules;
+      await remove(dbRef(firebaseState.db, `files/${docId}`));
+      if (file.storagePath && firebaseState.storage) {
+        await deleteObject(storageRef(firebaseState.storage, file.storagePath)).catch(() => {});
+      }
+    }
+    await writeActivity("Deleted File", "File", file.name, `${file.courseIds.length} linked course association(s) removed.`);
+    render();
+  }
+
+  function openEmailFileSelector() {
+    fileManagerState.emailPickerSelectedIds = [...fileManagerState.emailSelectedFileIds];
+    fileManagerState.emailSearch = "";
+    if (els.emailFileSearch) els.emailFileSearch.value = "";
+    const curriculumOptions = programs();
+    if (!fileManagerState.emailCurriculum) fileManagerState.emailCurriculum = state.selectedProgram || curriculumOptions[0]?.name || "";
+    renderEmailFileSelector();
+    els.fileSelectorDialog?.showModal();
+  }
+
+  function renderEmailFileSelector() {
+    if (!els.emailFilePicker) return;
+    const selected = new Set(fileManagerState.emailPickerSelectedIds);
+    const query = fileManagerState.emailSearch;
+    const allMatches = fileManagerState.records
+      .filter((file) => !query || fileSearchText(file).includes(query))
+      .sort((a, b) => naturalCompare(a.name, b.name))
+      .slice(0, 30);
+    els.emailFilePicker.innerHTML = allMatches.map((file) => fileSelectorRow(file, selected.has(file._docId))).join("")
+      || `<div class="empty-state">No files match that search.</div>`;
+
+    const curriculumOptions = programs();
+    els.emailCurriculumFilter.innerHTML = curriculumOptions.map((program) => `
+      <option value="${escapeAttr(program.name)}">${escapeHtml(program.name)}</option>
+    `).join("");
+    if (!curriculumOptions.some((program) => program.name === fileManagerState.emailCurriculum)) {
+      fileManagerState.emailCurriculum = curriculumOptions[0]?.name || "";
+    }
+    els.emailCurriculumFilter.value = fileManagerState.emailCurriculum;
+    const curriculumFiles = filesForProgram(fileManagerState.emailCurriculum);
+    els.emailCurriculumFiles.innerHTML = curriculumFiles.map((file) => fileSelectorRow(file, selected.has(file._docId))).join("")
+      || `<div class="empty-state">No files are linked to this curriculum's courses yet.</div>`;
+    els.emailSelectedFileCount.textContent = String(selected.size);
+    els.emailSelectedFiles.innerHTML = [...selected].map((docId) => {
+      const file = fileManagerState.records.find((item) => item._docId === docId);
+      if (!file) return "";
+      return `
+        <article class="selected-requirement-row">
+          <span class="requirement-order"><i class="bi bi-paperclip"></i></span>
+          <span><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(formatBytes(file.size))}</small></span>
+          <button class="button" type="button" data-toggle-email-file="${escapeAttr(file._docId)}"><i class="bi bi-x-lg"></i></button>
+        </article>
+      `;
+    }).join("") || `<div class="empty-state">No files selected yet.</div>`;
+
+    els.fileSelectorDialog.querySelectorAll("[data-toggle-email-file]").forEach((button) => {
+      button.addEventListener("click", () => toggleEmailPickerFile(button.dataset.toggleEmailFile));
+    });
+  }
+
+  function fileSelectorRow(file, selected) {
+    return `
+      <button class="course-picker-row ${selected ? "is-selected" : ""}" type="button" data-toggle-email-file="${escapeAttr(file._docId)}">
+        <span><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(formatBytes(file.size))} - ${escapeHtml((file.courseIds || []).join(", ") || "No linked course")}</small></span>
+        <i class="bi ${selected ? "bi-check-circle-fill" : "bi-plus-circle"}"></i>
+      </button>
+    `;
+  }
+
+  function toggleEmailPickerFile(docId) {
+    const selected = new Set(fileManagerState.emailPickerSelectedIds);
+    if (selected.has(docId)) selected.delete(docId);
+    else selected.add(docId);
+    fileManagerState.emailPickerSelectedIds = [...selected];
+    renderEmailFileSelector();
+  }
+
+  function attachEmailFiles() {
+    fileManagerState.emailSelectedFileIds = [...new Set(fileManagerState.emailPickerSelectedIds)];
+    els.fileSelectorDialog?.close("attached");
+    renderSelectedEmailFiles();
+  }
+
+  function renderSelectedEmailFiles() {
+    if (!els.selectedEmailFiles) return;
+    const files = fileManagerState.emailSelectedFileIds
+      .map((docId) => fileManagerState.records.find((file) => file._docId === docId))
+      .filter(Boolean);
+    els.selectedEmailFiles.innerHTML = files.map((file) => `
+      <article class="attachment-item">
+        <i class="bi bi-paperclip"></i>
+        <div>
+          <strong>${escapeHtml(file.name)}</strong>
+          <span>${escapeHtml(formatBytes(file.size))} ${file.courseIds.length ? `&bull; ${escapeHtml(file.courseIds.join(", "))}` : ""}</span>
+        </div>
+        <button class="btn btn-sm btn-outline-danger" type="button" data-remove-email-file="${escapeAttr(file._docId)}">Remove</button>
+      </article>
+    `).join("") || `<div class="empty-state">No files selected for email.</div>`;
+    els.selectedEmailFiles.querySelectorAll("[data-remove-email-file]").forEach((button) => {
+      button.addEventListener("click", () => {
+        fileManagerState.emailSelectedFileIds = fileManagerState.emailSelectedFileIds.filter((docId) => docId !== button.dataset.removeEmailFile);
+        renderSelectedEmailFiles();
+      });
+    });
+  }
+
+  async function prepareStudentFileEmail() {
+    const email = els.studentEmail?.value.trim() || "";
+    const selectedFiles = fileManagerState.emailSelectedFileIds
+      .map((docId) => fileManagerState.records.find((file) => file._docId === docId))
+      .filter(Boolean);
+    if (!email || !selectedFiles.length) {
+      if (els.fileSendMessage) els.fileSendMessage.textContent = "Enter a student email and select at least one file.";
+      return;
+    }
+    if (els.fileSendMessage) {
+      els.fileSendMessage.textContent = "Email backend is not connected yet. Add a Firebase Cloud Function to send selected file IDs securely.";
+    }
+    await writeActivity("Prepared File Email", "Student Email", email, `${selectedFiles.length} file(s) selected: ${selectedFiles.map((file) => file.name).join(", ")}`);
   }
 
   function renderTranscripts() {
@@ -1701,7 +2134,7 @@
 
   function renderPagination(container, currentPage, pageCount, mode) {
     if (!container) return;
-    const attr = mode === "overview" ? "data-overview-page" : "data-course-page";
+    const attr = mode === "overview" ? "data-overview-page" : mode === "files" ? "data-file-page" : "data-course-page";
     const pages = pageNumbers(currentPage, pageCount);
     const item = (page, label, disabled = false, active = false) => `
       <li class="page-item ${disabled ? "disabled" : ""} ${active ? "active" : ""}">
@@ -1788,7 +2221,7 @@
     const program = programs().find((item) => item.name === selected);
     const section = rowsForProgram[0]?.section || program?.section || "Program";
     const description = programDescription(program, section);
-    const attachments = attachmentsForProgram(selected);
+    const attachments = filesForProgram(selected);
 
     if (tab === "attachments") {
       els.featuredProgramDetail.style.display = "none";
@@ -1798,21 +2231,14 @@
           <i class="bi bi-file-earmark-text"></i>
           <div>
             <strong>${escapeHtml(attachment.name)}</strong>
-            <span>${escapeHtml(formatBytes(attachment.size))} ${attachment.contentType ? `&bull; ${escapeHtml(attachment.contentType)}` : ""}</span>
+            <span>${escapeHtml(formatBytes(attachment.size))} ${attachment.contentType ? `&bull; ${escapeHtml(attachment.contentType)}` : ""}${attachment.matchedCourseIds?.length ? ` &bull; Course ${escapeHtml(attachment.matchedCourseIds.join(", "))}` : ""}</span>
           </div>
           <a class="btn btn-sm btn-outline-eden" href="${escapeAttr(attachment.downloadURL || "#")}" target="_blank" rel="noopener" ${attachment.downloadURL ? "" : "aria-disabled=\"true\""}>
             <i class="bi bi-download"></i>
             Download
           </a>
-          <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-remove-attachment="${escapeAttr(attachment._docId)}">
-            Remove
-          </button>
         </article>
-      `).join("") || `<div class="empty-state">No attachments have been added for this program yet.</div>`;
-
-      els.attachmentList.querySelectorAll("[data-remove-attachment]").forEach((button) => {
-        button.addEventListener("click", () => removeAttachment(button.dataset.removeAttachment));
-      });
+      `).join("") || `<div class="empty-state">No course-linked files have been added for this curriculum yet. Add them from File Manager.</div>`;
       return;
     }
 
@@ -3495,13 +3921,14 @@
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, fileSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
       get(dbRef(firebaseState.db, "curriculumRows")),
       get(dbRef(firebaseState.db, "versionHistory")),
       get(dbRef(firebaseState.db, "attachments")),
+      readOptionalPath("files"),
       readOptionalPath("activityLog"),
       readOptionalPath("notices"),
       readOptionalPath("tasks"),
@@ -3516,6 +3943,7 @@
       curriculumRows: rtdbList(curriculumSnap.val()).length,
       versionHistory: rtdbList(versionSnap.val()).length,
       attachments: rtdbList(attachmentSnap.val()).length,
+      files: rtdbList(fileSnap?.val()).length,
       activityLog: rtdbList(activitySnap?.val()).length,
       notices: rtdbList(noticeSnap?.val()).length,
       tasks: rtdbList(taskSnap?.val()).length,
@@ -3526,6 +3954,7 @@
 
     if (!firebaseState.hasCloudArchive) {
       attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
+      fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
       return sizes;
     }
 
@@ -3535,6 +3964,7 @@
     state.curriculum = normalizeCurriculum(rtdbList(curriculumSnap.val()));
     state.versionHistory = rtdbList(versionSnap.val());
     attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
+    fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
     state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
@@ -3611,6 +4041,14 @@
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "attachments"), (snapshot) => {
       attachmentState.records = normalizeAttachments(rtdbList(snapshot.val()));
       render();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "files"), (snapshot) => {
+      fileManagerState.records = normalizeFiles(rtdbList(snapshot.val()));
+      renderFileManager();
+      renderSelectedEmailFiles();
+      renderProgramPanel(activeProgramTab());
+      renderOverview();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "activityLog"), (snapshot) => {
@@ -4708,6 +5146,28 @@
     })).filter((attachment) => attachment.name);
   }
 
+  function normalizeFiles(files) {
+    return (files || []).map((file) => {
+      const courseIds = Array.isArray(file.courseIds)
+        ? file.courseIds
+        : Object.keys(file.courseIds || {});
+      return {
+        _docId: file._docId || slugify(`${file.name || "file"}-${file.createdAtMs || Date.now()}`),
+        name: file.name || "",
+        size: Number(file.size || 0),
+        contentType: file.contentType || "",
+        storagePath: file.storagePath || "",
+        downloadURL: file.downloadURL || "",
+        courseIds: uniqueValues(courseIds.map((id) => String(id).trim()).filter(Boolean)),
+        courseLabels: Array.isArray(file.courseLabels) ? file.courseLabels : Object.values(file.courseLabels || {}),
+        uploadedByUid: file.uploadedByUid || "",
+        uploadedByName: file.uploadedByName || file.uploadedBy || "",
+        createdAtMs: Number(file.createdAtMs || file.createdAt || 0),
+        updatedAtMs: Number(file.updatedAtMs || file.updatedAt || file.createdAtMs || file.createdAt || 0),
+      };
+    }).filter((file) => file.name);
+  }
+
   function normalizeActivityLog(entries) {
     return (entries || []).map((entry) => ({
       _docId: entry._docId || slugify(`${entry.action || "log"}-${entry.createdAtMs || Date.now()}`),
@@ -4762,7 +5222,27 @@
   }
 
   function attachmentsForProgram(programName) {
-    return attachmentState.records.filter((attachment) => attachment.ownerType === "program" && attachment.ownerName === programName);
+    return filesForProgram(programName);
+  }
+
+  function filesForProgram(programName) {
+    const requiredCourseIds = new Set(curriculumForProgram(programName).map((row) => String(row.courseId)));
+    if (!requiredCourseIds.size) return [];
+    return fileManagerState.records
+      .filter((file) => file.courseIds.some((courseId) => requiredCourseIds.has(String(courseId))))
+      .map((file) => ({
+        ...file,
+        matchedCourseIds: file.courseIds.filter((courseId) => requiredCourseIds.has(String(courseId))),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function courseById(courseId) {
+    return state.courses.find((course) => String(course.id) === String(courseId));
+  }
+
+  function uniqueValues(values) {
+    return Array.from(new Set((values || []).map((value) => String(value).trim()).filter(Boolean)));
   }
 
   function activeProgramTab() {
