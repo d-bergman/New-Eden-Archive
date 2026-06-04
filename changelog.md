@@ -1,5 +1,22 @@
 # New Eden Archive Changelog
 
+## V1.3.0 - 2026-06-03 8:03 PM CT - Transcript Builder Foundation
+
+### Summary
+- Added the first usable web transcript builder and polished task/dark-mode issues.
+
+### New Features
+- Replaced the transcript placeholder with a transcript workspace that uses Firebase-backed archive courses and curriculums.
+- Added student detail inputs, curriculum import, searchable manual course adding, editable percentage rows, calculated grades, GPA, and total credit hours.
+- Added Print / Save PDF generation using a web version of the existing Electron transcript layout.
+- Added a broader assignee directory that includes saved profiles, connected users, activity log users, task users, notice authors, and core staff names.
+
+### Fixes
+- Brightened dark-mode body, panel, table, task, and transcript text to match the Dark Reader reference more closely.
+- Fixed Done/Edit/Delete task button alignment and centered button text.
+- Kept completed tasks fully readable instead of fading the whole task card.
+- Updated the visible app version label to V1.3.0.
+
 ## V1.2.2 - 2026-06-03 4:23 PM CT - Dark Reader Theme Match
 
 ### Summary

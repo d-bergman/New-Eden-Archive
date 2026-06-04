@@ -408,20 +408,92 @@
                 <div>
                   <p class="eyebrow">Transcripts</p>
                   <h2>Transcript Generator</h2>
-                  <p class="section-subtitle">Placeholder workspace for the transcript generator that will be merged from the existing desktop tool later.</p>
+                  <p class="section-subtitle">Build transcripts from Firebase course and curriculum data, then print or save the transcript PDF.</p>
                 </div>
               </div>
-              <div class="transcript-placeholder">
-                <div class="transcript-icon" aria-hidden="true">
-                  <i class="bi bi-file-earmark-richtext"></i>
+              <div class="transcript-workspace">
+                <div class="transcript-builder-panel">
+                  <h3>Student Details</h3>
+                  <div class="transcript-form-grid">
+                    <label class="form-label">
+                      Full Name
+                      <input class="form-control" id="transcriptStudentName" placeholder="John Smith" />
+                    </label>
+                    <label class="form-label">
+                      Student ID
+                      <input class="form-control" id="transcriptStudentId" placeholder="NES201989563" />
+                    </label>
+                    <label class="form-label">
+                      Date of Birth
+                      <input class="form-control" id="transcriptDob" type="date" />
+                    </label>
+                    <label class="form-label">
+                      Attended From
+                      <input class="form-control" id="transcriptFrom" type="date" />
+                    </label>
+                    <label class="form-label">
+                      Attended To
+                      <input class="form-control" id="transcriptTo" type="date" />
+                    </label>
+                    <label class="transcript-check">
+                      <input class="form-check-input" id="transcriptGraduated" type="checkbox" checked />
+                      <span>Graduated</span>
+                    </label>
+                  </div>
+
+                  <hr />
+
+                  <h3>Import Curriculum</h3>
+                  <div class="transcript-import-row">
+                    <select class="form-select" id="transcriptProgram" aria-label="Choose curriculum to import"></select>
+                    <button class="btn btn-outline-eden" id="importTranscriptProgram" type="button">
+                      <i class="bi bi-box-arrow-in-down"></i>
+                      Import
+                    </button>
+                  </div>
+
+                  <h3>Add Courses Manually</h3>
+                  <div class="search-field">
+                    <i class="bi bi-search"></i>
+                    <input id="transcriptCourseSearch" type="search" placeholder="Search courses by name or ID" />
+                  </div>
+                  <div class="transcript-course-picker" id="transcriptCoursePicker"></div>
                 </div>
-                <div>
-                  <h3>Generator coming in a future update</h3>
-                  <p>This tab is reserved for building student transcripts from archive data, course requirements, and the existing Electron generator workflow.</p>
-                  <div class="placeholder-grid">
-                    <span><i class="bi bi-person-vcard"></i> Student profile inputs</span>
-                    <span><i class="bi bi-list-check"></i> Completed course selection</span>
-                    <span><i class="bi bi-printer"></i> Printable transcript output</span>
+
+                <div class="transcript-builder-panel">
+                  <div class="required-header">
+                    <div>
+                      <h3>Transcript Rows</h3>
+                      <p class="section-subtitle">Imported rows stay editable. Add, remove, and enter percentages before generating.</p>
+                    </div>
+                    <div class="transcript-actions">
+                      <button class="btn btn-outline-eden" id="clearTranscript" type="button">Clear</button>
+                      <button class="btn btn-eden" id="printTranscript" type="button">
+                        <i class="bi bi-printer"></i>
+                        Print / Save PDF
+                      </button>
+                    </div>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table archive-table transcript-table">
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Course ID</th>
+                          <th>Course Name</th>
+                          <th>Credit</th>
+                          <th>Percent</th>
+                          <th>Grade</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody id="transcriptCourseRows"></tbody>
+                    </table>
+                  </div>
+                  <p class="empty-state" id="transcriptEmpty">No transcript courses have been added yet.</p>
+                  <div class="transcript-totals">
+                    <span><strong>Total Credit Hours</strong><b id="transcriptTotalCredits">0</b></span>
+                    <span><strong>GPA</strong><b id="transcriptGpa">0.0</b></span>
                   </div>
                 </div>
               </div>
@@ -532,7 +604,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.2.2</span></p>
+            <p>Version <span id="appVersion">1.3.0</span></p>
           </footer>
         </div>
       </main>

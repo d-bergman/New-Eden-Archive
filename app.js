@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.2.2";
+  const appVersion = "1.3.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -46,6 +46,13 @@
     notes: "",
     curriculums: [],
   };
+  const staffDirectory = [
+    { uid: "staff:darren", name: "Darren" },
+    { uid: "staff:bhumika", name: "Bhumika" },
+    { uid: "staff:donna", name: "Donna" },
+    { uid: "staff:larry", name: "Larry" },
+    { uid: "staff:dr-duda", name: "Dr. Duda" },
+  ];
 
   const state = {
     courses: [],
@@ -57,6 +64,9 @@
     notices: [],
     tasks: [],
     directoryUsers: [],
+    transcriptRows: [],
+    transcriptCourseSearch: "",
+    transcriptSelectedProgram: "",
     search: "",
     activityLogSearch: "",
     view: "overview",
@@ -143,6 +153,22 @@
     taskAssignee: document.querySelector("#taskAssignee"),
     taskDescription: document.querySelector("#taskDescription"),
     taskList: document.querySelector("#taskList"),
+    transcriptProgram: document.querySelector("#transcriptProgram"),
+    importTranscriptProgram: document.querySelector("#importTranscriptProgram"),
+    transcriptCourseSearch: document.querySelector("#transcriptCourseSearch"),
+    transcriptCoursePicker: document.querySelector("#transcriptCoursePicker"),
+    transcriptCourseRows: document.querySelector("#transcriptCourseRows"),
+    transcriptEmpty: document.querySelector("#transcriptEmpty"),
+    transcriptTotalCredits: document.querySelector("#transcriptTotalCredits"),
+    transcriptGpa: document.querySelector("#transcriptGpa"),
+    transcriptStudentName: document.querySelector("#transcriptStudentName"),
+    transcriptStudentId: document.querySelector("#transcriptStudentId"),
+    transcriptDob: document.querySelector("#transcriptDob"),
+    transcriptFrom: document.querySelector("#transcriptFrom"),
+    transcriptTo: document.querySelector("#transcriptTo"),
+    transcriptGraduated: document.querySelector("#transcriptGraduated"),
+    printTranscript: document.querySelector("#printTranscript"),
+    clearTranscript: document.querySelector("#clearTranscript"),
     programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
     removeCurriculumButton: document.querySelector("#removeCurriculumButton"),
@@ -429,6 +455,46 @@
       createTask();
     });
 
+    els.transcriptProgram?.addEventListener("change", (event) => {
+      state.transcriptSelectedProgram = event.target.value;
+      renderTranscripts();
+    });
+
+    els.importTranscriptProgram?.addEventListener("click", importTranscriptCurriculum);
+
+    els.transcriptCourseSearch?.addEventListener("input", (event) => {
+      state.transcriptCourseSearch = event.target.value.trim().toLowerCase();
+      renderTranscriptCoursePicker();
+    });
+
+    els.transcriptCoursePicker?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-add-transcript-course]");
+      if (!button) return;
+      addTranscriptCourse(button.dataset.addTranscriptCourse);
+    });
+
+    els.transcriptCourseRows?.addEventListener("input", (event) => {
+      const input = event.target.closest("[data-transcript-percent]");
+      if (!input) return;
+      const row = state.transcriptRows.find((item) => item.key === input.dataset.transcriptPercent);
+      if (row) row.percent = input.value;
+      renderTranscriptTotals();
+    });
+
+    els.transcriptCourseRows?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-remove-transcript-course]");
+      if (!button) return;
+      state.transcriptRows = state.transcriptRows.filter((row) => row.key !== button.dataset.removeTranscriptCourse);
+      renderTranscriptRows();
+    });
+
+    els.clearTranscript?.addEventListener("click", () => {
+      state.transcriptRows = [];
+      renderTranscriptRows();
+    });
+
+    els.printTranscript?.addEventListener("click", printTranscript);
+
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
       signInUser(els.adminEmail.value.trim(), els.adminPassword.value);
@@ -534,6 +600,7 @@
     renderActivityLog();
     renderNotices();
     renderTasks();
+    renderTranscripts();
     renderDataHealth();
   }
 
@@ -681,8 +748,11 @@
       `).join("");
     }
     if (!els.taskList) return;
+    const displayName = currentUserDisplayName();
     const visibleTasks = state.tasks
-      .filter((task) => state.admin || task.assigneeUid === firebaseState.user?.uid)
+      .filter((task) => state.admin
+        || task.assigneeUid === firebaseState.user?.uid
+        || (displayName && task.assigneeName === displayName))
       .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
     els.taskList.innerHTML = visibleTasks.map((task) => `
       <article class="task-item ${task.status === "done" ? "is-done" : ""}">
@@ -711,6 +781,263 @@
     els.taskList.querySelectorAll("[data-delete-task]").forEach((button) => {
       button.addEventListener("click", () => deleteTask(button.dataset.deleteTask));
     });
+  }
+
+  function renderTranscripts() {
+    if (!els.transcriptProgram) return;
+    const curriculumOptions = programs();
+    if (!state.transcriptSelectedProgram) {
+      state.transcriptSelectedProgram = state.selectedProgram || curriculumOptions[0]?.name || "";
+    }
+    els.transcriptProgram.innerHTML = curriculumOptions.map((program) => `
+      <option value="${escapeAttr(program.name)}">${escapeHtml(program.name)}</option>
+    `).join("");
+    els.transcriptProgram.value = state.transcriptSelectedProgram;
+    renderTranscriptCoursePicker();
+    renderTranscriptRows();
+  }
+
+  function renderTranscriptCoursePicker() {
+    if (!els.transcriptCoursePicker) return;
+    const selectedIds = new Set(state.transcriptRows.map((row) => row.courseId));
+    const query = state.transcriptCourseSearch;
+    const matches = state.courses
+      .filter((course) => !selectedIds.has(course.id))
+      .filter((course) => !query || matchesText(course, query))
+      .slice(0, 8);
+
+    els.transcriptCoursePicker.innerHTML = matches.map((course) => `
+      <button class="course-picker-row" type="button" data-add-transcript-course="${escapeAttr(course.id)}">
+        <span>
+          <strong>${escapeHtml(course.name)}</strong>
+          <small>${escapeHtml(course.id)} &bull; Credit ${escapeHtml(course.credit)}</small>
+        </span>
+        <i class="bi bi-plus-circle"></i>
+      </button>
+    `).join("") || `<div class="empty-state">Search the course catalog by name or course number.</div>`;
+  }
+
+  function renderTranscriptRows() {
+    if (!els.transcriptCourseRows) return;
+    if (els.transcriptEmpty) els.transcriptEmpty.hidden = Boolean(state.transcriptRows.length);
+    els.transcriptCourseRows.innerHTML = state.transcriptRows.map((row, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapeHtml(row.courseId)}</td>
+        <td>${escapeHtml(row.name)}</td>
+        <td>${escapeHtml(row.credit)}</td>
+        <td>
+          <input class="form-control form-control-sm transcript-percent-input" data-transcript-percent="${escapeAttr(row.key)}" value="${escapeAttr(row.percent || "")}" placeholder="96.5 or PASS" />
+        </td>
+        <td>${escapeHtml(transcriptGrade(row.percent))}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-danger" type="button" data-remove-transcript-course="${escapeAttr(row.key)}">Remove</button>
+        </td>
+      </tr>
+    `).join("");
+    renderTranscriptTotals();
+    renderTranscriptCoursePicker();
+  }
+
+  function renderTranscriptTotals() {
+    const totalCredits = state.transcriptRows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
+    if (els.transcriptTotalCredits) els.transcriptTotalCredits.textContent = String(totalCredits);
+    if (els.transcriptGpa) els.transcriptGpa.textContent = transcriptGpa(state.transcriptRows);
+  }
+
+  function importTranscriptCurriculum() {
+    const rows = curriculumForProgram(state.transcriptSelectedProgram)
+      .map((row) => transcriptRowFromCourse(findCourseForCurriculumRow(row), row))
+      .filter(Boolean);
+    state.transcriptRows = dedupeTranscriptRows([...state.transcriptRows, ...rows]);
+    renderTranscriptRows();
+  }
+
+  function addTranscriptCourse(courseId) {
+    const course = state.courses.find((item) => item.id === courseId);
+    const row = transcriptRowFromCourse(course);
+    if (!row) return;
+    state.transcriptRows = dedupeTranscriptRows([...state.transcriptRows, row]);
+    if (els.transcriptCourseSearch) els.transcriptCourseSearch.value = "";
+    state.transcriptCourseSearch = "";
+    renderTranscriptRows();
+  }
+
+  function findCourseForCurriculumRow(row) {
+    return state.courses.find((course) => (
+      String(course.id) === String(row.courseId)
+      || stripCredit(row.courseLabel).toLowerCase() === String(course.name || "").toLowerCase()
+    ));
+  }
+
+  function transcriptRowFromCourse(course, row = {}) {
+    if (!course && !row.courseId && !row.courseLabel) return null;
+    const courseId = course?.id || row.courseId || "";
+    const name = course?.name || stripCredit(row.courseLabel) || "Course";
+    return {
+      key: slugify(`${courseId || name}-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+      courseId,
+      name,
+      credit: course?.credit || row.credit || "",
+      percent: row.percent || "",
+    };
+  }
+
+  function dedupeTranscriptRows(rows) {
+    const seen = new Set();
+    return rows.filter((row) => {
+      const key = String(row.courseId || row.name).toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function transcriptGrade(percent) {
+    const value = String(percent || "").trim();
+    if (!value) return "";
+    if (/^p(ass)?$/i.test(value)) return "PASS";
+    const score = Number(value);
+    if (Number.isNaN(score)) return "PASS";
+    if (score >= 90 && score <= 100) return "A";
+    if (score >= 80) return "B";
+    if (score >= 70) return "C";
+    if (score >= 65) return "D";
+    return "PASS";
+  }
+
+  function transcriptGpa(rows) {
+    const scores = rows
+      .map((row) => Number(String(row.percent || "").replace("%", "")))
+      .filter((score) => !Number.isNaN(score) && score <= 100);
+    if (!scores.length) return "0.0";
+    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    if (average >= 93) return "4.0";
+    if (average >= 90) return "3.7";
+    if (average >= 87) return "3.3";
+    if (average >= 83) return "3.0";
+    if (average >= 80) return "2.7";
+    if (average >= 77) return "2.3";
+    if (average >= 73) return "2.0";
+    if (average >= 70) return "1.7";
+    if (average >= 67) return "1.3";
+    if (average >= 65) return "1.0";
+    return "0.0";
+  }
+
+  function printTranscript() {
+    if (!state.transcriptRows.length) {
+      alertAction({
+        eyebrow: "Transcripts",
+        title: "No Courses Added",
+        message: "Add courses manually or import a curriculum before generating the transcript.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    const transcriptWindow = window.open("", "_blank", "width=900,height=1100");
+    if (!transcriptWindow) return;
+    const rows = state.transcriptRows.map((row) => `
+      <tr>
+        <td class="center">NES</td>
+        <td class="center">${escapeHtml(row.courseId)}</td>
+        <td>${escapeHtml(row.name)}</td>
+        <td class="center">${escapeHtml(row.credit)}</td>
+        <td class="center">${escapeHtml(formatTranscriptPercent(row.percent))}</td>
+        <td class="center">${escapeHtml(transcriptGrade(row.percent))}</td>
+      </tr>
+    `).join("");
+    const today = new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+    const attended = `${dateForTranscript(els.transcriptFrom?.value) || "NA"}/${dateForTranscript(els.transcriptTo?.value) || "NA"}`;
+    const html = `<!doctype html>
+      <html>
+        <head>
+          <title>New Eden Transcript</title>
+          <style>
+            @page { size: A4; margin: 0.4in; }
+            body { font-family: "Open Sans", Arial, sans-serif; color: #111; font-size: 12px; }
+            .row { display: flex; justify-content: space-between; gap: 24px; }
+            .right { text-align: right; }
+            .center { text-align: center; }
+            .brand { font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 700; color: #173d2a; }
+            .divider { margin: 14px 0; padding: 7px 0; border-top: 1.5px dashed #111; border-bottom: 1.5px dashed #111; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            th, td { padding: 2px 4px; vertical-align: top; }
+            th { font-weight: 700; border-bottom: 1px solid #222; }
+            .title { width: 62%; }
+            .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: end; }
+            .seal { width: 84px; height: 84px; border: 2px solid #173d2a; border-radius: 50%; display: grid; place-items: center; font-family: Georgia, serif; color: #173d2a; }
+            .signature { text-align: right; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="row">
+            <div class="brand">New Eden School</div>
+            <div class="right">
+              9783 E 116th St PMB 1104<br />
+              Fishers, IN 46037<br />
+              www.newedenschoolofnaturalhealth.org
+            </div>
+          </div>
+          <br />
+          <div class="row">
+            <div>
+              Name: ${escapeHtml(els.transcriptStudentName?.value || "")}<br />
+              Student ID: ${escapeHtml(els.transcriptStudentId?.value || "")}<br />
+              Date of Birth: ${escapeHtml(dateLongForTranscript(els.transcriptDob?.value))}
+            </div>
+            <div class="right">Date Created: ${escapeHtml(today)}</div>
+          </div>
+          <p class="center">**************************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS*************************************************</p>
+          <div class="row divider">
+            <div><strong>Program</strong><br />${escapeHtml(state.transcriptSelectedProgram || "")}</div>
+            <div class="right"><strong>Attended From/To</strong><br />${escapeHtml(attended)}</div>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Subj</th><th>Num</th><th class="title">Title</th><th>Cr</th><th>Per</th><th>Grade</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="row divider">
+            <div><strong>Total Credit Hours</strong><br />${escapeHtml(els.transcriptTotalCredits?.textContent || "0")}</div>
+            <div class="right"><strong>GPA</strong><br />${escapeHtml(els.transcriptGpa?.textContent || "0.0")}</div>
+          </div>
+          <p class="center"><strong>${els.transcriptGraduated?.checked ? "Graduated" : "Not Graduated"}</strong></p>
+          <p class="center">*************************************************************END OF PAGE*************************************************************</p>
+          <div class="footer">
+            <div class="seal">NES</div>
+            <div class="signature">
+              <div style="font-family: Georgia, serif; font-size: 22px;">Donna DeSantis</div>
+              Donna DeSantis<br />Administration and Records
+            </div>
+          </div>
+          <script>window.addEventListener("load", () => setTimeout(() => window.print(), 150));<\/script>
+        </body>
+      </html>`;
+    transcriptWindow.document.write(html);
+    transcriptWindow.document.close();
+  }
+
+  function formatTranscriptPercent(percent) {
+    const value = String(percent || "").trim();
+    if (!value) return "";
+    if (/^p(ass)?$/i.test(value)) return "PASS";
+    if (value.includes("%")) return value;
+    if (value.includes(".")) return `${value}%`;
+    return value === "100" ? "100%" : `${value}.0%`;
+  }
+
+  function dateForTranscript(value) {
+    return String(value || "").replaceAll("/", ".");
+  }
+
+  function dateLongForTranscript(value) {
+    if (!value) return "";
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
   }
 
   function renderActivityLog() {
@@ -3682,25 +4009,39 @@
 
   function taskAssignees() {
     const users = new Map();
-    state.directoryUsers.forEach((user) => {
-      if (!user.uid) return;
-      users.set(user.uid, {
-        uid: user.uid,
-        name: user.name || user.email?.split("@")[0] || "Employee",
+    const addUser = (user) => {
+      const name = user?.name || user?.displayName || user?.fullName || user?.email?.split("@")[0] || "";
+      if (!name) return;
+      const uid = user?.uid || user?._docId || `staff:${slugify(name)}`;
+      users.set(uid, {
+        uid,
+        name,
+        email: user?.email || "",
       });
+    };
+    staffDirectory.forEach(addUser);
+    state.directoryUsers.forEach((user) => {
+      addUser(user);
     });
     if (firebaseState.user) {
       users.set(firebaseState.user.uid, {
         uid: firebaseState.user.uid,
         name: currentUserDisplayName() || firebaseState.user.email?.split("@")[0] || "Me",
+        email: firebaseState.user.email || "",
       });
     }
     state.connectedUsers.forEach((user) => {
-      if (!user.uid) return;
-      users.set(user.uid, {
-        uid: user.uid,
-        name: user.name || user.email?.split("@")[0] || "Employee",
-      });
+      addUser(user);
+    });
+    state.tasks.forEach((task) => {
+      addUser({ uid: task.assigneeUid, name: task.assigneeName });
+      addUser({ uid: task.createdByUid, name: task.createdByName });
+    });
+    state.activityLog.forEach((entry) => {
+      addUser({ uid: entry.userUid, name: entry.userName, email: entry.userEmail });
+    });
+    state.notices.forEach((notice) => {
+      addUser({ uid: notice.authorUid, name: notice.authorName });
     });
     return Array.from(users.values()).sort((a, b) => a.name.localeCompare(b.name));
   }
