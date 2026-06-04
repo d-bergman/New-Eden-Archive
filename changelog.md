@@ -1,5 +1,17 @@
 # New Eden Archive Changelog
 
+## V1.3.6 - 2026-06-04 1:50 PM CT - Compact Overview Dashboard
+
+### Summary
+- Tightened the Overview dashboard and added the app title to the top utility bar.
+
+### Fixes
+- Added `New Eden Dashboard` with `Archive & Realtime Database` subtext to the top bar.
+- Compacted Overview modules into smaller dashboard cards with denser headings and list rows.
+- Limited Latest Archive Changes to 5 visible items and added compact pagination.
+- Updated light, dark, and responsive styling for the compact dashboard layout.
+- Updated the visible app version label to V1.3.6.
+
 ## V1.3.5 - 2026-06-04 1:35 PM CT - Overview Dashboard and Staff Dedupe
 
 ### Summary

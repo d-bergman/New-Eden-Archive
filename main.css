@@ -187,6 +187,15 @@ body.theme-dark .overview-empty {
   border-color: var(--eden-line);
 }
 
+body.theme-dark .utility-title strong {
+  color: #f1eee6;
+}
+
+body.theme-dark .utility-title span,
+body.theme-dark .overview-mini-pagination {
+  color: #c7c1b5;
+}
+
 body.theme-dark .form-control,
 body.theme-dark .form-select,
 body.theme-dark input,
@@ -609,11 +618,31 @@ textarea {
   z-index: 30;
   display: flex;
   align-items: center;
+  gap: 20px;
   min-height: 68px;
   padding: 0 32px;
   border-bottom: 1px solid var(--eden-line);
   background: rgba(251, 250, 245, 0.93);
   backdrop-filter: blur(18px);
+}
+
+.utility-title {
+  display: grid;
+  gap: 1px;
+  min-width: 260px;
+}
+
+.utility-title strong {
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.35rem;
+  line-height: 1.05;
+}
+
+.utility-title span {
+  color: var(--eden-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
 }
 
 .icon-btn {
@@ -2192,39 +2221,54 @@ mark {
 
 .overview-dashboard {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .overview-panel {
   min-height: 0;
   overflow: hidden;
+  padding: 18px;
 }
 
-.overview-activity-panel,
+.overview-activity-panel {
+  grid-column: span 2;
+}
+
 .overview-trends-panel {
   grid-column: 1 / -1;
 }
 
 .compact-heading {
   align-items: start;
-  padding-bottom: 14px;
+  padding-bottom: 10px;
 }
 
 .compact-heading h2 {
-  font-size: clamp(1.6rem, 2vw, 2.1rem);
+  font-size: clamp(1.24rem, 1.45vw, 1.58rem);
+  line-height: 1.08;
+}
+
+.compact-heading .eyebrow {
+  margin-bottom: 4px;
+}
+
+.compact-heading .section-subtitle {
+  margin-top: 4px;
+  font-size: 0.86rem;
+  line-height: 1.25;
 }
 
 .overview-list {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .overview-list-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
+  gap: 9px;
+  padding: 8px 10px;
   border: 1px solid var(--eden-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.44);
@@ -2237,13 +2281,13 @@ mark {
 
 .overview-item-icon {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   place-items: center;
   border-radius: 999px;
   background: var(--eden-sage);
   color: var(--eden-forest);
-  font-size: 1.05rem;
+  font-size: 0.92rem;
 }
 
 .overview-list-item strong,
@@ -2254,32 +2298,58 @@ mark {
 
 .overview-list-item strong {
   color: var(--eden-ink);
+  font-size: 0.94rem;
+  line-height: 1.18;
 }
 
 .overview-list-item small {
   color: var(--eden-muted);
-  font-size: 0.84rem;
+  font-size: 0.76rem;
+  line-height: 1.2;
 }
 
 .overview-list-item p {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--eden-muted);
+  font-size: 0.82rem;
+  line-height: 1.22;
 }
 
 .overview-empty {
-  padding: 14px;
+  padding: 10px;
   border: 1px dashed var(--eden-line);
   border-radius: 8px;
+  font-size: 0.88rem;
+}
+
+.overview-mini-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 32px;
+  margin-top: 8px;
+  color: var(--eden-muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.overview-mini-pagination .btn {
+  display: inline-grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  padding: 0;
 }
 
 .overview-trend-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .overview-trend-card {
-  padding: 16px;
+  padding: 12px 14px;
   border: 1px solid var(--eden-line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.44);
@@ -2289,14 +2359,15 @@ mark {
   display: block;
   color: var(--eden-forest);
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 2rem;
+  font-size: 1.65rem;
   line-height: 1;
 }
 
 .overview-trend-card span {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--eden-muted);
+  font-size: 0.82rem;
   font-weight: 750;
 }
 
@@ -2663,6 +2734,10 @@ body.theme-dark .transcript-icon {
     padding: 0 20px;
   }
 
+  .utility-title {
+    min-width: 0;
+  }
+
   .content-canvas {
     padding: 24px 20px;
   }
@@ -2687,6 +2762,10 @@ body.theme-dark .transcript-icon {
 
   .overview-trend-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .overview-activity-panel {
+    grid-column: auto;
   }
 
   .notice-banner,
@@ -2744,6 +2823,14 @@ body.theme-dark .transcript-icon {
 
   .hero-band h1 {
     font-size: 2.2rem;
+  }
+
+  .utility-title {
+    display: none;
+  }
+
+  .utility-actions {
+    width: 100%;
   }
 
   .overview-trend-grid {

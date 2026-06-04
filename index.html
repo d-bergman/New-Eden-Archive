@@ -106,7 +106,11 @@
 
       <main class="archive-main">
         <header class="utility-bar">
-          <div class="ms-auto d-flex align-items-center gap-3">
+          <div class="utility-title">
+            <strong>New Eden Dashboard</strong>
+            <span>Archive & Realtime Database</span>
+          </div>
+          <div class="utility-actions ms-auto d-flex align-items-center gap-3">
             <button class="btn admin-status" id="adminStatusButton" type="button">
               <i class="bi bi-lock"></i>
               <span id="adminState">Admin Locked</span>
@@ -186,6 +190,7 @@
                   </div>
                 </div>
                 <div class="overview-list" id="overviewActivityList"></div>
+                <div class="overview-mini-pagination" id="overviewActivityPagination" aria-label="Recent activity pagination"></div>
               </article>
 
               <article class="archive-panel overview-panel">
@@ -646,7 +651,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.3.5</span></p>
+            <p>Version <span id="appVersion">1.3.6</span></p>
           </footer>
         </div>
       </main>

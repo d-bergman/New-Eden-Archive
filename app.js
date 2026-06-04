@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.5";
+  const appVersion = "1.3.6";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -82,6 +82,7 @@
     courseSortKey: "id",
     courseSortDirection: "asc",
     overviewPage: 1,
+    overviewActivityPage: 1,
     overviewRowsPerPage: 10,
     coursePage: 1,
     courseRowsPerPage: 10,
@@ -135,6 +136,7 @@
     overviewPagination: document.querySelector("#overviewPagination"),
     overviewRowsPerPage: document.querySelector("#overviewRowsPerPage"),
     overviewActivityList: document.querySelector("#overviewActivityList"),
+    overviewActivityPagination: document.querySelector("#overviewActivityPagination"),
     overviewAttentionList: document.querySelector("#overviewAttentionList"),
     overviewTasksList: document.querySelector("#overviewTasksList"),
     overviewNoticesList: document.querySelector("#overviewNoticesList"),
@@ -366,6 +368,13 @@
       if (!button) return;
       state.overviewPage = Number(button.dataset.overviewPage);
       renderOverview();
+    });
+
+    els.overviewActivityPagination?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-overview-activity-page]");
+      if (!button) return;
+      state.overviewActivityPage = Number(button.dataset.overviewActivityPage);
+      renderOverviewActivity();
     });
 
     els.courseCatalogPagination.addEventListener("click", (event) => {
@@ -1442,17 +1451,33 @@
 
   function renderOverviewActivity() {
     if (!els.overviewActivityList) return;
+    const pageSize = 5;
     const entries = state.activityLog
       .slice()
-      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0))
-      .slice(0, 10);
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+    const pageCount = totalPages(entries.length, pageSize);
+    state.overviewActivityPage = Math.min(Math.max(1, Number(state.overviewActivityPage || 1)), pageCount);
+    const start = (state.overviewActivityPage - 1) * pageSize;
+    const pageEntries = entries.slice(start, start + pageSize);
 
-    els.overviewActivityList.innerHTML = entries.map((entry) => overviewListItem({
+    els.overviewActivityList.innerHTML = pageEntries.map((entry) => overviewListItem({
       icon: "bi-clock-history",
       title: entry.action || "Activity",
       meta: [entry.userName || "Unknown", formatTimestamp(entry.createdAtMs)].filter(Boolean).join(" - "),
       detail: [entry.entityType, entry.entityName].filter(Boolean).join(": ") || entry.details || "Archive activity",
     })).join("") || overviewEmptyState("No recent activity has been logged yet.");
+
+    if (els.overviewActivityPagination) {
+      els.overviewActivityPagination.innerHTML = entries.length > pageSize ? `
+        <button class="btn btn-sm btn-outline-eden" type="button" data-overview-activity-page="${state.overviewActivityPage - 1}" ${state.overviewActivityPage <= 1 ? "disabled" : ""}>
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <span>Page ${state.overviewActivityPage} of ${pageCount}</span>
+        <button class="btn btn-sm btn-outline-eden" type="button" data-overview-activity-page="${state.overviewActivityPage + 1}" ${state.overviewActivityPage >= pageCount ? "disabled" : ""}>
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      ` : "";
+    }
   }
 
   function renderOverviewAttention() {
