@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.4.1";
+  const appVersion = "1.4.2";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -42,6 +42,17 @@
     emailPickerSelectedIds: [],
     emailSearch: "",
     emailCurriculum: "",
+  };
+  const defaultStudentEmailTemplate = {
+    subject: "Requested New Eden Course Materials",
+    bodyMarkdown: `Hello,
+
+Your requested New Eden course material files are attached.
+
+Please contact the school office if you need anything else.`,
+  };
+  const emailTemplateState = {
+    studentFiles: { ...defaultStudentEmailTemplate },
   };
   const requirementBuilder = {
     programName: "",
@@ -189,8 +200,18 @@
     fileManagerPagination: document.querySelector("#fileManagerPagination"),
     fileSendForm: document.querySelector("#fileSendForm"),
     studentEmail: document.querySelector("#studentEmail"),
-    studentEmailSubject: document.querySelector("#studentEmailSubject"),
-    studentEmailBody: document.querySelector("#studentEmailBody"),
+    editEmailSubject: document.querySelector("#editEmailSubject"),
+    editEmailContent: document.querySelector("#editEmailContent"),
+    studentEmailSubjectPreview: document.querySelector("#studentEmailSubjectPreview"),
+    studentEmailBodyPreview: document.querySelector("#studentEmailBodyPreview"),
+    emailSubjectDialog: document.querySelector("#emailSubjectDialog"),
+    emailSubjectForm: document.querySelector("#emailSubjectForm"),
+    emailSubjectInput: document.querySelector("#emailSubjectInput"),
+    saveEmailSubject: document.querySelector("#saveEmailSubject"),
+    emailContentDialog: document.querySelector("#emailContentDialog"),
+    emailContentForm: document.querySelector("#emailContentForm"),
+    emailContentInput: document.querySelector("#emailContentInput"),
+    saveEmailContent: document.querySelector("#saveEmailContent"),
     openFileSelector: document.querySelector("#openFileSelector"),
     selectedEmailFiles: document.querySelector("#selectedEmailFiles"),
     fileSendMessage: document.querySelector("#fileSendMessage"),
@@ -579,6 +600,22 @@
     document.querySelectorAll("[data-close-file-selector]").forEach((button) => {
       button.addEventListener("click", () => els.fileSelectorDialog?.close("cancel"));
     });
+    els.editEmailSubject?.addEventListener("click", openEmailSubjectEditor);
+    els.editEmailContent?.addEventListener("click", openEmailContentEditor);
+    els.saveEmailSubject?.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveEmailSubjectTemplate();
+    });
+    els.saveEmailContent?.addEventListener("click", (event) => {
+      event.preventDefault();
+      saveEmailContentTemplate();
+    });
+    document.querySelectorAll("[data-close-email-subject]").forEach((button) => {
+      button.addEventListener("click", () => els.emailSubjectDialog?.close("cancel"));
+    });
+    document.querySelectorAll("[data-close-email-content]").forEach((button) => {
+      button.addEventListener("click", () => els.emailContentDialog?.close("cancel"));
+    });
     els.fileSendForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       prepareStudentFileEmail();
@@ -747,6 +784,7 @@
     renderTasks();
     renderTranscripts();
     renderFileManager();
+    renderEmailTemplateControls();
     renderSelectedEmailFiles();
     renderDataHealth();
   }
@@ -1288,8 +1326,9 @@
 
   async function prepareStudentFileEmail() {
     const email = els.studentEmail?.value.trim() || "";
-    const subject = els.studentEmailSubject?.value.trim() || "Requested New Eden Course Materials";
-    const bodyMarkdown = els.studentEmailBody?.value.trim() || "";
+    const template = emailTemplateState.studentFiles || defaultStudentEmailTemplate;
+    const subject = template.subject || defaultStudentEmailTemplate.subject;
+    const bodyMarkdown = template.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
     const selectedFiles = fileManagerState.emailSelectedFileIds
       .map((docId) => fileManagerState.records.find((file) => file._docId === docId))
       .filter(Boolean);
@@ -1325,6 +1364,79 @@
       console.warn("Student file email failed.", error);
       if (els.fileSendMessage) els.fileSendMessage.textContent = firebaseErrorMessage(error);
     }
+  }
+
+  function renderEmailTemplateControls() {
+    const template = emailTemplateState.studentFiles || defaultStudentEmailTemplate;
+    if (els.studentEmailSubjectPreview) {
+      els.studentEmailSubjectPreview.textContent = template.subject || defaultStudentEmailTemplate.subject;
+    }
+    if (els.studentEmailBodyPreview) {
+      const body = template.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
+      els.studentEmailBodyPreview.textContent = `${body.replace(/\s+/g, " ").trim().slice(0, 92)}${body.length > 92 ? "..." : ""}`;
+    }
+  }
+
+  function openEmailSubjectEditor() {
+    if (!state.admin) return;
+    if (els.emailSubjectInput) {
+      els.emailSubjectInput.value = emailTemplateState.studentFiles.subject || defaultStudentEmailTemplate.subject;
+    }
+    els.emailSubjectDialog?.showModal();
+  }
+
+  function openEmailContentEditor() {
+    if (!state.admin) return;
+    if (els.emailContentInput) {
+      els.emailContentInput.value = emailTemplateState.studentFiles.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
+    }
+    els.emailContentDialog?.showModal();
+  }
+
+  async function saveEmailSubjectTemplate() {
+    const subject = els.emailSubjectInput?.value.trim() || "";
+    if (!subject) {
+      setCloudStatus("Email subject cannot be blank.");
+      return;
+    }
+    await saveStudentEmailTemplate({ subject });
+    els.emailSubjectDialog?.close("saved");
+  }
+
+  async function saveEmailContentTemplate() {
+    const bodyMarkdown = els.emailContentInput?.value.trim() || "";
+    if (!bodyMarkdown) {
+      setCloudStatus("Email content cannot be blank.");
+      return;
+    }
+    await saveStudentEmailTemplate({ bodyMarkdown });
+    els.emailContentDialog?.close("saved");
+  }
+
+  async function saveStudentEmailTemplate(partial) {
+    if (!state.admin) return;
+    const nextTemplate = normalizeStudentEmailTemplate({
+      ...emailTemplateState.studentFiles,
+      ...partial,
+      updatedAtMs: Date.now(),
+    });
+    emailTemplateState.studentFiles = nextTemplate;
+    renderEmailTemplateControls();
+
+    if (canWriteCloud()) {
+      const { dbRef, update, serverTimestamp } = firebaseState.modules;
+      await update(dbRef(firebaseState.db, "emailTemplates/studentFiles"), {
+        subject: nextTemplate.subject,
+        bodyMarkdown: nextTemplate.bodyMarkdown,
+        updatedBy: firebaseState.user?.uid || "",
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    const changed = partial.subject ? "subject" : "content";
+    await writeActivity("Updated Email Template", "Student Email Template", "File Send Tool", `Updated ${changed}.`);
+    setCloudStatus(`Saved email ${changed} template`);
+    render();
   }
 
   function renderTranscripts() {
@@ -3958,7 +4070,7 @@
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, fileSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, fileSnap, emailTemplateSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
@@ -3966,6 +4078,7 @@
       get(dbRef(firebaseState.db, "versionHistory")),
       get(dbRef(firebaseState.db, "attachments")),
       readOptionalPath("files"),
+      readOptionalPath("emailTemplates/studentFiles"),
       readOptionalPath("activityLog"),
       readOptionalPath("notices"),
       readOptionalPath("tasks"),
@@ -3981,6 +4094,7 @@
       versionHistory: rtdbList(versionSnap.val()).length,
       attachments: rtdbList(attachmentSnap.val()).length,
       files: rtdbList(fileSnap?.val()).length,
+      emailTemplates: emailTemplateSnap?.exists?.() ? 1 : 0,
       activityLog: rtdbList(activitySnap?.val()).length,
       notices: rtdbList(noticeSnap?.val()).length,
       tasks: rtdbList(taskSnap?.val()).length,
@@ -3992,6 +4106,7 @@
     if (!firebaseState.hasCloudArchive) {
       attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
       fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
+      emailTemplateState.studentFiles = normalizeStudentEmailTemplate(emailTemplateSnap?.val());
       return sizes;
     }
 
@@ -4002,6 +4117,7 @@
     state.versionHistory = rtdbList(versionSnap.val());
     attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
     fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
+    emailTemplateState.studentFiles = normalizeStudentEmailTemplate(emailTemplateSnap?.val());
     state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
@@ -4086,6 +4202,11 @@
       renderSelectedEmailFiles();
       renderProgramPanel(activeProgramTab());
       renderOverview();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "emailTemplates/studentFiles"), (snapshot) => {
+      emailTemplateState.studentFiles = normalizeStudentEmailTemplate(snapshot.val());
+      renderEmailTemplateControls();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "activityLog"), (snapshot) => {
@@ -5203,6 +5324,16 @@
         updatedAtMs: Number(file.updatedAtMs || file.updatedAt || file.createdAtMs || file.createdAt || 0),
       };
     }).filter((file) => file.name);
+  }
+
+  function normalizeStudentEmailTemplate(template) {
+    const value = template || {};
+    return {
+      subject: String(value.subject || defaultStudentEmailTemplate.subject).trim(),
+      bodyMarkdown: String(value.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown).trim(),
+      updatedBy: value.updatedBy || "",
+      updatedAtMs: Number(value.updatedAtMs || value.updatedAt || 0),
+    };
   }
 
   function normalizeActivityLog(entries) {

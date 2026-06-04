@@ -2786,15 +2786,30 @@ body.theme-dark .transcript-icon {
 
 .file-send-form {
   display: grid;
-  grid-template-columns: minmax(190px, 1fr) minmax(230px, 1fr) minmax(320px, 1.6fr) auto;
+  grid-template-columns: minmax(190px, 1fr) minmax(210px, 0.9fr) minmax(260px, 1.2fr) auto;
   gap: 12px;
   align-items: end;
   padding: 0 16px 16px;
 }
 
-.file-send-body {
-  min-height: 74px;
-  resize: vertical;
+.email-template-controls {
+  display: grid;
+  gap: 6px;
+}
+
+.email-template-controls .btn {
+  justify-content: flex-start;
+  min-height: 42px;
+}
+
+.email-template-controls span {
+  display: block;
+  overflow: hidden;
+  color: var(--eden-muted);
+  font-size: 0.86rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-send-actions {
@@ -2820,6 +2835,43 @@ body.theme-dark .transcript-icon {
   font-size: 0.88rem;
 }
 
+.email-template-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.8fr);
+  gap: 16px;
+}
+
+.markdown-editor {
+  min-height: 330px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  line-height: 1.45;
+}
+
+.markdown-guide {
+  padding: 16px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.78);
+}
+
+.markdown-guide h3 {
+  margin: 0 0 10px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.markdown-guide ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding-left: 18px;
+}
+
+.markdown-guide code {
+  color: var(--eden-forest);
+  font-weight: 800;
+}
+
 .file-selector-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -2837,12 +2889,17 @@ body.theme-dark .file-upload-card,
 body.theme-dark .managed-file-card,
 body.theme-dark .attachment-drop-zone,
 body.theme-dark .attachment-item,
-body.theme-dark .course-picker-row.is-selected {
+body.theme-dark .course-picker-row.is-selected,
+body.theme-dark .markdown-guide {
   background: rgba(28, 31, 20, 0.94);
 }
 
 body.theme-dark .linked-course-badge {
   background: #2f411e;
+  color: #e8e2d7;
+}
+
+body.theme-dark .markdown-guide code {
   color: #e8e2d7;
 }
 
@@ -2928,7 +2985,8 @@ body.theme-dark .linked-course-badge {
   .notice-form,
   .task-form,
   .file-send-form,
-  .file-selector-grid {
+  .file-selector-grid,
+  .email-template-editor-grid {
     align-items: stretch;
     grid-template-columns: 1fr;
     flex-direction: column;

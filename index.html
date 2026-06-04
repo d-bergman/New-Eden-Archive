@@ -698,18 +698,20 @@
                   Student Email
                   <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
                 </label>
-                <label class="form-label">
-                  Subject
-                  <input class="form-control" id="studentEmailSubject" type="text" value="Requested New Eden Course Materials" />
-                </label>
-                <label class="form-label file-send-body">
-                  Email Body Markdown
-                  <textarea class="form-control" id="studentEmailBody" rows="4">Hello,
-
-Your requested New Eden course material files are attached.
-
-Please contact the school office if you need anything else.</textarea>
-                </label>
+                <div class="email-template-controls">
+                  <button class="btn btn-outline-eden" id="editEmailSubject" type="button">
+                    <i class="bi bi-pencil-square"></i>
+                    Edit Subject
+                  </button>
+                  <span id="studentEmailSubjectPreview">Requested New Eden Course Materials</span>
+                </div>
+                <div class="email-template-controls">
+                  <button class="btn btn-outline-eden" id="editEmailContent" type="button">
+                    <i class="bi bi-markdown"></i>
+                    Edit Email Content
+                  </button>
+                  <span id="studentEmailBodyPreview">Markdown template saved for all staff.</span>
+                </div>
                 <div class="file-send-actions">
                   <button class="btn btn-outline-eden" id="openFileSelector" type="button">
                     <i class="bi bi-paperclip"></i>
@@ -733,7 +735,7 @@ Please contact the school office if you need anything else.</textarea>
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.4.1</span></p>
+            <p>Version <span id="appVersion">1.4.2</span></p>
           </footer>
         </div>
       </main>
@@ -1212,6 +1214,67 @@ Please contact the school office if you need anything else.</textarea>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" data-close-file-selector type="button">Cancel</button>
           <button class="btn btn-eden" id="attachSelectedFiles" type="button">Attach Selected Files</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native" id="emailSubjectDialog">
+      <form method="dialog" class="modal-card email-template-modal" id="emailSubjectForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Email Template</p>
+            <h2>Edit Subject</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <label class="form-label">
+          Student Email Subject
+          <input class="form-control" id="emailSubjectInput" type="text" placeholder="Requested New Eden Course Materials" />
+        </label>
+        <p class="form-note">This subject is saved to Realtime Database and shared by every admin using the File Send Tool.</p>
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" data-close-email-subject type="button">Cancel</button>
+          <button class="btn btn-eden" id="saveEmailSubject" type="button">Save Subject</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native requirement-modal" id="emailContentDialog">
+      <form method="dialog" class="modal-card email-template-modal" id="emailContentForm">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Email Template</p>
+            <h2>Edit Email Content</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="email-template-editor-grid">
+          <section>
+            <label class="form-label">
+              Markdown Email Body
+              <textarea class="form-control markdown-editor" id="emailContentInput" rows="14" placeholder="Write the saved email body in Markdown"></textarea>
+            </label>
+          </section>
+          <aside class="markdown-guide">
+            <p class="eyebrow">Markdown Guide</p>
+            <h3>Quick Formatting</h3>
+            <ul>
+              <li><code>**bold text**</code> makes bold text.</li>
+              <li><code>*italic text*</code> makes italic text.</li>
+              <li>Blank lines create new paragraphs.</li>
+              <li><code>[school website](https://example.com)</code> makes a link.</li>
+              <li><code>`course code`</code> formats short inline code.</li>
+            </ul>
+            <p class="form-note mb-0">This content is saved to Realtime Database and becomes the default message for everyone.</p>
+          </aside>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-outline-eden" data-close-email-content type="button">Cancel</button>
+          <button class="btn btn-eden" id="saveEmailContent" type="button">Save Email Content</button>
         </div>
       </form>
     </dialog>

@@ -1,5 +1,22 @@
 # New Eden Archive Changelog
 
+## V1.4.2 - 2026-06-04 6:21 PM CT - Shared Email Template Controls
+
+### Summary
+- Replaced the File Send inline subject and email body fields with shared template editors that save to Firebase Realtime Database.
+
+### New Features
+- Added an Edit Subject modal for the Student Email tool.
+- Added an Edit Email Content modal with a markdown guide for staff who need formatting help.
+- Added Realtime Database storage for the shared student file email subject and markdown body under `emailTemplates/studentFiles`.
+- Added a live listener so saved email template changes update for all signed-in users.
+
+### Fixes
+- Changed the File Send form to show compact preview buttons instead of editable inline template fields.
+- Added Realtime Database rules for admin-only email template writes and authenticated reads.
+- Added `.gitignore` protection for local Cloud Functions environment variables.
+- Updated the visible app version label to V1.4.2.
+
 ## V1.4.1 - 2026-06-04 5:58 PM CT - File Send Backend Scaffold
 
 ### Summary
