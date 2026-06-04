@@ -1,5 +1,20 @@
 # New Eden Archive Changelog
 
+## V1.3.1 - 2026-06-03 8:51 PM CT - Transcript Drafts and Overview Cleanup
+
+### Summary
+- Restored transcript branding assets, added saved transcript drafts, and simplified the Overview workspace for a future redesign.
+
+### New Features
+- Added transcript draft saving and reopening from the Transcripts tab using Realtime Database.
+- Logged saved and updated transcript drafts to the Activity Log.
+- Added the New Eden logo, seal, and signature images back into the transcript print/PDF layout.
+
+### Fixes
+- Cleared the Overview workspace down to a placeholder while keeping the course, program, and curriculum metric bar plus the footer.
+- Added Realtime Database rules for the new `transcripts` path.
+- Updated the visible app version label to V1.3.1.
+
 ## V1.3.0 - 2026-06-03 8:03 PM CT - Transcript Builder Foundation
 
 ### Summary

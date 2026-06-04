@@ -778,6 +778,7 @@ body[data-active-view="programs"] .hero-band,
 body[data-active-view="programs"] .archive-summary,
 body[data-active-view="transcripts"] .hero-band,
 body[data-active-view="transcripts"] .archive-summary,
+body[data-active-view="overview"] .hero-band,
 body[data-active-view="history"] .hero-band,
 body[data-active-view="history"] .archive-summary {
   display: none;
@@ -2102,6 +2103,26 @@ mark {
   min-height: 520px;
 }
 
+.overview-placeholder {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 320px;
+  padding: 30px;
+}
+
+.transcript-icon {
+  display: grid;
+  width: 86px;
+  height: 86px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+  font-size: 2.35rem;
+}
+
 .transcript-workspace {
   display: grid;
   grid-template-columns: minmax(320px, 0.75fr) minmax(0, 1.25fr);
@@ -2201,6 +2222,46 @@ mark {
 .transcript-totals b {
   color: var(--eden-forest);
   font-size: 1.35rem;
+}
+
+.transcript-drafts {
+  margin-top: 18px;
+}
+
+.transcript-drafts h3 {
+  margin-bottom: 10px;
+}
+
+.transcript-draft-list {
+  display: grid;
+  gap: 8px;
+}
+
+.transcript-draft-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.transcript-draft-item small {
+  display: block;
+  margin-top: 2px;
+  color: var(--eden-muted);
+}
+
+body.theme-dark .overview-placeholder,
+body.theme-dark .transcript-draft-item {
+  background: rgba(18, 20, 17, 0.78);
+}
+
+body.theme-dark .transcript-icon {
+  background: #2f461f;
+  color: var(--eden-cream);
 }
 
 .placeholder-grid {

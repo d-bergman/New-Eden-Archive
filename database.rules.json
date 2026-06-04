@@ -71,6 +71,11 @@
       "$taskId": {
         ".write": "auth != null && (root.child('admins').child(auth.uid).exists() || data.child('assigneeUid').val() == auth.uid || newData.child('assigneeUid').val() == auth.uid)"
       }
+    },
+
+    "transcripts": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     }
   }
 }

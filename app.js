@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.3.0";
+  const appVersion = "1.3.1";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -63,10 +63,12 @@
     activityLog: [],
     notices: [],
     tasks: [],
+    transcriptDrafts: [],
     directoryUsers: [],
     transcriptRows: [],
     transcriptCourseSearch: "",
     transcriptSelectedProgram: "",
+    activeTranscriptDraftId: "",
     search: "",
     activityLogSearch: "",
     view: "overview",
@@ -168,6 +170,8 @@
     transcriptTo: document.querySelector("#transcriptTo"),
     transcriptGraduated: document.querySelector("#transcriptGraduated"),
     printTranscript: document.querySelector("#printTranscript"),
+    saveTranscriptDraft: document.querySelector("#saveTranscriptDraft"),
+    transcriptDraftList: document.querySelector("#transcriptDraftList"),
     clearTranscript: document.querySelector("#clearTranscript"),
     programCategoryFilter: document.querySelector("#programCategoryFilter"),
     editProgramButton: document.querySelector("#editProgramButton"),
@@ -278,26 +282,26 @@
       });
     });
 
-    els.globalSearch.addEventListener("input", (event) => {
+    els.globalSearch?.addEventListener("input", (event) => {
       state.search = event.target.value.trim().toLowerCase();
       resetCoursePagination();
       render();
     });
 
-    els.overviewSectionFilter.addEventListener("change", (event) => {
+    els.overviewSectionFilter?.addEventListener("change", (event) => {
       state.selectedOverviewSection = event.target.value;
       state.overviewPage = 1;
       render();
     });
 
-    els.overviewCreditFilter.addEventListener("change", (event) => {
+    els.overviewCreditFilter?.addEventListener("change", (event) => {
       state.selectedCredit = event.target.value;
-      els.courseCreditFilter.value = event.target.value;
+      if (els.courseCreditFilter) els.courseCreditFilter.value = event.target.value;
       resetCoursePagination();
       render();
     });
 
-    els.statusFilter.addEventListener("change", (event) => {
+    els.statusFilter?.addEventListener("change", (event) => {
       state.selectedStatus = event.target.value;
       state.overviewPage = 1;
       render();
@@ -305,7 +309,7 @@
 
     els.courseCreditFilter.addEventListener("change", (event) => {
       state.selectedCredit = event.target.value;
-      els.overviewCreditFilter.value = event.target.value;
+      if (els.overviewCreditFilter) els.overviewCreditFilter.value = event.target.value;
       resetCoursePagination();
       render();
     });
@@ -321,7 +325,7 @@
       renderActivityLog();
     });
 
-    els.overviewRowsPerPage.addEventListener("change", (event) => {
+    els.overviewRowsPerPage?.addEventListener("change", (event) => {
       state.overviewRowsPerPage = Number(event.target.value) || 10;
       state.overviewPage = 1;
       renderOverview();
@@ -333,7 +337,7 @@
       renderCourses();
     });
 
-    els.overviewPagination.addEventListener("click", (event) => {
+    els.overviewPagination?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-overview-page]");
       if (!button) return;
       state.overviewPage = Number(button.dataset.overviewPage);
@@ -490,8 +494,11 @@
 
     els.clearTranscript?.addEventListener("click", () => {
       state.transcriptRows = [];
+      state.activeTranscriptDraftId = "";
       renderTranscriptRows();
     });
+
+    els.saveTranscriptDraft?.addEventListener("click", saveTranscriptDraft);
 
     els.printTranscript?.addEventListener("click", printTranscript);
 
@@ -500,8 +507,8 @@
       signInUser(els.adminEmail.value.trim(), els.adminPassword.value);
     });
 
-    els.addCourse.addEventListener("click", () => openCourseEditor());
-    els.addCourseCatalog.addEventListener("click", () => openCourseEditor());
+    els.addCourse?.addEventListener("click", () => openCourseEditor());
+    els.addCourseCatalog?.addEventListener("click", () => openCourseEditor());
     els.addCurriculum.addEventListener("click", () => openCurriculumBuilder());
     els.addProgramCourse.addEventListener("click", () => openRequirementBuilder());
     els.addProgram?.addEventListener("click", () => openProgramBuilder());
@@ -795,6 +802,7 @@
     els.transcriptProgram.value = state.transcriptSelectedProgram;
     renderTranscriptCoursePicker();
     renderTranscriptRows();
+    renderTranscriptDrafts();
   }
 
   function renderTranscriptCoursePicker() {
@@ -839,10 +847,105 @@
     renderTranscriptCoursePicker();
   }
 
+  function renderTranscriptDrafts() {
+    if (!els.transcriptDraftList) return;
+    const drafts = state.transcriptDrafts
+      .slice()
+      .sort((a, b) => Number(b.updatedAtMs || b.createdAtMs || 0) - Number(a.updatedAtMs || a.createdAtMs || 0))
+      .slice(0, 8);
+    els.transcriptDraftList.innerHTML = drafts.map((draft) => `
+      <article class="transcript-draft-item">
+        <div>
+          <strong>${escapeHtml(draft.studentName || "Unnamed Student")}</strong>
+          <small>${escapeHtml(draft.program || "No curriculum selected")} &bull; ${escapeHtml(formatTimestamp(draft.updatedAtMs || draft.createdAtMs))}</small>
+        </div>
+        <button class="btn btn-sm btn-outline-eden" type="button" data-load-transcript-draft="${escapeAttr(draft._docId)}">Open</button>
+      </article>
+    `).join("") || `<div class="empty-state">No transcript drafts have been saved yet.</div>`;
+
+    els.transcriptDraftList.querySelectorAll("[data-load-transcript-draft]").forEach((button) => {
+      button.addEventListener("click", () => loadTranscriptDraft(button.dataset.loadTranscriptDraft));
+    });
+  }
+
   function renderTranscriptTotals() {
     const totalCredits = state.transcriptRows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
     if (els.transcriptTotalCredits) els.transcriptTotalCredits.textContent = String(totalCredits);
     if (els.transcriptGpa) els.transcriptGpa.textContent = transcriptGpa(state.transcriptRows);
+  }
+
+  async function saveTranscriptDraft() {
+    if (!state.transcriptRows.length) {
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "No Courses Added",
+        message: "Add courses manually or import a curriculum before saving a transcript draft.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    const draft = currentTranscriptDraft();
+    const existing = state.transcriptDrafts.find((item) => item._docId === state.activeTranscriptDraftId)
+      || state.transcriptDrafts.find((item) => (
+        item.studentId
+        && draft.studentId
+        && item.studentId.toLowerCase() === draft.studentId.toLowerCase()
+        && item.program === draft.program
+      ));
+    draft._docId = existing?._docId || slugify(`${draft.studentId || draft.studentName || "transcript"}-${draft.program || "program"}`);
+    draft.createdAtMs = existing?.createdAtMs || Date.now();
+    draft.updatedAtMs = Date.now();
+    state.activeTranscriptDraftId = draft._docId;
+
+    const index = state.transcriptDrafts.findIndex((item) => item._docId === draft._docId);
+    if (index >= 0) state.transcriptDrafts[index] = draft;
+    else state.transcriptDrafts.push(draft);
+
+    if (canWriteCloud()) {
+      const { dbRef, set, serverTimestamp } = firebaseState.modules;
+      await set(dbRef(firebaseState.db, `transcripts/${draft._docId}`), {
+        ...draft,
+        updatedAt: serverTimestamp(),
+      });
+    }
+
+    await writeActivity(existing ? "Updated Transcript Draft" : "Saved Transcript Draft", "Transcript", draft.studentName || draft.studentId || "Unnamed Student", `${draft.rows.length} course row(s) for ${draft.program || "No curriculum"}`);
+    renderTranscriptDrafts();
+  }
+
+  function currentTranscriptDraft() {
+    return {
+      studentName: els.transcriptStudentName?.value.trim() || "",
+      studentId: els.transcriptStudentId?.value.trim() || "",
+      dob: els.transcriptDob?.value || "",
+      attendedFrom: els.transcriptFrom?.value || "",
+      attendedTo: els.transcriptTo?.value || "",
+      graduated: Boolean(els.transcriptGraduated?.checked),
+      program: state.transcriptSelectedProgram || "",
+      rows: state.transcriptRows.map((row) => ({ ...row })),
+      totalCredits: Number(els.transcriptTotalCredits?.textContent || 0),
+      gpa: els.transcriptGpa?.textContent || "0.0",
+      savedByUid: firebaseState.user?.uid || "preview",
+      savedByName: currentUserDisplayName() || "Local Preview",
+    };
+  }
+
+  function loadTranscriptDraft(docId) {
+    const draft = state.transcriptDrafts.find((item) => item._docId === docId);
+    if (!draft) return;
+    if (els.transcriptStudentName) els.transcriptStudentName.value = draft.studentName || "";
+    if (els.transcriptStudentId) els.transcriptStudentId.value = draft.studentId || "";
+    if (els.transcriptDob) els.transcriptDob.value = draft.dob || "";
+    if (els.transcriptFrom) els.transcriptFrom.value = draft.attendedFrom || "";
+    if (els.transcriptTo) els.transcriptTo.value = draft.attendedTo || "";
+    if (els.transcriptGraduated) els.transcriptGraduated.checked = draft.graduated !== false;
+    state.transcriptSelectedProgram = draft.program || state.transcriptSelectedProgram;
+    state.activeTranscriptDraftId = draft._docId;
+    state.transcriptRows = (draft.rows || []).map((row) => ({
+      ...row,
+      key: row.key || slugify(`${row.courseId || row.name}-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+    }));
+    renderTranscripts();
   }
 
   function importTranscriptCurriculum() {
@@ -937,6 +1040,9 @@
     }
     const transcriptWindow = window.open("", "_blank", "width=900,height=1100");
     if (!transcriptWindow) return;
+    const logoUrl = new URL("assets/transcript/logo.jpg", window.location.href).href;
+    const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
+    const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
     const rows = state.transcriptRows.map((row) => `
       <tr>
         <td class="center">NES</td>
@@ -959,21 +1065,22 @@
             .row { display: flex; justify-content: space-between; gap: 24px; }
             .right { text-align: right; }
             .center { text-align: center; }
-            .brand { font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 700; color: #173d2a; }
+            .logo { width: 210px; max-height: 88px; object-fit: contain; object-position: left top; }
             .divider { margin: 14px 0; padding: 7px 0; border-top: 1.5px dashed #111; border-bottom: 1.5px dashed #111; }
             table { width: 100%; border-collapse: collapse; margin-top: 12px; }
             th, td { padding: 2px 4px; vertical-align: top; }
             th { font-weight: 700; border-bottom: 1px solid #222; }
             .title { width: 62%; }
             .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: end; }
-            .seal { width: 84px; height: 84px; border: 2px solid #173d2a; border-radius: 50%; display: grid; place-items: center; font-family: Georgia, serif; color: #173d2a; }
+            .seal-img { width: 98px; height: auto; object-fit: contain; }
             .signature { text-align: right; }
+            .signature-img { display: block; width: 190px; height: auto; margin: 0 0 4px auto; object-fit: contain; }
             @media print { .no-print { display: none; } }
           </style>
         </head>
         <body>
           <div class="row">
-            <div class="brand">New Eden School</div>
+            <img class="logo" src="${escapeAttr(logoUrl)}" alt="New Eden School" />
             <div class="right">
               9783 E 116th St PMB 1104<br />
               Fishers, IN 46037<br />
@@ -1007,9 +1114,9 @@
           <p class="center"><strong>${els.transcriptGraduated?.checked ? "Graduated" : "Not Graduated"}</strong></p>
           <p class="center">*************************************************************END OF PAGE*************************************************************</p>
           <div class="footer">
-            <div class="seal">NES</div>
+            <img class="seal-img" src="${escapeAttr(sealUrl)}" alt="New Eden seal" />
             <div class="signature">
-              <div style="font-family: Georgia, serif; font-size: 22px;">Donna DeSantis</div>
+              <img class="signature-img" src="${escapeAttr(signatureUrl)}" alt="Donna DeSantis signature" />
               Donna DeSantis<br />Administration and Records
             </div>
           </div>
@@ -1064,6 +1171,7 @@
   }
 
   function renderOverview() {
+    if (!els.overviewCourses) return;
     const allRows = filteredCourses({ section: state.selectedOverviewSection, status: state.selectedStatus });
     const page = normalizePage(state.overviewPage, allRows.length, state.overviewRowsPerPage);
     state.overviewPage = page;
@@ -1072,9 +1180,9 @@
     const shownStart = allRows.length ? start + 1 : 0;
     const shownEnd = allRows.length ? Math.min(start + rows.length, allRows.length) : 0;
 
-    els.overviewRowsPerPage.value = String(state.overviewRowsPerPage);
-    els.overviewCourseTotal.textContent = `Showing ${shownStart} to ${shownEnd} of ${allRows.length} courses`;
-    renderPagination(els.overviewPagination, page, totalPages(allRows.length, state.overviewRowsPerPage), "overview");
+    if (els.overviewRowsPerPage) els.overviewRowsPerPage.value = String(state.overviewRowsPerPage);
+    if (els.overviewCourseTotal) els.overviewCourseTotal.textContent = `Showing ${shownStart} to ${shownEnd} of ${allRows.length} courses`;
+    if (els.overviewPagination) renderPagination(els.overviewPagination, page, totalPages(allRows.length, state.overviewRowsPerPage), "overview");
 
     els.overviewCourses.innerHTML = rows.map((course, index) => {
       const courseIndex = state.courses.indexOf(course);
@@ -1786,14 +1894,22 @@
       .concat(statuses().map((status) => `<option value="${escapeAttr(status)}">${escapeHtml(status)}</option>`))
       .join("");
 
-    els.overviewSectionFilter.innerHTML = sectionOptions;
-    els.overviewSectionFilter.value = state.selectedOverviewSection;
-    els.overviewCreditFilter.innerHTML = creditOptions;
-    els.courseCreditFilter.innerHTML = creditOptions;
-    els.statusFilter.innerHTML = statusOptions;
-    els.overviewCreditFilter.value = state.selectedCredit;
-    els.courseCreditFilter.value = state.selectedCredit;
-    els.statusFilter.value = state.selectedStatus;
+    if (els.overviewSectionFilter) {
+      els.overviewSectionFilter.innerHTML = sectionOptions;
+      els.overviewSectionFilter.value = state.selectedOverviewSection;
+    }
+    if (els.overviewCreditFilter) {
+      els.overviewCreditFilter.innerHTML = creditOptions;
+      els.overviewCreditFilter.value = state.selectedCredit;
+    }
+    if (els.courseCreditFilter) {
+      els.courseCreditFilter.innerHTML = creditOptions;
+      els.courseCreditFilter.value = state.selectedCredit;
+    }
+    if (els.statusFilter) {
+      els.statusFilter.innerHTML = statusOptions;
+      els.statusFilter.value = state.selectedStatus;
+    }
 
     els.sectionFilter.innerHTML = sectionOptions;
     els.sectionFilter.value = state.selectedSection;
@@ -2817,7 +2933,7 @@
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap, usersSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
@@ -2828,6 +2944,7 @@
       readOptionalPath("notices"),
       readOptionalPath("tasks"),
       readOptionalPath("users"),
+      readOptionalPath("transcripts"),
     ]);
 
     const sizes = {
@@ -2841,6 +2958,7 @@
       notices: rtdbList(noticeSnap?.val()).length,
       tasks: rtdbList(taskSnap?.val()).length,
       users: rtdbList(usersSnap?.val()).length,
+      transcripts: rtdbList(transcriptSnap?.val()).length,
     };
     firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programCategories || sizes.programs || sizes.curriculumRows);
 
@@ -2859,6 +2977,7 @@
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
     state.directoryUsers = normalizeDirectoryUsers(rtdbList(usersSnap?.val()));
+    state.transcriptDrafts = normalizeTranscriptDrafts(rtdbList(transcriptSnap?.val()));
 
     return sizes;
   }
@@ -2944,6 +3063,11 @@
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "tasks"), (snapshot) => {
       state.tasks = normalizeTasks(rtdbList(snapshot.val()));
       renderTasks();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "transcripts"), (snapshot) => {
+      state.transcriptDrafts = normalizeTranscriptDrafts(rtdbList(snapshot.val()));
+      renderTranscriptDrafts();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "users"), (snapshot) => {
@@ -3647,6 +3771,32 @@
       downloadURL: attachment.downloadURL || "",
       uploadedBy: attachment.uploadedBy || "",
     };
+  }
+
+  function normalizeTranscriptDrafts(drafts) {
+    return drafts.map((draft) => ({
+      _docId: draft._docId || slugify(`${draft.studentId || draft.studentName || "transcript"}-${draft.program || "program"}`),
+      studentName: draft.studentName || "",
+      studentId: draft.studentId || "",
+      dob: draft.dob || "",
+      attendedFrom: draft.attendedFrom || "",
+      attendedTo: draft.attendedTo || "",
+      graduated: draft.graduated !== false,
+      program: draft.program || "",
+      rows: Array.isArray(draft.rows) ? draft.rows.map((row) => ({
+        key: row.key || slugify(`${row.courseId || row.name}-${Math.random().toString(16).slice(2)}`),
+        courseId: row.courseId || "",
+        name: row.name || "",
+        credit: row.credit || "",
+        percent: row.percent || "",
+      })) : [],
+      totalCredits: Number(draft.totalCredits || 0),
+      gpa: draft.gpa || "0.0",
+      savedByUid: draft.savedByUid || "",
+      savedByName: draft.savedByName || "",
+      createdAtMs: Number(draft.createdAtMs || draft.updatedAtMs || 0),
+      updatedAtMs: Number(draft.updatedAtMs || draft.createdAtMs || 0),
+    }));
   }
 
   function filteredCourses(filters = {}) {

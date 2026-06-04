@@ -20,7 +20,8 @@ async function run() {
 
   const courseCount = await page.locator("#courseCount").textContent();
   const programCount = await page.locator("#programCount").textContent();
-  const overviewEmptyState = await page.locator("#overviewCourses .empty-state").textContent();
+  const overviewPlaceholder = await page.locator(".overview-placeholder h2").textContent();
+  const metricCount = await page.locator(".archive-summary .stat-card").count();
 
   await page.click("#adminStatusButton");
   const adminState = await page.locator("#adminState").textContent();
@@ -49,7 +50,8 @@ async function run() {
   const result = {
     courseCount,
     programCount,
-    overviewEmptyState,
+    overviewPlaceholder,
+    metricCount,
     adminState,
     coursesEmptyState,
     programsEmptyState,
