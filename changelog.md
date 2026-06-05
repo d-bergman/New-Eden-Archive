@@ -1,5 +1,19 @@
 # New Eden Archive Changelog
 
+## V1.5.4 - 2026-06-05 10:33 AM CT - Progress Info and Transcript Modal Width
+
+### Summary
+- Added a Staff Progress information modal and tightened dashboard progress visuals.
+
+### New Features
+- Added a small Staff Progress info button that opens a modal for unlocked achievements, locked achievements, requirements, and XP rank levels.
+- Added rank-based visual colors for staff progress titles such as Apprentice, Contributor, Archivist, Curator, Steward, Master, and Elder Scribe.
+- Converted the old monthly summary panel into a Community Progress widget with shared dashboard totals and community XP.
+
+### Fixes
+- Widened the Transcript Import PDF and Save Transcript PDF dialog containers so transcript data and File Manager options are not clipped.
+- Updated the visible app version label to V1.5.4.
+
 ## V1.5.3 - 2026-06-05 10:00 AM CT - Dashboard Polish and Staff Progress
 
 ### Summary

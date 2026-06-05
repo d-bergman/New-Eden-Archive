@@ -259,6 +259,9 @@
                     <h2>Contribution Progress</h2>
                     <p class="section-subtitle">Levels, titles, badges, and streaks from dashboard activity.</p>
                   </div>
+                  <button class="btn btn-sm btn-outline-eden overview-info-btn" id="progressInfoButton" type="button" aria-label="Open achievements and XP ranks">
+                    <i class="bi bi-trophy"></i>
+                  </button>
                 </div>
                 <div class="overview-list overview-gamification-list" id="overviewGamificationList"></div>
               </article>
@@ -289,8 +292,8 @@
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Summary</p>
-                    <h2>This Month</h2>
-                    <p class="section-subtitle">Small counters for current archive movement.</p>
+                    <h2>Community Progress</h2>
+                    <p class="section-subtitle">Shared dashboard totals from everyone contributing to the archive.</p>
                   </div>
                 </div>
                 <div class="overview-trend-grid" id="overviewTrendCards"></div>
@@ -762,7 +765,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.5.3</span></p>
+            <p>Version <span id="appVersion">1.5.4</span></p>
           </footer>
         </div>
       </main>
@@ -989,6 +992,21 @@
       </form>
     </dialog>
 
+    <dialog class="modal-native guide-modal" id="progressInfoDialog">
+      <form method="dialog" class="modal-card progress-info-card">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Staff Progress</p>
+            <h2>Achievements & XP Ranks</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close achievements and XP ranks">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="progress-info-grid" id="progressInfoContent"></div>
+      </form>
+    </dialog>
+
     <dialog class="modal-native requirement-modal" id="curriculumBuilderDialog">
       <form method="dialog" class="modal-card" id="curriculumBuilderForm">
         <div class="modal-heading">
@@ -1212,7 +1230,7 @@
       </form>
     </dialog>
 
-    <dialog class="modal-native" id="transcriptImportDialog">
+    <dialog class="modal-native transcript-dialog" id="transcriptImportDialog">
       <form method="dialog" class="modal-card transcript-option-modal">
         <div class="modal-heading">
           <div>
@@ -1237,7 +1255,7 @@
       </form>
     </dialog>
 
-    <dialog class="modal-native" id="transcriptSaveDialog">
+    <dialog class="modal-native transcript-dialog" id="transcriptSaveDialog">
       <form method="dialog" class="modal-card transcript-option-modal">
         <div class="modal-heading">
           <div>

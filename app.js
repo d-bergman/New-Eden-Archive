@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.3";
+  const appVersion = "1.5.4";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -176,6 +176,9 @@ Please contact the school office if you need anything else.`,
     overviewUserStatusList: document.querySelector("#overviewUserStatusList"),
     overviewContributionList: document.querySelector("#overviewContributionList"),
     overviewGamificationList: document.querySelector("#overviewGamificationList"),
+    progressInfoButton: document.querySelector("#progressInfoButton"),
+    progressInfoDialog: document.querySelector("#progressInfoDialog"),
+    progressInfoContent: document.querySelector("#progressInfoContent"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
@@ -635,6 +638,12 @@ Please contact the school office if you need anything else.`,
     els.fileSendForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       prepareStudentFileEmail();
+    });
+    els.progressInfoButton?.addEventListener("click", openProgressInfoDialog);
+    els.overviewGamificationList?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-open-progress-info]");
+      if (!button) return;
+      openProgressInfoDialog();
     });
 
     els.transcriptProgram?.addEventListener("change", (event) => {
@@ -2638,18 +2647,16 @@ Please contact the school office if you need anything else.`,
 
   function renderOverviewTrends() {
     if (!els.overviewTrendCards) return;
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const monthStartMs = monthStart.getTime();
-    const recentLog = state.activityLog.filter((entry) => Number(entry.createdAtMs || 0) >= monthStartMs);
-    const countActions = (patterns) => recentLog.filter((entry) => patterns.some((pattern) => pattern.test(entry.action || ""))).length;
-    const openTasks = state.tasks.filter((task) => task.status !== "done").length;
+    const communityXp = contributorStats().reduce((sum, item) => sum + Number(item.xp || 0), 0);
+    const completedTasks = state.tasks.filter((task) => task.status === "done").length
+      || state.activityLog.filter((entry) => /completed task/i.test(entry.action || "")).length;
     const cards = [
-      ["Courses Added", countActions([/added course/i])],
-      ["Curriculums Edited", countActions([/edited curriculum/i, /saved requirements/i, /added curriculum/i])],
-      ["Open Tasks", openTasks],
-      ["Transcript Drafts", state.transcriptDrafts.length],
+      ["Courses Created", state.courses.length],
+      ["Programs Created", programCategories().length],
+      ["Curriculums Created", programs().length],
+      ["Files Uploaded", fileManagerState.records.length],
+      ["Tasks Completed", completedTasks],
+      ["Community XP", communityXp.toLocaleString()],
     ];
 
     els.overviewTrendCards.innerHTML = cards.map(([label, value]) => `
@@ -2713,6 +2720,7 @@ Please contact the school office if you need anything else.`,
       || normalizePersonName(user.name) === normalizePersonName(selected.name)
     )) || selected;
     const xpRemaining = Math.max(0, selected.nextXp - selected.xp);
+    const rankClass = contributionRankClass(selected.title);
 
     els.overviewGamificationList.innerHTML = `
       <article class="overview-level-card">
@@ -2720,7 +2728,9 @@ Please contact the school office if you need anything else.`,
         <div class="overview-level-main">
           <div class="overview-level-title">
             <strong>${escapeHtml(selected.name)}</strong>
-            <span>Level ${selected.level} ${escapeHtml(selected.title)}</span>
+            <div class="overview-level-actions">
+              <span class="rank-title ${escapeAttr(rankClass)}">Level ${selected.level} ${escapeHtml(selected.title)}</span>
+            </div>
           </div>
           <div class="overview-xp-bar" aria-label="Level progress">
             <span style="width: ${selected.progress.toFixed(1)}%"></span>
@@ -2747,6 +2757,84 @@ Please contact the school office if you need anything else.`,
           </div>
         `).join("")}
       </div>
+    `;
+  }
+
+  function openProgressInfoDialog() {
+    if (!els.progressInfoDialog || !els.progressInfoContent) return;
+    const stats = contributorStats();
+    const currentKey = firebaseState.user?.uid || normalizePersonName(currentUserDisplayName());
+    const selected = stats.find((item) => item.uid === currentKey || item.key === currentKey)
+      || stats.find((item) => normalizePersonName(item.name) === normalizePersonName(currentUserDisplayName()))
+      || stats[0]
+      || {
+        name: currentUserDisplayName() || "Archive User",
+        xp: 0,
+        level: 1,
+        title: "Apprentice",
+        counts: {},
+        currentStreak: 0,
+        longestStreak: 0,
+        isFounder: isFounderContributor(currentUserDisplayName()),
+      };
+    const achievements = contributionAchievementCatalog(selected);
+    const achieved = achievements.filter((item) => item.achieved);
+    const locked = achievements.filter((item) => !item.achieved);
+    const levels = Array.from({ length: 12 }, (_, index) => {
+      const level = index + 1;
+      return {
+        level,
+        xp: contributionLevelXp(level),
+        title: contributionTitle(level),
+        className: contributionRankClass(contributionTitle(level)),
+      };
+    });
+
+    els.progressInfoContent.innerHTML = `
+      <section class="progress-info-section progress-info-summary">
+        <h3>${escapeHtml(selected.name)}</h3>
+        <div class="overview-xp-bar" aria-label="Current level progress">
+          <span style="width: ${Number(selected.progress || 0).toFixed(1)}%"></span>
+        </div>
+        <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; ${escapeHtml(selected.title || "Apprentice")}</p>
+      </section>
+      <section class="progress-info-section">
+        <h3>Unlocked Achievements</h3>
+        <div class="achievement-grid">
+          ${achieved.map((item) => achievementCardMarkup(item)).join("") || `<p class="empty-state">No achievements unlocked yet.</p>`}
+        </div>
+      </section>
+      <section class="progress-info-section">
+        <h3>Locked Achievements</h3>
+        <div class="achievement-grid">
+          ${locked.map((item) => achievementCardMarkup(item)).join("")}
+        </div>
+      </section>
+      <section class="progress-info-section">
+        <h3>XP Ranks</h3>
+        <div class="rank-grid">
+          ${levels.map((item) => `
+            <article class="rank-card ${escapeAttr(item.className)} ${selected.level >= item.level ? "is-unlocked" : "is-locked"}">
+              <strong>Level ${item.level}</strong>
+              <span>${escapeHtml(item.title)}</span>
+              <small>${item.xp.toLocaleString()} XP required</small>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+    els.progressInfoDialog.showModal();
+  }
+
+  function achievementCardMarkup(item) {
+    return `
+      <article class="achievement-card ${item.achieved ? "is-achieved" : "is-locked"}">
+        <i class="bi ${item.achieved ? "bi-trophy-fill" : "bi-lock"}"></i>
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${escapeHtml(item.requirement)}</small>
+        </div>
+      </article>
     `;
   }
 
@@ -2908,6 +2996,7 @@ Please contact the school office if you need anything else.`,
       : /edit|update|save|requirement/.test(action) ? "edited"
         : /complete|done/.test(action) ? "completed"
           : "created";
+    if (/send/.test(action) && /file|email|student|material/.test(`${action} ${entity}`)) return "sentMaterials";
     if (/course/.test(`${action} ${entity}`)) return `${prefix}Course`;
     if (/curriculum/.test(`${action} ${entity}`)) return `${prefix}Curriculum`;
     if (/program/.test(`${action} ${entity}`)) return `${prefix}Program`;
@@ -2969,6 +3058,41 @@ Please contact the school office if you need anything else.`,
     if (streak.longest >= 7) achievements.push("Weekly Streak");
     if (item.isFounder) achievements.push("Founder");
     return achievements;
+  }
+
+  function contributionAchievementCatalog(item) {
+    const counts = item.counts || {};
+    const fileCount = (counts.createdFile || 0) + (counts.editedFile || 0);
+    const entries = [
+      ["First Course", "Create your first course.", (counts.createdCourse || 0) >= 1],
+      ["Course Architect", "Create 25 courses.", (counts.createdCourse || 0) >= 25],
+      ["Master Course Builder", "Create 100 courses.", (counts.createdCourse || 0) >= 100],
+      ["Curriculum Creator", "Create your first curriculum.", (counts.createdCurriculum || 0) >= 1],
+      ["Curriculum Architect", "Create 10 curriculums.", (counts.createdCurriculum || 0) >= 10],
+      ["First Upload", "Upload or edit your first file.", fileCount >= 1],
+      ["Librarian", "Upload or edit 25 files.", fileCount >= 25],
+      ["Master Librarian", "Upload or edit 100 files.", fileCount >= 100],
+      ["Messenger", "Send student materials once.", (counts.sentMaterials || 0) >= 1],
+      ["Task Starter", "Create your first task.", (counts.createdTask || 0) >= 1],
+      ["Task Slayer", "Complete 10 tasks.", (counts.completedTask || 0) >= 10],
+      ["Voice of the Archive", "Create your first notice.", (counts.createdNotice || 0) >= 1],
+      ["Weekly Streak", "Contribute for 7 consecutive days.", (item.longestStreak || 0) >= 7],
+      ["Founder", "Be one of the original New Eden Dashboard staff.", Boolean(item.isFounder)],
+    ];
+    return entries.map(([name, requirement, achieved]) => ({ name, requirement, achieved }));
+  }
+
+  function contributionRankClass(title) {
+    const normalized = normalizePersonName(title).replace(/\s+/g, "-");
+    if (/apprentice/.test(normalized)) return "rank-apprentice";
+    if (/contributor/.test(normalized)) return "rank-contributor";
+    if (/archivist/.test(normalized)) return "rank-archivist";
+    if (/curator/.test(normalized)) return "rank-curator";
+    if (/steward/.test(normalized)) return "rank-steward";
+    if (/master/.test(normalized)) return "rank-master";
+    if (/elder/.test(normalized)) return "rank-elder";
+    if (/keeper|guardian|legacy|pillar/.test(normalized)) return "rank-legend";
+    return "rank-apprentice";
   }
 
   function contributionDayKey(value) {

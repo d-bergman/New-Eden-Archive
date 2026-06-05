@@ -158,7 +158,14 @@ body.theme-dark .required-table tbody tr.is-selected td {
 body.theme-dark .overview-list-item,
 body.theme-dark .overview-trend-card,
 body.theme-dark .overview-user-row,
-body.theme-dark .overview-contribution-row {
+body.theme-dark .overview-contribution-row,
+body.theme-dark .overview-level-card,
+body.theme-dark .overview-badge-row span,
+body.theme-dark .overview-achievements span,
+body.theme-dark .overview-leaderboard div,
+body.theme-dark .progress-info-section,
+body.theme-dark .achievement-card,
+body.theme-dark .rank-card {
   background: #181a14;
   border-color: var(--eden-line);
   color: var(--eden-ink);
@@ -178,7 +185,10 @@ body.theme-dark .overview-list-item strong,
 body.theme-dark .overview-trend-card strong,
 body.theme-dark .overview-user-row strong,
 body.theme-dark .overview-contribution-row strong,
-body.theme-dark .overview-contribution-row b {
+body.theme-dark .overview-contribution-row b,
+body.theme-dark .overview-level-title strong,
+body.theme-dark .achievement-card strong,
+body.theme-dark .rank-card strong {
   color: #f1eee6;
 }
 
@@ -186,7 +196,11 @@ body.theme-dark .overview-list-item small,
 body.theme-dark .overview-list-item p,
 body.theme-dark .overview-trend-card span,
 body.theme-dark .overview-user-row small,
-body.theme-dark .overview-contribution-row small {
+body.theme-dark .overview-contribution-row small,
+body.theme-dark .overview-level-main small,
+body.theme-dark .achievement-card small,
+body.theme-dark .rank-card small,
+body.theme-dark .progress-info-summary p {
   color: #c7c1b5;
 }
 
@@ -2053,11 +2067,18 @@ mark {
   width: min(1040px, calc(100vw - 32px));
 }
 
+.transcript-dialog {
+  width: min(1080px, calc(100vw - 48px));
+  max-width: 1080px;
+}
+
 .modal-native::backdrop {
   background: rgba(15, 47, 33, 0.45);
 }
 
 .modal-card {
+  box-sizing: border-box;
+  width: 100%;
   display: grid;
   gap: 14px;
   padding: 24px;
@@ -2241,6 +2262,117 @@ mark {
   color: var(--eden-sage-strong);
 }
 
+.progress-info-card {
+  max-height: min(86vh, 880px);
+  overflow: auto;
+}
+
+.progress-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.progress-info-summary {
+  grid-column: 1 / -1;
+}
+
+.progress-info-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.progress-info-section h3 {
+  margin: 0;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.28rem;
+}
+
+.progress-info-summary p {
+  margin: 0;
+  color: var(--eden-muted);
+}
+
+.achievement-grid,
+.rank-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.achievement-card,
+.rank-card {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.78);
+}
+
+.achievement-card {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.achievement-card i {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+}
+
+.achievement-card.is-locked {
+  opacity: 0.7;
+}
+
+.achievement-card.is-locked i {
+  background: rgba(98, 111, 100, 0.12);
+  color: var(--eden-muted);
+}
+
+.achievement-card strong,
+.achievement-card small,
+.rank-card strong,
+.rank-card span,
+.rank-card small {
+  display: block;
+}
+
+.achievement-card strong,
+.rank-card strong {
+  color: var(--eden-ink);
+}
+
+.achievement-card small,
+.rank-card small {
+  color: var(--eden-muted);
+  font-size: 0.8rem;
+}
+
+.rank-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rank-card {
+  border-left-width: 4px;
+}
+
+.rank-card.is-locked {
+  opacity: 0.68;
+}
+
+.rank-card span {
+  font-weight: 850;
+}
+
 .transcript-panel {
   min-height: 520px;
 }
@@ -2384,7 +2516,7 @@ mark {
 
 .overview-trend-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
 }
 
@@ -2531,6 +2663,12 @@ mark {
   min-width: 0;
 }
 
+.overview-level-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .overview-level-title strong {
   color: var(--eden-ink);
   font-size: 1rem;
@@ -2541,6 +2679,51 @@ mark {
   color: var(--eden-muted);
   font-size: 0.8rem;
   font-weight: 800;
+}
+
+.rank-title {
+  color: var(--eden-muted);
+}
+
+.rank-apprentice {
+  color: #6e746d !important;
+}
+
+.rank-contributor {
+  color: #286b3d !important;
+}
+
+.rank-archivist {
+  color: #2b6f9f !important;
+}
+
+.rank-curator {
+  color: #6d4fa3 !important;
+}
+
+.rank-steward {
+  color: #a77d22 !important;
+}
+
+.rank-master {
+  color: #177557 !important;
+}
+
+.rank-elder {
+  color: #687280 !important;
+}
+
+.rank-legend {
+  color: #9a5a1b !important;
+}
+
+.overview-info-btn {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 999px;
 }
 
 .overview-xp-bar {
@@ -2789,8 +2972,8 @@ mark {
 }
 
 .transcript-option-modal {
-  width: min(980px, calc(100vw - 40px));
-  max-width: 980px;
+  width: 100%;
+  max-width: none;
   overflow-x: hidden;
 }
 
@@ -3352,7 +3535,9 @@ body.theme-dark .markdown-guide code {
   .transcript-option-grid,
   .transcript-save-options,
   .overview-badge-row,
-  .overview-leaderboard div {
+  .overview-leaderboard div,
+  .progress-info-grid,
+  .rank-grid {
     grid-template-columns: 1fr;
   }
 
