@@ -257,10 +257,24 @@ body.theme-dark .btn-eden {
   color: #f0ece3;
 }
 
+body.theme-dark .btn-eden:hover,
+body.theme-dark .btn-eden:focus-visible {
+  background: #224f33;
+  border-color: #a0aa78;
+  color: #fffaf0;
+}
+
 body.theme-dark .btn-outline-eden {
   border-color: #777248;
   color: #d8d3cc;
   background: transparent;
+}
+
+body.theme-dark .btn-outline-eden:hover,
+body.theme-dark .btn-outline-eden:focus-visible {
+  background: #26381f;
+  border-color: #a0aa78;
+  color: #fffaf0;
 }
 
 body.theme-dark .btn-eden:disabled,
@@ -905,6 +919,7 @@ body[data-active-view="transcripts"] .archive-summary,
 body[data-active-view="files"] .hero-band,
 body[data-active-view="files"] .archive-summary,
 body[data-active-view="overview"] .hero-band,
+body[data-active-view="overview"] .archive-summary,
 body[data-active-view="history"] .hero-band,
 body[data-active-view="history"] .archive-summary {
   display: none;
@@ -1246,6 +1261,62 @@ body[data-active-view="history"] .archive-summary {
   color: var(--eden-ink);
   font-weight: 750;
   text-align: center;
+}
+
+.sidebar-rank-card {
+  margin: 14px 10px 0;
+  padding: 12px;
+  border: 1px solid rgba(215, 205, 144, 0.38);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(215, 205, 144, 0.12), rgba(255, 255, 255, 0.02)),
+    rgba(13, 47, 27, 0.42);
+  color: #f3edc8;
+}
+
+.sidebar-rank-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-rank-head strong,
+.sidebar-rank-head small {
+  display: block;
+}
+
+.sidebar-rank-head small {
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.sidebar-rank-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(215, 205, 144, 0.15);
+  color: #f3edc8;
+}
+
+.sidebar-rank-bar {
+  height: 7px;
+  margin: 10px 0 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.sidebar-rank-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.sidebar-rank-card > small {
+  color: rgba(243, 237, 200, 0.76);
+  font-weight: 750;
 }
 
 .notice-banner {
@@ -2279,6 +2350,7 @@ mark {
 
 .progress-info-section {
   display: grid;
+  align-content: start;
   gap: 12px;
   padding: 16px;
   border: 1px solid var(--eden-line);
@@ -2301,6 +2373,8 @@ mark {
 .achievement-grid,
 .rank-grid {
   display: grid;
+  align-content: start;
+  align-items: stretch;
   gap: 8px;
 }
 
@@ -3344,7 +3418,7 @@ body.theme-dark .transcript-icon {
 
 .email-template-controls .btn {
   min-width: 154px;
-  padding: 8px 12px;
+  padding: 9px 14px;
   justify-content: center;
   white-space: nowrap;
 }
@@ -3380,9 +3454,46 @@ body.theme-dark .transcript-icon {
 .file-manager-actions .btn {
   min-width: 76px;
   min-height: 36px;
-  padding: 6px 10px;
+  padding: 7px 12px;
   font-size: 0.88rem;
   line-height: 1;
+}
+
+.version-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 0 2px;
+}
+
+.version-page-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.version-pagination .btn {
+  min-width: 38px;
+  min-height: 36px;
+  padding: 6px 10px;
+}
+
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.table-action:focus-visible,
+.nav-link:focus-visible {
+  outline: 3px solid rgba(77, 91, 215, 0.48);
+  outline-offset: 2px;
+}
+
+.btn-eden:hover,
+.btn-eden:focus-visible,
+.btn-outline-eden:hover,
+.btn-outline-eden:focus-visible {
+  color: #fff;
 }
 
 .email-template-editor-grid {

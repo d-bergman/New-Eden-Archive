@@ -20,7 +20,7 @@
         <div class="loader-seal" aria-hidden="true">
           <i class="bi bi-flower1"></i>
         </div>
-        <h2>Loading Archive</h2>
+        <h2>Loading Dashboard</h2>
         <p>Preparing course and curriculum records...</p>
         <div class="loader-bar">
           <div class="loader-bar-fill"></div>
@@ -100,6 +100,8 @@
           <i class="bi bi-person-gear"></i>
           <span>Profile Settings</span>
         </button>
+
+        <div class="sidebar-rank-card" id="sidebarRankCard" hidden></div>
 
         <div class="botanical-card d-none d-xl-block" aria-hidden="true">
           <i class="bi bi-flower2"></i>
@@ -292,8 +294,8 @@
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Summary</p>
-                    <h2>Community Progress</h2>
-                    <p class="section-subtitle">Shared dashboard totals from everyone contributing to the archive.</p>
+                    <h2>Dashboard Progress</h2>
+                    <p class="section-subtitle">Shared totals from everyone contributing to the dashboard.</p>
                   </div>
                 </div>
                 <div class="overview-trend-grid" id="overviewTrendCards"></div>
@@ -592,6 +594,7 @@
                 </div>
               </div>
               <div class="timeline" id="versionTimeline"></div>
+              <nav class="pagination-row version-pagination" id="versionPagination" aria-label="Version history pagination"></nav>
             </article>
             <article class="archive-panel mt-3">
               <div class="section-heading">
@@ -765,7 +768,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.5.4</span></p>
+            <p>Version <span id="appVersion">1.5.5</span></p>
           </footer>
         </div>
       </main>
@@ -893,6 +896,20 @@
               <span>
                 <strong>Task alerts</strong>
                 <small>Show a themed popup when a task is assigned to you or its status changes.</small>
+              </span>
+            </label>
+            <label class="settings-toggle">
+              <input class="form-check-input" id="profileNotifyAchievements" type="checkbox" />
+              <span>
+                <strong>Achievement alerts</strong>
+                <small>Show a popup when you unlock a contributor achievement.</small>
+              </span>
+            </label>
+            <label class="settings-toggle">
+              <input class="form-check-input" id="profileNotifyLevelUps" type="checkbox" />
+              <span>
+                <strong>Level-up alerts</strong>
+                <small>Show a popup when your contributor rank increases.</small>
               </span>
             </label>
           </section>

@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.4";
+  const appVersion = "1.5.5";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -83,6 +83,28 @@ Please contact the school office if you need anything else.`,
     { uid: "staff:larry", name: "Larry" },
     { uid: "staff:dr-duda", name: "Dr. Duda" },
   ];
+  const contributionRanks = [
+    { level: 1, title: "New Member", xp: 0, color: "#9E9E9E" },
+    { level: 2, title: "Contributor", xp: 100, color: "#8BC34A" },
+    { level: 3, title: "Regular Contributor", xp: 250, color: "#4CAF50" },
+    { level: 4, title: "Active Contributor", xp: 500, color: "#43A047" },
+    { level: 5, title: "Editor", xp: 1000, color: "#2196F3" },
+    { level: 6, title: "Senior Editor", xp: 1750, color: "#1E88E5" },
+    { level: 7, title: "Content Curator", xp: 2750, color: "#1976D2" },
+    { level: 8, title: "Senior Curator", xp: 4000, color: "#7E57C2" },
+    { level: 9, title: "Archivist", xp: 5750, color: "#673AB7" },
+    { level: 10, title: "Senior Archivist", xp: 8000, color: "#5E35B1" },
+    { level: 11, title: "Knowledge Steward", xp: 11000, color: "#FFB300" },
+    { level: 12, title: "Documentation Specialist", xp: 15000, color: "#FFA000" },
+    { level: 13, title: "Knowledge Manager", xp: 20000, color: "#FB8C00" },
+    { level: 14, title: "Archive Manager", xp: 26000, color: "#EF6C00" },
+    { level: 15, title: "Archive Authority", xp: 33000, color: "#E65100" },
+    { level: 16, title: "Senior Authority", xp: 42000, color: "#D4AF37" },
+    { level: 17, title: "Knowledge Authority", xp: 53000, color: "#C9B037" },
+    { level: 18, title: "Archive Sage", xp: 67000, color: "#00ACC1" },
+    { level: 19, title: "Master Curator", xp: 84000, color: "#00897B" },
+    { level: 20, title: "Archive Legend", xp: 105000, color: "#FFD700" },
+  ];
 
   const state = {
     courses: [],
@@ -114,6 +136,8 @@ Please contact the school office if you need anything else.`,
     overviewPage: 1,
     overviewActivityPage: 1,
     overviewRowsPerPage: 10,
+    historyPage: 1,
+    historyRowsPerPage: 6,
     coursePage: 1,
     courseRowsPerPage: 10,
     requirementSearch: "",
@@ -125,6 +149,9 @@ Please contact the school office if you need anything else.`,
     knownNoticeIds: new Set(),
     knownTaskStates: new Map(),
     notificationsReady: false,
+    knownContributionLevels: new Map(),
+    knownAchievements: new Map(),
+    contributionNotificationsReady: false,
     signedIn: firebaseDisabled,
     authChecking: true,
     admin: sessionStorage.getItem(adminKey) === "true",
@@ -143,6 +170,7 @@ Please contact the school office if you need anything else.`,
     globalSearch: document.querySelector("#globalSearch"),
     adminState: document.querySelector("#adminState"),
     profileSettingsNav: document.querySelector("#profileSettingsNav"),
+    sidebarRankCard: document.querySelector("#sidebarRankCard"),
     adminDialog: document.querySelector("#adminDialog"),
     adminEmail: document.querySelector("#adminEmail"),
     adminPassword: document.querySelector("#adminPassword"),
@@ -267,6 +295,7 @@ Please contact the school office if you need anything else.`,
     requiredCount: document.querySelector("#requiredCount"),
     programDirectory: document.querySelector("#programDirectory"),
     versionTimeline: document.querySelector("#versionTimeline"),
+    versionPagination: document.querySelector("#versionPagination"),
     dataHealth: document.querySelector("#dataHealth"),
     programTabs: document.querySelectorAll("[data-program-tab]"),
     attachmentUpload: document.querySelector("#attachmentUpload"),
@@ -354,6 +383,8 @@ Please contact the school office if you need anything else.`,
     profileMyTasksOnly: document.querySelector("#profileMyTasksOnly"),
     profileNotifyNotices: document.querySelector("#profileNotifyNotices"),
     profileNotifyTasks: document.querySelector("#profileNotifyTasks"),
+    profileNotifyAchievements: document.querySelector("#profileNotifyAchievements"),
+    profileNotifyLevelUps: document.querySelector("#profileNotifyLevelUps"),
     profileLastLogin: document.querySelector("#profileLastLogin"),
     profileUid: document.querySelector("#profileUid"),
     profileAccountRole: document.querySelector("#profileAccountRole"),
@@ -389,6 +420,12 @@ Please contact the school office if you need anything else.`,
         state.view = button.dataset.view;
         render();
       });
+    });
+    els.versionPagination?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-history-page]");
+      if (!button) return;
+      state.historyPage = Number(button.dataset.historyPage || 1);
+      renderHistory();
     });
 
     els.globalSearch?.addEventListener("input", (event) => {
@@ -828,6 +865,7 @@ Please contact the school office if you need anything else.`,
     els.adminState.textContent = state.admin ? "Admin" : state.signedIn ? "Viewer" : "Sign In";
     document.querySelector("#adminStatusButton i").className = state.admin ? "bi bi-unlock" : "bi bi-lock";
     renderUserChip();
+    renderSidebarRankCard();
 
     els.navItems.forEach((button) => button.classList.toggle("active", button.dataset.view === state.view));
     els.views.forEach((view) => view.classList.toggle("active", view.id === `${state.view}View`));
@@ -847,6 +885,31 @@ Please contact the school office if you need anything else.`,
       els.userAvatarImage.hidden = !photoURL;
       els.userInitials.hidden = Boolean(photoURL);
     }
+  }
+
+  function renderSidebarRankCard() {
+    if (!els.sidebarRankCard) return;
+    const current = currentContributorStats();
+    if (!state.signedIn || !current) {
+      els.sidebarRankCard.hidden = true;
+      els.sidebarRankCard.innerHTML = "";
+      return;
+    }
+    const xpRemaining = Math.max(0, current.nextXp - current.xp);
+    els.sidebarRankCard.hidden = false;
+    els.sidebarRankCard.innerHTML = `
+      <div class="sidebar-rank-head">
+        <span class="sidebar-rank-icon"><i class="bi bi-award"></i></span>
+        <span>
+          <strong>Level ${current.level}</strong>
+          <small style="color:${escapeAttr(current.rankColor)}">${escapeHtml(current.title)}</small>
+        </span>
+      </div>
+      <div class="sidebar-rank-bar" aria-label="Contributor level progress">
+        <span style="width:${Number(current.progress || 0).toFixed(1)}%; background:${escapeAttr(current.rankColor)}"></span>
+      </div>
+      <small>${current.xp} XP &bull; ${xpRemaining} XP to next level</small>
+    `;
   }
 
   function currentUserDisplayName() {
@@ -920,6 +983,14 @@ Please contact the school office if you need anything else.`,
 
   function taskModalsEnabled() {
     return userSettings().notifyTasks === true;
+  }
+
+  function achievementModalsEnabled() {
+    return userSettings().notifyAchievements !== false;
+  }
+
+  function levelUpModalsEnabled() {
+    return userSettings().notifyLevelUps !== false;
   }
 
   function myTasksOnlyEnabled() {
@@ -1864,11 +1935,6 @@ Please contact the school office if you need anything else.`,
   }
 
   async function saveTranscriptPdfToFileManager(blob, filename) {
-    const courseIds = uniqueValues(state.transcriptRows.map((row) => row.courseId).filter(Boolean));
-    const courseLabels = courseIds.map((id) => {
-      const course = courseById(id);
-      return course ? `${course.id} ${course.name} Credit ${course.credit}` : id;
-    });
     const now = Date.now();
     const docId = slugify(`${now}-${filename}`);
     const recordBase = {
@@ -1877,8 +1943,8 @@ Please contact the school office if you need anything else.`,
       size: blob.size,
       contentType: "application/pdf",
       category: "Transcript",
-      courseIds,
-      courseLabels,
+      courseIds: [],
+      courseLabels: [],
       uploadedByUid: firebaseState.user?.uid || "preview",
       uploadedByName: currentUserDisplayName() || "Local Preview",
       createdAtMs: now,
@@ -1909,8 +1975,8 @@ Please contact the school office if you need anything else.`,
       category: "Transcript",
       storagePath,
       downloadURL,
-      courseIds,
-      courseLabels,
+      courseIds: [],
+      courseLabels: [],
       uploadedByUid: firebaseState.user?.uid || "",
       uploadedByName: currentUserDisplayName(),
       transcriptDraftId: state.activeTranscriptDraftId || "",
@@ -1919,7 +1985,7 @@ Please contact the school office if you need anything else.`,
     };
     await set(dbRef(firebaseState.db, `files/${docId}`), record);
     fileManagerState.records = normalizeFiles([{ _docId: docId, ...record, createdAtMs: now, updatedAtMs: now }, ...fileManagerState.records]);
-    await writeActivity("Saved Transcript PDF", "Transcript", filename, `Saved to File Manager with ${courseIds.length} linked course(s).`);
+    await writeActivity("Saved Transcript PDF", "Transcript", filename, "Saved to File Manager as a standalone transcript file.");
     render();
     return record;
   }
@@ -2655,6 +2721,7 @@ Please contact the school office if you need anything else.`,
       ["Programs Created", programCategories().length],
       ["Curriculums Created", programs().length],
       ["Files Uploaded", fileManagerState.records.length],
+      ["Transcripts Created", transcriptFileRecords().length + state.transcriptDrafts.length],
       ["Tasks Completed", completedTasks],
       ["Community XP", communityXp.toLocaleString()],
     ];
@@ -2677,7 +2744,6 @@ Please contact the school office if you need anything else.`,
         ${userAvatarMarkup(user)}
         <div>
           <strong>${escapeHtml(user.name)}</strong>
-          <small>${escapeHtml(user.email || user.uid || "Archive user")}</small>
         </div>
         <span class="presence-pill ${user.online ? "is-online" : "is-offline"}">
           <i></i>${user.online ? "Online" : "Offline"}
@@ -2720,7 +2786,7 @@ Please contact the school office if you need anything else.`,
       || normalizePersonName(user.name) === normalizePersonName(selected.name)
     )) || selected;
     const xpRemaining = Math.max(0, selected.nextXp - selected.xp);
-    const rankClass = contributionRankClass(selected.title);
+    const rankColor = selected.rankColor || contributionRankColor(selected.level);
 
     els.overviewGamificationList.innerHTML = `
       <article class="overview-level-card">
@@ -2729,11 +2795,11 @@ Please contact the school office if you need anything else.`,
           <div class="overview-level-title">
             <strong>${escapeHtml(selected.name)}</strong>
             <div class="overview-level-actions">
-              <span class="rank-title ${escapeAttr(rankClass)}">Level ${selected.level} ${escapeHtml(selected.title)}</span>
+              <span class="rank-title" style="color:${escapeAttr(rankColor)}">Level ${selected.level} ${escapeHtml(selected.title)}</span>
             </div>
           </div>
           <div class="overview-xp-bar" aria-label="Level progress">
-            <span style="width: ${selected.progress.toFixed(1)}%"></span>
+            <span style="width: ${selected.progress.toFixed(1)}%; background:${escapeAttr(rankColor)}"></span>
           </div>
           <small>${selected.xp} XP &bull; ${xpRemaining} XP to next level &bull; Rank #${rank}</small>
         </div>
@@ -2742,11 +2808,6 @@ Please contact the school office if you need anything else.`,
         <span><strong>${selected.total}</strong>Total Actions</span>
         <span><strong>${selected.currentStreak}</strong>Day Streak</span>
         <span><strong>${selected.achievements.length}</strong>Badges</span>
-      </div>
-      <div class="overview-achievements">
-        ${(selected.achievements.length ? selected.achievements : ["Getting Started"]).slice(0, 5).map((badge) => `
-          <span>${escapeHtml(badge)}</span>
-        `).join("")}
       </div>
       <div class="overview-leaderboard">
         ${topStaff.map((item, index) => `
@@ -2760,18 +2821,24 @@ Please contact the school office if you need anything else.`,
     `;
   }
 
-  function openProgressInfoDialog() {
-    if (!els.progressInfoDialog || !els.progressInfoContent) return;
+  function currentContributorStats() {
     const stats = contributorStats();
     const currentKey = firebaseState.user?.uid || normalizePersonName(currentUserDisplayName());
-    const selected = stats.find((item) => item.uid === currentKey || item.key === currentKey)
+    return stats.find((item) => item.uid === currentKey || item.key === currentKey)
       || stats.find((item) => normalizePersonName(item.name) === normalizePersonName(currentUserDisplayName()))
-      || stats[0]
+      || null;
+  }
+
+  function openProgressInfoDialog() {
+    if (!els.progressInfoDialog || !els.progressInfoContent) return;
+    const selected = currentContributorStats()
+      || contributorStats()[0]
       || {
         name: currentUserDisplayName() || "Archive User",
         xp: 0,
         level: 1,
-        title: "Apprentice",
+        title: "New Member",
+        rankColor: contributionRankColor(1),
         counts: {},
         currentStreak: 0,
         longestStreak: 0,
@@ -2780,23 +2847,15 @@ Please contact the school office if you need anything else.`,
     const achievements = contributionAchievementCatalog(selected);
     const achieved = achievements.filter((item) => item.achieved);
     const locked = achievements.filter((item) => !item.achieved);
-    const levels = Array.from({ length: 12 }, (_, index) => {
-      const level = index + 1;
-      return {
-        level,
-        xp: contributionLevelXp(level),
-        title: contributionTitle(level),
-        className: contributionRankClass(contributionTitle(level)),
-      };
-    });
+    const levels = contributionRanks;
 
     els.progressInfoContent.innerHTML = `
       <section class="progress-info-section progress-info-summary">
         <h3>${escapeHtml(selected.name)}</h3>
         <div class="overview-xp-bar" aria-label="Current level progress">
-          <span style="width: ${Number(selected.progress || 0).toFixed(1)}%"></span>
+          <span style="width: ${Number(selected.progress || 0).toFixed(1)}%; background:${escapeAttr(selected.rankColor || contributionRankColor(selected.level || 1))}"></span>
         </div>
-        <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; ${escapeHtml(selected.title || "Apprentice")}</p>
+        <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; <span style="color:${escapeAttr(selected.rankColor || contributionRankColor(selected.level || 1))}">${escapeHtml(selected.title || "New Member")}</span></p>
       </section>
       <section class="progress-info-section">
         <h3>Unlocked Achievements</h3>
@@ -2814,9 +2873,9 @@ Please contact the school office if you need anything else.`,
         <h3>XP Ranks</h3>
         <div class="rank-grid">
           ${levels.map((item) => `
-            <article class="rank-card ${escapeAttr(item.className)} ${selected.level >= item.level ? "is-unlocked" : "is-locked"}">
+            <article class="rank-card ${selected.level >= item.level ? "is-unlocked" : "is-locked"}" style="border-left-color:${escapeAttr(item.color)}">
               <strong>Level ${item.level}</strong>
-              <span>${escapeHtml(item.title)}</span>
+              <span style="color:${escapeAttr(item.color)}">${escapeHtml(item.title)}</span>
               <small>${item.xp.toLocaleString()} XP required</small>
             </article>
           `).join("")}
@@ -2840,6 +2899,8 @@ Please contact the school office if you need anything else.`,
 
   function archiveUsers() {
     const connectedByUid = new Map(state.connectedUsers.map((user) => [user.uid, user]));
+    const connectedByEmail = new Map(state.connectedUsers.filter((user) => user.email).map((user) => [String(user.email).toLowerCase(), user]));
+    const connectedByName = new Map(state.connectedUsers.filter((user) => user.name).map((user) => [normalizePersonName(user.name), user]));
     const users = new Map();
     const userKey = (user = {}) => {
       const email = String(user.email || "").trim().toLowerCase();
@@ -2850,7 +2911,9 @@ Please contact the school office if you need anything else.`,
     };
     const addMergedUser = (user = {}) => {
       const uid = user.uid || user._docId || `staff:${slugify(user.name || user.email || "employee")}`;
-      const connected = connectedByUid.get(uid) || {};
+      const emailKey = String(user.email || "").toLowerCase();
+      const nameKey = normalizePersonName(user.displayName || user.name || "");
+      const connected = connectedByUid.get(uid) || connectedByEmail.get(emailKey) || connectedByName.get(nameKey) || {};
       const merged = { ...user, ...connected, uid };
       const key = userKey(merged);
       const existing = users.get(key) || {};
@@ -2863,7 +2926,7 @@ Please contact the school office if you need anything else.`,
         name: connected.name || merged.displayName || merged.name || existing.name || merged.email?.split("@")[0] || "Employee",
         email: merged.email || existing.email || connected.email || "",
         photoURL: connected.photoURL || merged.photoURL || existing.photoURL || "",
-        online: Boolean(existing.online || connectedByUid.has(uid)),
+        online: Boolean(existing.online || connectedByUid.has(uid) || connectedByEmail.has(emailKey) || connectedByName.has(nameKey)),
         lastLoginAtMs: Number(merged.lastLoginAtMs || existing.lastLoginAtMs || connected.connectedAtMs || 0),
       });
     };
@@ -2904,6 +2967,9 @@ Please contact the school office if you need anything else.`,
         total: 0,
         xp: 0,
         days: new Set(),
+        weekendDays: new Set(),
+        nightActions: 0,
+        earlyActions: 0,
         counts: {},
       };
       const action = String(entry.action || "").toLowerCase();
@@ -2919,6 +2985,15 @@ Please contact the school office if you need anything else.`,
       current.counts[countKey] = (current.counts[countKey] || 0) + 1;
       const day = contributionDayKey(entry.createdAtMs);
       if (day) current.days.add(day);
+      const entryDate = entry.createdAtMs ? new Date(Number(entry.createdAtMs)) : null;
+      if (entryDate && !Number.isNaN(entryDate.getTime())) {
+        const hour = entryDate.getHours();
+        if (hour < 6) current.earlyActions += 1;
+        if (hour >= 0 && hour < 4) current.nightActions += 1;
+        if (entryDate.getDay() === 0 || entryDate.getDay() === 6) {
+          current.weekendDays.add(day || entryDate.toDateString());
+        }
+      }
       stats.set(key, current);
     };
     state.activityLog.forEach(bucketFor);
@@ -2935,8 +3010,10 @@ Please contact the school office if you need anything else.`,
       return {
         ...preparedItem,
         days: Array.from(item.days),
+        weekendDays: Array.from(item.weekendDays),
         level,
         title: contributionTitle(level),
+        rankColor: contributionRankColor(level),
         nextXp,
         previousXp,
         progress,
@@ -2997,6 +3074,7 @@ Please contact the school office if you need anything else.`,
         : /complete|done/.test(action) ? "completed"
           : "created";
     if (/send/.test(action) && /file|email|student|material/.test(`${action} ${entity}`)) return "sentMaterials";
+    if (/transcript/.test(`${action} ${entity}`)) return `${prefix}Transcript`;
     if (/course/.test(`${action} ${entity}`)) return `${prefix}Course`;
     if (/curriculum/.test(`${action} ${entity}`)) return `${prefix}Curriculum`;
     if (/program/.test(`${action} ${entity}`)) return `${prefix}Program`;
@@ -3007,79 +3085,115 @@ Please contact the school office if you need anything else.`,
   }
 
   function contributionLevel(xp) {
-    let level = 1;
-    while (xp >= contributionNextLevelXp(level)) level += 1;
-    return level;
+    const value = Number(xp || 0);
+    return contributionRanks.reduce((level, rank) => (value >= rank.xp ? rank.level : level), 1);
   }
 
   function contributionLevelXp(level) {
-    const thresholds = [0, 100, 250, 500, 1000, 2000, 3500, 5500, 8000, 12000];
-    if (level <= thresholds.length) return thresholds[level - 1];
-    let xp = thresholds[thresholds.length - 1];
-    for (let index = thresholds.length + 1; index <= level; index += 1) {
-      xp = Math.round(xp * 1.35 + 1200);
-    }
-    return xp;
+    return contributionRanks.find((rank) => rank.level === level)?.xp ?? contributionRanks.at(-1).xp;
   }
 
   function contributionNextLevelXp(level) {
-    return contributionLevelXp(level + 1);
+    const next = contributionRanks.find((rank) => rank.level === level + 1);
+    return next ? next.xp : contributionLevelXp(level);
   }
 
   function contributionTitle(level) {
-    const titles = [
-      [50, "Pillar of New Eden"],
-      [40, "Legacy Builder"],
-      [30, "Guardian of the Archive"],
-      [25, "Keeper of Knowledge"],
-      [20, "Elder Scribe"],
-      [15, "Master Archivist"],
-      [12, "Steward"],
-      [8, "Curator"],
-      [5, "Archivist"],
-      [3, "Contributor"],
-      [1, "Apprentice"],
-    ];
-    return titles.find(([required]) => level >= required)?.[1] || "Apprentice";
+    return contributionRanks.find((rank) => rank.level === level)?.title || contributionRanks[0].title;
+  }
+
+  function contributionRankColor(level) {
+    return contributionRanks.find((rank) => rank.level === level)?.color || contributionRanks[0].color;
   }
 
   function contributionAchievements(item, streak) {
-    const counts = item.counts || {};
-    const achievements = [];
-    if (counts.createdCourse >= 1) achievements.push("First Course");
-    if (counts.createdCourse >= 25) achievements.push("Course Architect");
-    if (counts.createdCurriculum >= 1) achievements.push("Curriculum Creator");
-    if (counts.createdCurriculum >= 10) achievements.push("Curriculum Architect");
-    if (counts.createdFile >= 1 || counts.editedFile >= 1) achievements.push("First Upload");
-    if ((counts.createdFile || 0) + (counts.editedFile || 0) >= 25) achievements.push("Librarian");
-    if (counts.createdTask >= 1) achievements.push("Task Starter");
-    if (counts.completedTask >= 10) achievements.push("Task Slayer");
-    if (counts.createdNotice >= 1) achievements.push("Town Crier");
-    if (streak.longest >= 7) achievements.push("Weekly Streak");
-    if (item.isFounder) achievements.push("Founder");
-    return achievements;
+    return contributionAchievementCatalog({ ...item, currentStreak: streak.current, longestStreak: streak.longest })
+      .filter((achievement) => achievement.achieved)
+      .map((achievement) => achievement.name);
   }
 
   function contributionAchievementCatalog(item) {
     const counts = item.counts || {};
     const fileCount = (counts.createdFile || 0) + (counts.editedFile || 0);
+    const categoriesUnlocked = [
+      (counts.createdCourse || 0) >= 1,
+      (counts.createdProgram || 0) >= 1,
+      (counts.createdCurriculum || 0) >= 1,
+      fileCount >= 1,
+      (counts.createdNotice || 0) >= 1,
+      (counts.createdTask || 0) >= 1,
+      (counts.sentMaterials || 0) >= 1,
+    ].filter(Boolean).length;
+    const allTrades = ["createdCourse", "createdProgram", "createdCurriculum", "createdFile", "createdNotice", "createdTask"]
+      .every((key) => (counts[key] || 0) >= 1);
+    const weekendCount = Array.isArray(item.weekendDays) ? item.weekendDays.length : 0;
     const entries = [
-      ["First Course", "Create your first course.", (counts.createdCourse || 0) >= 1],
-      ["Course Architect", "Create 25 courses.", (counts.createdCourse || 0) >= 25],
-      ["Master Course Builder", "Create 100 courses.", (counts.createdCourse || 0) >= 100],
-      ["Curriculum Creator", "Create your first curriculum.", (counts.createdCurriculum || 0) >= 1],
-      ["Curriculum Architect", "Create 10 curriculums.", (counts.createdCurriculum || 0) >= 10],
-      ["First Upload", "Upload or edit your first file.", fileCount >= 1],
-      ["Librarian", "Upload or edit 25 files.", fileCount >= 25],
-      ["Master Librarian", "Upload or edit 100 files.", fileCount >= 100],
-      ["Messenger", "Send student materials once.", (counts.sentMaterials || 0) >= 1],
-      ["Task Starter", "Create your first task.", (counts.createdTask || 0) >= 1],
-      ["Task Slayer", "Complete 10 tasks.", (counts.completedTask || 0) >= 10],
-      ["Voice of the Archive", "Create your first notice.", (counts.createdNotice || 0) >= 1],
-      ["Weekly Streak", "Contribute for 7 consecutive days.", (item.longestStreak || 0) >= 7],
-      ["Founder", "Be one of the original New Eden Dashboard staff.", Boolean(item.isFounder)],
+      ["Courses", "First Course", "Create your first course.", (counts.createdCourse || 0) >= 1],
+      ["Courses", "Course Builder", "Create 10 courses.", (counts.createdCourse || 0) >= 10],
+      ["Courses", "Course Architect", "Create 25 courses.", (counts.createdCourse || 0) >= 25],
+      ["Courses", "Master Course Builder", "Create 100 courses.", (counts.createdCourse || 0) >= 100],
+      ["Courses", "Course Legend", "Create 250 courses.", (counts.createdCourse || 0) >= 250],
+      ["Curriculums", "Curriculum Creator", "Create your first curriculum.", (counts.createdCurriculum || 0) >= 1],
+      ["Curriculums", "Curriculum Planner", "Create 5 curriculums.", (counts.createdCurriculum || 0) >= 5],
+      ["Curriculums", "Curriculum Architect", "Create 10 curriculums.", (counts.createdCurriculum || 0) >= 10],
+      ["Curriculums", "Curriculum Engineer", "Create 25 curriculums.", (counts.createdCurriculum || 0) >= 25],
+      ["Curriculums", "Master Curriculum Architect", "Create 50 curriculums.", (counts.createdCurriculum || 0) >= 50],
+      ["Programs", "Program Creator", "Create your first program.", (counts.createdProgram || 0) >= 1],
+      ["Programs", "Program Builder", "Create 5 programs.", (counts.createdProgram || 0) >= 5],
+      ["Programs", "Program Director", "Create 10 programs.", (counts.createdProgram || 0) >= 10],
+      ["Programs", "Master Program Director", "Create 25 programs.", (counts.createdProgram || 0) >= 25],
+      ["Files", "First Upload", "Upload your first file.", fileCount >= 1],
+      ["Files", "Librarian", "Upload or edit 25 files.", fileCount >= 25],
+      ["Files", "Master Librarian", "Upload or edit 100 files.", fileCount >= 100],
+      ["Files", "Archive Keeper", "Upload or edit 250 files.", fileCount >= 250],
+      ["Files", "Archive Vault", "Upload or edit 500 files.", fileCount >= 500],
+      ["Email", "Messenger", "Send student materials once.", (counts.sentMaterials || 0) >= 1],
+      ["Email", "Courier", "Send 25 deliveries.", (counts.sentMaterials || 0) >= 25],
+      ["Email", "Dispatcher", "Send 100 deliveries.", (counts.sentMaterials || 0) >= 100],
+      ["Email", "Master Dispatcher", "Send 500 deliveries.", (counts.sentMaterials || 0) >= 500],
+      ["Tasks", "Task Starter", "Create your first task.", (counts.createdTask || 0) >= 1],
+      ["Tasks", "Task Slayer", "Complete 10 tasks.", (counts.completedTask || 0) >= 10],
+      ["Tasks", "Task Master", "Complete 50 tasks.", (counts.completedTask || 0) >= 50],
+      ["Tasks", "Task Champion", "Complete 100 tasks.", (counts.completedTask || 0) >= 100],
+      ["Tasks", "Task Legend", "Complete 250 tasks.", (counts.completedTask || 0) >= 250],
+      ["Notices", "Voice of the Archive", "Create your first notice.", (counts.createdNotice || 0) >= 1],
+      ["Notices", "Town Crier", "Create 10 notices.", (counts.createdNotice || 0) >= 10],
+      ["Notices", "Herald", "Create 50 notices.", (counts.createdNotice || 0) >= 50],
+      ["Notices", "Grand Herald", "Create 100 notices.", (counts.createdNotice || 0) >= 100],
+      ["Activity", "First Steps", "Perform 10 total actions.", (item.total || 0) >= 10],
+      ["Activity", "Getting Started", "Perform 50 total actions.", (item.total || 0) >= 50],
+      ["Activity", "Dedicated Contributor", "Perform 250 total actions.", (item.total || 0) >= 250],
+      ["Activity", "Power Contributor", "Perform 1,000 total actions.", (item.total || 0) >= 1000],
+      ["Activity", "Archive Veteran", "Perform 5,000 total actions.", (item.total || 0) >= 5000],
+      ["Activity", "Activity Legend", "Perform 10,000 total actions.", (item.total || 0) >= 10000],
+      ["Streaks", "Weekly Streak", "Contribute 7 consecutive days.", (item.longestStreak || 0) >= 7],
+      ["Streaks", "Dedicated Week", "Contribute 14 consecutive days.", (item.longestStreak || 0) >= 14],
+      ["Streaks", "Monthly Momentum", "Contribute 30 consecutive days.", (item.longestStreak || 0) >= 30],
+      ["Streaks", "Relentless", "Contribute 60 consecutive days.", (item.longestStreak || 0) >= 60],
+      ["Streaks", "Archive Devotion", "Contribute 100 consecutive days.", (item.longestStreak || 0) >= 100],
+      ["Exploration", "Jack of All Trades", "Create at least one course, program, curriculum, file, notice, and task.", allTrades],
+      ["Exploration", "Multitasker", "Earn achievements in 5 different achievement categories.", categoriesUnlocked >= 5],
+      ["Exploration", "Completionist", "Unlock 25 achievements.", false],
+      ["Exploration", "Master Completionist", "Unlock 50 achievements.", false],
+      ["Exploration", "Achievement Hunter", "Unlock 75 achievements.", false],
+      ["Exploration", "Legendary Completionist", "Unlock every achievement.", false],
+      ["Special", "Founder", "Be one of the original New Eden Dashboard staff.", Boolean(item.isFounder)],
+      ["Special", "Night Owl", "Make contributions after midnight.", (item.nightActions || 0) >= 1],
+      ["Special", "Early Bird", "Make contributions before 6 AM.", (item.earlyActions || 0) >= 1],
+      ["Special", "Weekend Warrior", "Contribute on 10 weekends.", weekendCount >= 10],
+      ["Special", "Century Club", "Reach Level 10.", (item.level || 1) >= 10],
+      ["Special", "Elite Contributor", "Reach Level 15.", (item.level || 1) >= 15],
+      ["Special", "Rank Legend", "Reach Level 20.", (item.level || 1) >= 20],
     ];
-    return entries.map(([name, requirement, achieved]) => ({ name, requirement, achieved }));
+    const mapped = entries.map(([category, name, requirement, achieved]) => ({ category, name, requirement, achieved }));
+    const unlockedCount = mapped.filter((achievement) => achievement.achieved).length;
+    return mapped.map((achievement) => {
+      if (achievement.name === "Completionist") return { ...achievement, achieved: unlockedCount >= 25 };
+      if (achievement.name === "Master Completionist") return { ...achievement, achieved: unlockedCount >= 50 };
+      if (achievement.name === "Achievement Hunter") return { ...achievement, achieved: unlockedCount >= 75 };
+      if (achievement.name === "Legendary Completionist") return { ...achievement, achieved: unlockedCount >= mapped.length };
+      return achievement;
+    });
   }
 
   function contributionRankClass(title) {
@@ -3627,11 +3741,12 @@ Please contact the school office if you need anything else.`,
   }
 
   function renderHistory() {
-    const visibleCount = 8;
-    const visibleEntries = state.changelogEntries.slice(0, visibleCount);
-    const olderEntries = state.changelogEntries.slice(visibleCount);
+    const totalPages = Math.max(1, Math.ceil(state.changelogEntries.length / state.historyRowsPerPage));
+    state.historyPage = Math.min(Math.max(1, state.historyPage), totalPages);
+    const start = (state.historyPage - 1) * state.historyRowsPerPage;
+    const visibleEntries = state.changelogEntries.slice(start, start + state.historyRowsPerPage);
     const entryMarkup = (entry, index) => `
-      <details class="changelog-entry" ${index === 0 ? "open" : ""}>
+      <details class="changelog-entry" ${state.historyPage === 1 && index === 0 ? "open" : ""}>
         <summary>
           <time>${escapeHtml(entry.date)}</time>
           <span>
@@ -3645,24 +3760,27 @@ Please contact the school office if you need anything else.`,
         </div>
       </details>
     `;
-    const archiveMarkup = olderEntries.length ? `
-      <details class="changelog-entry changelog-archive">
-        <summary>
-          <time>Archive</time>
-          <span>
-            <strong>Older Versions</strong>
-            <em>${olderEntries.length} previous update${olderEntries.length === 1 ? "" : "s"} hidden for easier scanning.</em>
-          </span>
-          <i class="bi bi-chevron-down"></i>
-        </summary>
-        <div class="changelog-archive-list">
-          ${olderEntries.map((entry, index) => entryMarkup(entry, index + visibleCount)).join("")}
-        </div>
-      </details>
-    ` : "";
     els.versionTimeline.innerHTML = visibleEntries.map((entry, index) => entryMarkup(entry, index)).join("")
-      + archiveMarkup
       || `<div class="empty-state">No changelog entries found.</div>`;
+    if (els.versionPagination) {
+      const pageButtons = Array.from({ length: totalPages }, (_, index) => {
+        const page = index + 1;
+        return `
+          <button class="btn btn-sm ${page === state.historyPage ? "btn-eden" : "btn-outline-eden"}" type="button" data-history-page="${page}" ${page === state.historyPage ? "aria-current=\"page\"" : ""}>
+            ${page}
+          </button>
+        `;
+      }).join("");
+      els.versionPagination.innerHTML = state.changelogEntries.length > state.historyRowsPerPage ? `
+        <button class="btn btn-sm btn-outline-eden" type="button" data-history-page="${Math.max(1, state.historyPage - 1)}" ${state.historyPage === 1 ? "disabled" : ""} aria-label="Previous version history page">
+          <i class="bi bi-chevron-left"></i>
+        </button>
+        <div class="version-page-buttons">${pageButtons}</div>
+        <button class="btn btn-sm btn-outline-eden" type="button" data-history-page="${Math.min(totalPages, state.historyPage + 1)}" ${state.historyPage === totalPages ? "disabled" : ""} aria-label="Next version history page">
+          <i class="bi bi-chevron-right"></i>
+        </button>
+      ` : "";
+    }
   }
 
   async function loadChangelog() {
@@ -4793,6 +4911,8 @@ Please contact the school office if you need anything else.`,
     els.profileMyTasksOnly.checked = myTasksOnlyEnabled();
     els.profileNotifyNotices.checked = noticeModalsEnabled();
     els.profileNotifyTasks.checked = taskModalsEnabled();
+    if (els.profileNotifyAchievements) els.profileNotifyAchievements.checked = achievementModalsEnabled();
+    if (els.profileNotifyLevelUps) els.profileNotifyLevelUps.checked = levelUpModalsEnabled();
     if (els.profileLastLogin) els.profileLastLogin.textContent = formatTimestamp(firebaseState.profile?.lastLoginAtMs || Date.parse(firebaseState.user?.metadata?.lastSignInTime || ""));
     if (els.profileUid) els.profileUid.textContent = firebaseState.user?.uid || "Preview";
     if (els.profileAccountRole) els.profileAccountRole.textContent = state.admin ? "Administrator" : "Standard User";
@@ -4816,6 +4936,8 @@ Please contact the school office if you need anything else.`,
     const myTasksOnly = Boolean(els.profileMyTasksOnly?.checked);
     const notifyNotices = Boolean(els.profileNotifyNotices?.checked);
     const notifyTasks = Boolean(els.profileNotifyTasks?.checked);
+    const notifyAchievements = Boolean(els.profileNotifyAchievements?.checked);
+    const notifyLevelUps = Boolean(els.profileNotifyLevelUps?.checked);
     if (!displayName) {
       els.profileMessage.textContent = "Display name is required.";
       els.profileDisplayName.focus();
@@ -4851,6 +4973,8 @@ Please contact the school office if you need anything else.`,
           myTasksOnly,
           notifyNotices,
           notifyTasks,
+          notifyAchievements,
+          notifyLevelUps,
         },
       };
       if (firebaseState.ready && firebaseState.user) {
@@ -5155,7 +5279,9 @@ Please contact the school office if you need anything else.`,
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "activityLog"), (snapshot) => {
       state.activityLog = normalizeActivityLog(rtdbList(snapshot.val()));
+      handleContributionNotifications();
       renderActivityLog();
+      renderSidebarRankCard();
       renderOverview();
     }, handleSnapshotError));
 
@@ -5200,11 +5326,18 @@ Please contact the school office if you need anything else.`,
     stopUserPresence();
     state.connectedUsers = [];
     state.notificationsReady = false;
+    state.contributionNotificationsReady = false;
+    state.knownContributionLevels = new Map();
+    state.knownAchievements = new Map();
   }
 
   function primeNotificationBaselines() {
     state.knownNoticeIds = new Set(state.notices.map((notice) => notice._docId));
     state.knownTaskStates = new Map(state.tasks.map((task) => [task._docId, taskNotificationSignature(task)]));
+    const current = currentContributorStats();
+    state.knownContributionLevels = new Map(current ? [[current.key, current.level]] : []);
+    state.knownAchievements = new Map(current ? [[current.key, new Set(current.achievements)]] : []);
+    state.contributionNotificationsReady = true;
     state.notificationsReady = true;
   }
 
@@ -5264,6 +5397,39 @@ Please contact the school office if you need anything else.`,
   function showThemedNotification(options) {
     if (document.querySelector("dialog[open]")) return;
     void alertAction(options);
+  }
+
+  function handleContributionNotifications() {
+    const current = currentContributorStats();
+    if (!current) return;
+    if (!state.contributionNotificationsReady) {
+      state.knownContributionLevels.set(current.key, current.level);
+      state.knownAchievements.set(current.key, new Set(current.achievements));
+      return;
+    }
+    const previousLevel = state.knownContributionLevels.get(current.key) || current.level;
+    const previousAchievements = state.knownAchievements.get(current.key) || new Set(current.achievements);
+    const newAchievement = current.achievements.find((achievement) => !previousAchievements.has(achievement));
+    state.knownContributionLevels.set(current.key, current.level);
+    state.knownAchievements.set(current.key, new Set(current.achievements));
+    if (current.level > previousLevel && levelUpModalsEnabled()) {
+      showThemedNotification({
+        eyebrow: "Level Up",
+        title: current.title,
+        message: `You reached Level ${current.level}.`,
+        confirmText: "Nice",
+      });
+      return;
+    }
+    if (newAchievement && achievementModalsEnabled()) {
+      const achievement = contributionAchievementCatalog(current).find((item) => item.name === newAchievement);
+      showThemedNotification({
+        eyebrow: "Achievement Unlocked",
+        title: newAchievement,
+        message: achievement?.requirement || "New contributor achievement earned.",
+        confirmText: "Nice",
+      });
+    }
   }
 
   async function startUserPresence() {
@@ -6259,16 +6425,18 @@ Please contact the school office if you need anything else.`,
       const courseIds = Array.isArray(file.courseIds)
         ? file.courseIds
         : Object.keys(file.courseIds || {});
+      const category = file.category || inferFileCategory(file);
+      const isTranscript = category === "Transcript";
       return {
         _docId: file._docId || slugify(`${file.name || "file"}-${file.createdAtMs || Date.now()}`),
         name: file.name || "",
-        category: file.category || inferFileCategory(file),
+        category,
         size: Number(file.size || 0),
         contentType: file.contentType || "",
         storagePath: file.storagePath || "",
         downloadURL: file.downloadURL || "",
-        courseIds: uniqueValues(courseIds.map((id) => String(id).trim()).filter(Boolean)),
-        courseLabels: Array.isArray(file.courseLabels) ? file.courseLabels : Object.values(file.courseLabels || {}),
+        courseIds: isTranscript ? [] : uniqueValues(courseIds.map((id) => String(id).trim()).filter(Boolean)),
+        courseLabels: isTranscript ? [] : Array.isArray(file.courseLabels) ? file.courseLabels : Object.values(file.courseLabels || {}),
         uploadedByUid: file.uploadedByUid || "",
         uploadedByName: file.uploadedByName || file.uploadedBy || "",
         createdAtMs: Number(file.createdAtMs || file.createdAt || 0),
@@ -6397,12 +6565,16 @@ Please contact the school office if you need anything else.`,
     const requiredCourseIds = new Set(curriculumForProgram(programName).map((row) => String(row.courseId)));
     if (!requiredCourseIds.size) return [];
     return fileManagerState.records
-      .filter((file) => file.courseIds.some((courseId) => requiredCourseIds.has(String(courseId))))
+      .filter((file) => file.category !== "Transcript" && file.courseIds.some((courseId) => requiredCourseIds.has(String(courseId))))
       .map((file) => ({
         ...file,
         matchedCourseIds: file.courseIds.filter((courseId) => requiredCourseIds.has(String(courseId))),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  function transcriptFileRecords() {
+    return fileManagerState.records.filter((file) => file.category === "Transcript");
   }
 
   function courseById(courseId) {

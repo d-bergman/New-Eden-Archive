@@ -1,5 +1,39 @@
 # New Eden Archive Changelog
 
+## V1.5.5 - 2026-06-05 12:30 PM CT - Dashboard Progress and Version History Polish
+
+### Summary
+- Cleaned up Dashboard Progress, Staff Status, transcript file behavior, button states, and Version History navigation.
+
+### New Features
+- Added the current user's level, rank title, XP progress, and XP-to-next-level badge to the left sidebar under Profile Settings.
+- Expanded Staff Progress to the full 20-level rank ladder from New Member through Archive Legend, with rank-specific colors.
+- Added expanded achievement categories for courses, curriculums, programs, files, email delivery, tasks, notices, activity totals, streaks, exploration, and special badges.
+- Added profile notification toggles for achievement and level-up popups.
+- Added Transcripts Created to Dashboard Progress.
+
+### Fixes
+- Renamed Community Progress to Dashboard Progress and updated the subtitle to describe shared dashboard totals.
+- Changed the loader text from Loading Archive to Loading Dashboard.
+- Hid the Overview metric card row while keeping the metric code available for future use.
+- Removed inline achievement badges from the Contribution Progress module now that achievements live in the progress information modal.
+- Fixed blank spacing above unlocked achievements inside the Achievements & XP Ranks modal.
+- Improved Staff Status last-login merging so offline users can retain persisted last-login data from their profile/auth record.
+- Removed the extra subtext line under Staff Status user names.
+- Stopped transcript PDFs from linking to course IDs or appearing as curriculum course attachments.
+- Replaced the Version History older-version accordion with bottom pagination controls.
+- Tightened button padding, centering, hover, and focus states for better accessibility across the dashboard.
+- Updated the visible app version label to V1.5.5.
+
+### Current XP Values
+- Courses: create/add 25 XP, edit/update/save 5 XP, delete/remove 10 XP.
+- Curriculums: create/add 30 XP, edit/update/requirements/save 5 XP, delete/remove 15 XP.
+- Programs: create/add 30 XP, edit/update/save 5 XP, delete/remove 15 XP.
+- Files, attachments, PDFs, and transcripts: upload/save/import 10 XP, associate/edit/update 5 XP, delete/remove 5 XP, send student materials 15 XP or 20 XP for multi-file sends.
+- Tasks: create/open/add 10 XP, complete/done 20 XP, edit/update/reopen 5 XP, close/delete/remove 10 XP.
+- Notices: create/send/add 10 XP, edit/update 5 XP, delete/archive/remove 5 XP.
+- Generic fallback: create/add/upload/import/saved 10 XP, edit/update/save/complete/reopen 5 XP, delete/remove 5 XP, unmatched activity 2 XP.
+
 ## V1.5.4 - 2026-06-05 10:33 AM CT - Progress Info and Transcript Modal Width
 
 ### Summary
