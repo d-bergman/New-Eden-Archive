@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.1";
+  const appVersion = "1.5.2";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -237,6 +237,13 @@ Please contact the school office if you need anything else.`,
     printTranscript: document.querySelector("#printTranscript"),
     importTranscriptPdf: document.querySelector("#importTranscriptPdf"),
     transcriptPdfFile: document.querySelector("#transcriptPdfFile"),
+    transcriptImportDialog: document.querySelector("#transcriptImportDialog"),
+    importTranscriptFromComputer: document.querySelector("#importTranscriptFromComputer"),
+    transcriptManagedImportList: document.querySelector("#transcriptManagedImportList"),
+    transcriptSaveDialog: document.querySelector("#transcriptSaveDialog"),
+    saveTranscriptToComputer: document.querySelector("#saveTranscriptToComputer"),
+    saveTranscriptToFileManager: document.querySelector("#saveTranscriptToFileManager"),
+    saveTranscriptBoth: document.querySelector("#saveTranscriptBoth"),
     saveTranscriptDraft: document.querySelector("#saveTranscriptDraft"),
     transcriptDraftList: document.querySelector("#transcriptDraftList"),
     clearTranscript: document.querySelector("#clearTranscript"),
@@ -668,7 +675,9 @@ Please contact the school office if you need anything else.`,
       renderTranscriptRows();
     });
 
-    els.importTranscriptPdf?.addEventListener("click", () => {
+    els.importTranscriptPdf?.addEventListener("click", openTranscriptImportDialog);
+    els.importTranscriptFromComputer?.addEventListener("click", () => {
+      els.transcriptImportDialog?.close("computer");
       if (els.transcriptPdfFile) els.transcriptPdfFile.value = "";
       els.transcriptPdfFile?.click();
     });
@@ -680,7 +689,10 @@ Please contact the school office if you need anything else.`,
 
     els.saveTranscriptDraft?.addEventListener("click", saveTranscriptDraft);
 
-    els.printTranscript?.addEventListener("click", printTranscript);
+    els.printTranscript?.addEventListener("click", openTranscriptSaveDialog);
+    els.saveTranscriptToComputer?.addEventListener("click", () => saveTranscriptPdf("computer"));
+    els.saveTranscriptToFileManager?.addEventListener("click", () => saveTranscriptPdf("file-manager"));
+    els.saveTranscriptBoth?.addEventListener("click", () => saveTranscriptPdf("both"));
 
     els.confirmAdmin.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1732,6 +1744,176 @@ Please contact the school office if you need anything else.`,
     await writeActivity("Deleted Transcript Draft", "Transcript", draft.studentName || draft.studentId || "Unnamed Student", `${draft.rows?.length || 0} course row(s) removed from saved drafts.`);
   }
 
+  function openTranscriptImportDialog() {
+    renderTranscriptManagedImportList();
+    els.transcriptImportDialog?.showModal();
+  }
+
+  function renderTranscriptManagedImportList() {
+    if (!els.transcriptManagedImportList) return;
+    const files = fileManagerState.records
+      .filter((file) => (
+        file.category === "Transcript"
+        || file.contentType === "application/pdf"
+        || file.name.toLowerCase().endsWith(".pdf")
+      ))
+      .sort((a, b) => Number(b.createdAtMs || b.updatedAtMs || 0) - Number(a.createdAtMs || a.updatedAtMs || 0))
+      .slice(0, 20);
+    els.transcriptManagedImportList.innerHTML = files.map((file) => `
+      <button class="transcript-managed-file-row" type="button" data-import-managed-transcript="${escapeAttr(file._docId)}">
+        <span>
+          <strong>${escapeHtml(file.name)}</strong>
+          <small>${escapeHtml([file.category || "File", formatBytes(file.size), formatTimestamp(file.createdAtMs || file.updatedAtMs)].filter(Boolean).join(" - "))}</small>
+        </span>
+        <i class="bi bi-box-arrow-in-down"></i>
+      </button>
+    `).join("") || `<div class="empty-state">No transcript PDFs are currently saved in File Manager.</div>`;
+    els.transcriptManagedImportList.querySelectorAll("[data-import-managed-transcript]").forEach((button) => {
+      button.addEventListener("click", () => importManagedTranscriptPdf(button.dataset.importManagedTranscript));
+    });
+  }
+
+  async function importManagedTranscriptPdf(docId) {
+    const file = fileManagerState.records.find((item) => item._docId === docId);
+    if (!file?.downloadURL) {
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "File Missing",
+        message: "That File Manager record does not have a downloadable PDF URL yet.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    try {
+      els.transcriptImportDialog?.close("file-manager");
+      setCloudStatus(`Importing transcript from File Manager: ${file.name}`);
+      const response = await fetch(file.downloadURL);
+      if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+      const blob = await response.blob();
+      const importedFile = new File([blob], file.name, { type: file.contentType || "application/pdf" });
+      await importTranscriptPdf(importedFile);
+    } catch (error) {
+      console.warn("File Manager transcript import failed.", error);
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "Could Not Import File",
+        message: error?.message || "The selected File Manager transcript could not be downloaded or parsed.",
+        confirmText: "OK",
+      });
+      setCloudStatus("File Manager transcript import failed.");
+    }
+  }
+
+  function openTranscriptSaveDialog() {
+    if (!state.transcriptRows.length) {
+      alertAction({
+        eyebrow: "Transcripts",
+        title: "No Courses Added",
+        message: "Add courses manually or import a curriculum before generating the transcript.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    els.transcriptSaveDialog?.showModal();
+  }
+
+  async function saveTranscriptPdf(destination) {
+    if (!state.transcriptRows.length) {
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "No Courses Added",
+        message: "Add courses manually or import a curriculum before generating the transcript.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    try {
+      els.transcriptSaveDialog?.close(destination);
+      setCloudStatus("Generating transcript PDF");
+      const blob = await generateTranscriptPdfBlob();
+      const filename = transcriptPdfFilename();
+      if (destination === "computer" || destination === "both") {
+        downloadBlob(blob, filename);
+      }
+      if (destination === "file-manager" || destination === "both") {
+        await saveTranscriptPdfToFileManager(blob, filename);
+      } else {
+        await writeActivity("Saved Transcript PDF", "Transcript", els.transcriptStudentName?.value || filename, "Downloaded transcript PDF to computer.");
+      }
+      setCloudStatus(destination === "file-manager" ? "Transcript PDF saved to File Manager." : "Transcript PDF ready.");
+    } catch (error) {
+      console.warn("Transcript PDF generation failed.", error);
+      await alertAction({
+        eyebrow: "Transcripts",
+        title: "Could Not Save PDF",
+        message: error?.message || "The transcript PDF could not be generated.",
+        confirmText: "OK",
+      });
+      setCloudStatus("Transcript PDF save failed.");
+    }
+  }
+
+  async function saveTranscriptPdfToFileManager(blob, filename) {
+    const courseIds = uniqueValues(state.transcriptRows.map((row) => row.courseId).filter(Boolean));
+    const courseLabels = courseIds.map((id) => {
+      const course = courseById(id);
+      return course ? `${course.id} ${course.name} Credit ${course.credit}` : id;
+    });
+    const now = Date.now();
+    const docId = slugify(`${now}-${filename}`);
+    const recordBase = {
+      _docId: docId,
+      name: filename,
+      size: blob.size,
+      contentType: "application/pdf",
+      category: "Transcript",
+      courseIds,
+      courseLabels,
+      uploadedByUid: firebaseState.user?.uid || "preview",
+      uploadedByName: currentUserDisplayName() || "Local Preview",
+      createdAtMs: now,
+      updatedAtMs: now,
+    };
+
+    if (!canWriteCloud()) {
+      const localRecord = normalizeFiles([{
+        ...recordBase,
+        downloadURL: URL.createObjectURL(blob),
+        storagePath: "",
+      }])[0];
+      fileManagerState.records.unshift(localRecord);
+      await writeActivity("Saved Transcript PDF", "Transcript", filename, "Saved transcript PDF to local preview File Manager.");
+      render();
+      return localRecord;
+    }
+
+    const { dbRef, set, serverTimestamp, storageRef, uploadBytesResumable, getDownloadURL } = firebaseState.modules;
+    const storagePath = `courseFiles/transcripts/${docId}-${filename}`;
+    const fileRef = storageRef(firebaseState.storage, storagePath);
+    await uploadTaskWithTimeout(uploadBytesResumable(fileRef, blob, { contentType: "application/pdf" }), 45000);
+    const downloadURL = await getDownloadURL(fileRef);
+    const record = {
+      name: filename,
+      size: blob.size,
+      contentType: "application/pdf",
+      category: "Transcript",
+      storagePath,
+      downloadURL,
+      courseIds,
+      courseLabels,
+      uploadedByUid: firebaseState.user?.uid || "",
+      uploadedByName: currentUserDisplayName(),
+      transcriptDraftId: state.activeTranscriptDraftId || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+    await set(dbRef(firebaseState.db, `files/${docId}`), record);
+    fileManagerState.records = normalizeFiles([{ _docId: docId, ...record, createdAtMs: now, updatedAtMs: now }, ...fileManagerState.records]);
+    await writeActivity("Saved Transcript PDF", "Transcript", filename, `Saved to File Manager with ${courseIds.length} linked course(s).`);
+    render();
+    return record;
+  }
+
   async function importTranscriptPdf(file) {
     if (!file.type.includes("pdf") && !file.name.toLowerCase().endsWith(".pdf")) {
       await alertAction({
@@ -1946,6 +2128,152 @@ Please contact the school office if you need anything else.`,
     if (average >= 67) return "1.3";
     if (average >= 65) return "1.0";
     return "0.0";
+  }
+
+  async function generateTranscriptPdfBlob() {
+    const { jsPDF } = await loadJsPdf();
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 36;
+    const logoUrl = new URL("assets/transcript/logo.jpg", window.location.href).href;
+    const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
+    const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
+    const [logoData, sealData, signatureData] = await Promise.all([
+      imageToDataUrl(logoUrl),
+      imageToDataUrl(sealUrl),
+      imageToDataUrl(signatureUrl),
+    ]);
+    const text = (value) => String(value || "");
+    const centerText = (value, y, size = 8, style = "normal") => {
+      doc.setFont("times", style);
+      doc.setFontSize(size);
+      doc.text(text(value), pageWidth / 2, y, { align: "center" });
+    };
+    const divider = (y) => {
+      doc.setLineDashPattern([4, 3], 0);
+      doc.line(margin, y, pageWidth - margin, y);
+      doc.line(margin, y + 28, pageWidth - margin, y + 28);
+      doc.setLineDashPattern([], 0);
+    };
+    const tableHeader = (y) => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("Subj", margin, y);
+      doc.text("Num", margin + 48, y);
+      doc.text("Title", margin + 92, y);
+      doc.text("Cr", pageWidth - 150, y, { align: "center" });
+      doc.text("Per", pageWidth - 105, y, { align: "center" });
+      doc.text("Grade", pageWidth - margin, y, { align: "right" });
+      doc.line(margin, y + 5, pageWidth - margin, y + 5);
+    };
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.addImage(logoData, "JPEG", margin, 28, 150, 63);
+    doc.text(["9783 E 116th St PMB 1104", "Fishers, IN 46037", "www.newedenschoolofnaturalhealth.org"], pageWidth - margin, 42, { align: "right" });
+
+    const today = new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+    const attended = `${dateForTranscript(els.transcriptFrom?.value) || "NA"}/${dateForTranscript(els.transcriptTo?.value) || "NA"}`;
+    let y = 122;
+    doc.text([
+      `Name: ${els.transcriptStudentName?.value || ""}`,
+      `Student ID: ${els.transcriptStudentId?.value || ""}`,
+      `Date of Birth: ${dateLongForTranscript(els.transcriptDob?.value)}`,
+    ], margin, y);
+    doc.text(`Date Created: ${today}`, pageWidth - margin, y, { align: "right" });
+
+    y += 44;
+    centerText("****************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS***************************************", y, 7);
+    y += 18;
+    divider(y);
+    doc.setFont("helvetica", "bold");
+    doc.text("Program", margin, y + 11);
+    doc.text("Attended From/To", pageWidth - margin, y + 11, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.text(text(state.transcriptSelectedProgram), margin, y + 23);
+    doc.text(attended, pageWidth - margin, y + 23, { align: "right" });
+
+    y += 52;
+    tableHeader(y);
+    y += 20;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.5);
+    state.transcriptRows.forEach((row) => {
+      if (y > pageHeight - 120) {
+        doc.addPage();
+        y = 48;
+        tableHeader(y);
+        y += 20;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+      }
+      const titleLines = doc.splitTextToSize(text(row.name), pageWidth - 260);
+      doc.text("NES", margin, y);
+      doc.text(text(row.courseId), margin + 48, y);
+      doc.text(titleLines, margin + 92, y);
+      doc.text(text(row.credit), pageWidth - 150, y, { align: "center" });
+      doc.text(formatTranscriptPercent(row.percent), pageWidth - 105, y, { align: "center" });
+      doc.text(transcriptGrade(row.percent), pageWidth - margin, y, { align: "right" });
+      y += Math.max(14, titleLines.length * 10);
+    });
+
+    y += 14;
+    if (y > pageHeight - 150) {
+      doc.addPage();
+      y = 48;
+    }
+    divider(y);
+    doc.setFont("helvetica", "bold");
+    doc.text("Total Credit Hours", margin, y + 11);
+    doc.text("GPA", pageWidth - margin, y + 11, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.text(text(els.transcriptTotalCredits?.textContent || "0"), margin, y + 23);
+    doc.text(text(els.transcriptGpa?.textContent || "0.0"), pageWidth - margin, y + 23, { align: "right" });
+    y += 48;
+    centerText(els.transcriptGraduated?.checked ? "Graduated" : "Not Graduated", y, 10, "bold");
+    y += 18;
+    centerText("********************************************************END OF PAGE********************************************************", y, 7);
+    y += 26;
+    doc.addImage(sealData, "PNG", margin, y, 108, 108);
+    doc.addImage(signatureData, "PNG", pageWidth - 205, y + 24, 170, 55);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(["Donna DeSantis", "Administration and Records"], pageWidth - margin, y + 90, { align: "right" });
+    return doc.output("blob");
+  }
+
+  async function loadJsPdf() {
+    const module = await import("https://cdn.jsdelivr.net/npm/jspdf@2.5.2/+esm");
+    return module.default?.jsPDF ? module.default : module;
+  }
+
+  async function imageToDataUrl(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Could not load transcript image: ${url}`);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function transcriptPdfFilename() {
+    const name = slugify(els.transcriptStudentName?.value || els.transcriptStudentId?.value || "new-eden-transcript");
+    return `${name || "new-eden-transcript"}-transcript.pdf`;
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
   function printTranscript() {

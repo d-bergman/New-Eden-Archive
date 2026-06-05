@@ -1,5 +1,22 @@
 # New Eden Archive Changelog
 
+## V1.5.2 - 2026-06-05 8:55 AM CT - Transcript File Manager Save and Import
+
+### Summary
+- Connected the Transcript Generator to the centralized File Manager so transcript PDFs can be imported from stored files and saved back into the archive.
+
+### New Features
+- Added an Import Transcript PDF chooser with options for importing from the computer or from File Manager.
+- Added File Manager transcript import support for stored PDF records.
+- Added a Save Transcript PDF chooser with options to save to the computer, save to File Manager, or save to both.
+- Added PDF generation for File Manager saves using the New Eden transcript logo, seal, signature, transcript rows, GPA, credits, and student details.
+- Saved generated transcript PDFs into File Manager with category `Transcript` and linked course IDs from the transcript rows.
+
+### Fixes
+- Changed transcript saving from a single browser print action into a clearer destination-based workflow.
+- Logged transcript PDF saves and imports in the activity log.
+- Updated the visible app version label to V1.5.2.
+
 ## V1.5.1 - 2026-06-05 12:53 AM CT - Staff Status and File Metadata Editing
 
 ### Summary

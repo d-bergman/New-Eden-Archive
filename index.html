@@ -751,7 +751,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.5.1</span></p>
+            <p>Version <span id="appVersion">1.5.2</span></p>
           </footer>
         </div>
       </main>
@@ -1198,6 +1198,61 @@
           <button class="btn btn-outline-eden" data-close-file-builder type="button">Cancel</button>
           <button class="btn btn-eden" id="saveManagedFile" type="button">Save File</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native" id="transcriptImportDialog">
+      <form method="dialog" class="modal-card transcript-option-modal">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Transcripts</p>
+            <h2>Import Transcript PDF</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <p class="section-subtitle">Import from your computer, or rebuild an editable transcript from a transcript PDF already saved in File Manager.</p>
+        <div class="transcript-option-grid">
+          <button class="btn btn-outline-eden transcript-option-btn" id="importTranscriptFromComputer" type="button">
+            <i class="bi bi-laptop"></i>
+            <span>Import From Computer</span>
+          </button>
+          <div class="transcript-file-manager-pick">
+            <h3>Import From File Manager</h3>
+            <div class="transcript-managed-list" id="transcriptManagedImportList"></div>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="modal-native" id="transcriptSaveDialog">
+      <form method="dialog" class="modal-card transcript-option-modal">
+        <div class="modal-heading">
+          <div>
+            <p class="eyebrow">Transcripts</p>
+            <h2>Save Transcript PDF</h2>
+          </div>
+          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <p class="section-subtitle">Choose where the generated transcript PDF should go.</p>
+        <div class="transcript-save-options">
+          <button class="btn btn-outline-eden" id="saveTranscriptToComputer" type="button">
+            <i class="bi bi-download"></i>
+            Save to Computer
+          </button>
+          <button class="btn btn-outline-eden" id="saveTranscriptToFileManager" type="button">
+            <i class="bi bi-folder-plus"></i>
+            Save to File Manager
+          </button>
+          <button class="btn btn-eden" id="saveTranscriptBoth" type="button">
+            <i class="bi bi-check2-square"></i>
+            Save Both
+          </button>
+        </div>
+        <p class="form-note">File Manager saves use category Transcript and link to the course IDs currently listed in the transcript rows.</p>
       </form>
     </dialog>
 

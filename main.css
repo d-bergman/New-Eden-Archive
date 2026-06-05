@@ -2625,6 +2625,89 @@ mark {
   justify-content: center;
 }
 
+.transcript-option-modal {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.transcript-option-grid,
+.transcript-save-options {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.transcript-option-grid {
+  grid-template-columns: minmax(180px, 0.42fr) minmax(0, 1fr);
+}
+
+.transcript-option-btn {
+  min-height: 132px;
+  align-content: center;
+  justify-content: center;
+}
+
+.transcript-option-btn i {
+  font-size: 1.5rem;
+}
+
+.transcript-file-manager-pick {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(251, 250, 245, 0.58);
+}
+
+.transcript-file-manager-pick h3 {
+  margin: 0 0 10px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.transcript-managed-list {
+  display: grid;
+  max-height: 260px;
+  gap: 8px;
+  overflow: auto;
+}
+
+.transcript-managed-file-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
+  color: var(--eden-ink);
+  text-align: left;
+}
+
+.transcript-managed-file-row strong,
+.transcript-managed-file-row small {
+  display: block;
+}
+
+.transcript-managed-file-row small {
+  color: var(--eden-muted);
+}
+
+.transcript-save-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.transcript-save-options .btn {
+  min-height: 76px;
+  justify-content: center;
+}
+
+body.theme-dark .transcript-file-manager-pick,
+body.theme-dark .transcript-managed-file-row {
+  background: rgba(18, 20, 17, 0.78);
+}
+
 body.theme-dark .overview-placeholder,
 body.theme-dark .transcript-draft-item {
   background: rgba(18, 20, 17, 0.78);
