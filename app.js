@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.2";
+  const appVersion = "1.5.3";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -175,6 +175,7 @@ Please contact the school office if you need anything else.`,
     overviewTrendCards: document.querySelector("#overviewTrendCards"),
     overviewUserStatusList: document.querySelector("#overviewUserStatusList"),
     overviewContributionList: document.querySelector("#overviewContributionList"),
+    overviewGamificationList: document.querySelector("#overviewGamificationList"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
@@ -2463,6 +2464,7 @@ Please contact the school office if you need anything else.`,
     renderOverviewTrends();
     renderOverviewUsers();
     renderOverviewContributions();
+    renderOverviewGamification();
   }
 
   function renderOverviewActivity() {
@@ -2693,6 +2695,61 @@ Please contact the school office if you need anything else.`,
     `).join("") || overviewEmptyState("No contributions have been logged yet.");
   }
 
+  function renderOverviewGamification() {
+    if (!els.overviewGamificationList) return;
+    const stats = contributorStats();
+    if (!stats.length) {
+      els.overviewGamificationList.innerHTML = overviewEmptyState("No contribution progress has been recorded yet.");
+      return;
+    }
+    const currentKey = firebaseState.user?.uid || normalizePersonName(currentUserDisplayName());
+    const selected = stats.find((item) => item.uid === currentKey || item.key === currentKey)
+      || stats.find((item) => normalizePersonName(item.name) === normalizePersonName(currentUserDisplayName()))
+      || stats[0];
+    const rank = stats.findIndex((item) => item.key === selected.key) + 1;
+    const topStaff = stats.slice(0, 4);
+    const profile = archiveUsers().find((user) => (
+      user.uid === selected.uid
+      || normalizePersonName(user.name) === normalizePersonName(selected.name)
+    )) || selected;
+    const xpRemaining = Math.max(0, selected.nextXp - selected.xp);
+
+    els.overviewGamificationList.innerHTML = `
+      <article class="overview-level-card">
+        ${userAvatarMarkup(profile)}
+        <div class="overview-level-main">
+          <div class="overview-level-title">
+            <strong>${escapeHtml(selected.name)}</strong>
+            <span>Level ${selected.level} ${escapeHtml(selected.title)}</span>
+          </div>
+          <div class="overview-xp-bar" aria-label="Level progress">
+            <span style="width: ${selected.progress.toFixed(1)}%"></span>
+          </div>
+          <small>${selected.xp} XP &bull; ${xpRemaining} XP to next level &bull; Rank #${rank}</small>
+        </div>
+      </article>
+      <div class="overview-badge-row">
+        <span><strong>${selected.total}</strong>Total Actions</span>
+        <span><strong>${selected.currentStreak}</strong>Day Streak</span>
+        <span><strong>${selected.achievements.length}</strong>Badges</span>
+      </div>
+      <div class="overview-achievements">
+        ${(selected.achievements.length ? selected.achievements : ["Getting Started"]).slice(0, 5).map((badge) => `
+          <span>${escapeHtml(badge)}</span>
+        `).join("")}
+      </div>
+      <div class="overview-leaderboard">
+        ${topStaff.map((item, index) => `
+          <div>
+            <span class="contribution-rank">${index + 1}</span>
+            <strong>${escapeHtml(item.name)}</strong>
+            <small>${item.level} &bull; ${escapeHtml(item.title)} &bull; ${item.xp} XP</small>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
   function archiveUsers() {
     const connectedByUid = new Map(state.connectedUsers.map((user) => [user.uid, user]));
     const users = new Map();
@@ -2749,12 +2806,17 @@ Please contact the school office if you need anything else.`,
     const bucketFor = (entry) => {
       const key = entry.userUid || normalizePersonName(entry.userName) || "unknown";
       const current = stats.get(key) || {
+        key,
+        uid: entry.userUid || "",
         name: entry.userName || "Unknown",
         created: 0,
         edited: 0,
         deleted: 0,
         other: 0,
         total: 0,
+        xp: 0,
+        days: new Set(),
+        counts: {},
       };
       const action = String(entry.action || "").toLowerCase();
       if (/add|create|upload|opened task|saved transcript|imported/.test(action)) current.created += 1;
@@ -2762,10 +2824,191 @@ Please contact the school office if you need anything else.`,
       else if (/delete|remove/.test(action)) current.deleted += 1;
       else current.other += 1;
       current.total += 1;
+      current.name = entry.userName || current.name;
+      current.uid = entry.userUid || current.uid;
+      current.xp += contributionXp(entry);
+      const countKey = contributionCountKey(entry);
+      current.counts[countKey] = (current.counts[countKey] || 0) + 1;
+      const day = contributionDayKey(entry.createdAtMs);
+      if (day) current.days.add(day);
       stats.set(key, current);
     };
     state.activityLog.forEach(bucketFor);
-    return Array.from(stats.values()).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+    return Array.from(stats.values()).map((item) => {
+      const level = contributionLevel(item.xp);
+      const nextXp = contributionNextLevelXp(level);
+      const previousXp = contributionLevelXp(level);
+      const progress = nextXp > previousXp
+        ? Math.min(100, Math.max(0, ((item.xp - previousXp) / (nextXp - previousXp)) * 100))
+        : 100;
+      const streak = contributionStreaks(Array.from(item.days));
+      const isFounder = isFounderContributor(item.name);
+      const preparedItem = { ...item, isFounder };
+      return {
+        ...preparedItem,
+        days: Array.from(item.days),
+        level,
+        title: contributionTitle(level),
+        nextXp,
+        previousXp,
+        progress,
+        currentStreak: streak.current,
+        longestStreak: streak.longest,
+        achievements: contributionAchievements(preparedItem, streak),
+      };
+    }).sort((a, b) => b.xp - a.xp || b.total - a.total || a.name.localeCompare(b.name));
+  }
+
+  function contributionXp(entry) {
+    const action = String(entry.action || "").toLowerCase();
+    const entity = `${entry.entityType || ""} ${entry.entityName || ""} ${entry.details || ""}`.toLowerCase();
+    const haystack = `${action} ${entity}`;
+    if (/course/.test(haystack)) {
+      if (/add|create/.test(action)) return 25;
+      if (/delete|remove/.test(action)) return 10;
+      if (/edit|update|save/.test(action)) return 5;
+    }
+    if (/curriculum/.test(haystack)) {
+      if (/add|create/.test(action)) return 30;
+      if (/delete|remove/.test(action)) return 15;
+      if (/edit|update|requirement|save/.test(action)) return 5;
+    }
+    if (/program/.test(haystack)) {
+      if (/add|create/.test(action)) return 30;
+      if (/delete|remove/.test(action)) return 15;
+      if (/edit|update|save/.test(action)) return 5;
+    }
+    if (/file|attachment|pdf|transcript/.test(haystack)) {
+      if (/send/.test(action)) return /multiple|files/.test(haystack) ? 20 : 15;
+      if (/upload|save|import/.test(action)) return 10;
+      if (/associate|edit|update/.test(action)) return 5;
+      if (/delete|remove/.test(action)) return 5;
+    }
+    if (/task/.test(haystack)) {
+      if (/complete|done/.test(action)) return 20;
+      if (/open|create|add/.test(action)) return 10;
+      if (/close|delete|remove/.test(action)) return 10;
+      if (/edit|update|reopen/.test(action)) return 5;
+    }
+    if (/notice|announcement/.test(haystack)) {
+      if (/create|send|add/.test(action)) return 10;
+      if (/delete|archive|remove/.test(action)) return 5;
+      if (/edit|update/.test(action)) return 5;
+    }
+    if (/add|create|upload|import|saved/.test(action)) return 10;
+    if (/edit|update|save|complete|reopen/.test(action)) return 5;
+    if (/delete|remove/.test(action)) return 5;
+    return 2;
+  }
+
+  function contributionCountKey(entry) {
+    const action = String(entry.action || "").toLowerCase();
+    const entity = `${entry.entityType || ""} ${entry.entityName || ""} ${entry.details || ""}`.toLowerCase();
+    const prefix = /delete|remove/.test(action) ? "deleted"
+      : /edit|update|save|requirement/.test(action) ? "edited"
+        : /complete|done/.test(action) ? "completed"
+          : "created";
+    if (/course/.test(`${action} ${entity}`)) return `${prefix}Course`;
+    if (/curriculum/.test(`${action} ${entity}`)) return `${prefix}Curriculum`;
+    if (/program/.test(`${action} ${entity}`)) return `${prefix}Program`;
+    if (/file|attachment|pdf/.test(`${action} ${entity}`)) return `${prefix}File`;
+    if (/task/.test(`${action} ${entity}`)) return `${prefix}Task`;
+    if (/notice|announcement/.test(`${action} ${entity}`)) return `${prefix}Notice`;
+    return prefix;
+  }
+
+  function contributionLevel(xp) {
+    let level = 1;
+    while (xp >= contributionNextLevelXp(level)) level += 1;
+    return level;
+  }
+
+  function contributionLevelXp(level) {
+    const thresholds = [0, 100, 250, 500, 1000, 2000, 3500, 5500, 8000, 12000];
+    if (level <= thresholds.length) return thresholds[level - 1];
+    let xp = thresholds[thresholds.length - 1];
+    for (let index = thresholds.length + 1; index <= level; index += 1) {
+      xp = Math.round(xp * 1.35 + 1200);
+    }
+    return xp;
+  }
+
+  function contributionNextLevelXp(level) {
+    return contributionLevelXp(level + 1);
+  }
+
+  function contributionTitle(level) {
+    const titles = [
+      [50, "Pillar of New Eden"],
+      [40, "Legacy Builder"],
+      [30, "Guardian of the Archive"],
+      [25, "Keeper of Knowledge"],
+      [20, "Elder Scribe"],
+      [15, "Master Archivist"],
+      [12, "Steward"],
+      [8, "Curator"],
+      [5, "Archivist"],
+      [3, "Contributor"],
+      [1, "Apprentice"],
+    ];
+    return titles.find(([required]) => level >= required)?.[1] || "Apprentice";
+  }
+
+  function contributionAchievements(item, streak) {
+    const counts = item.counts || {};
+    const achievements = [];
+    if (counts.createdCourse >= 1) achievements.push("First Course");
+    if (counts.createdCourse >= 25) achievements.push("Course Architect");
+    if (counts.createdCurriculum >= 1) achievements.push("Curriculum Creator");
+    if (counts.createdCurriculum >= 10) achievements.push("Curriculum Architect");
+    if (counts.createdFile >= 1 || counts.editedFile >= 1) achievements.push("First Upload");
+    if ((counts.createdFile || 0) + (counts.editedFile || 0) >= 25) achievements.push("Librarian");
+    if (counts.createdTask >= 1) achievements.push("Task Starter");
+    if (counts.completedTask >= 10) achievements.push("Task Slayer");
+    if (counts.createdNotice >= 1) achievements.push("Town Crier");
+    if (streak.longest >= 7) achievements.push("Weekly Streak");
+    if (item.isFounder) achievements.push("Founder");
+    return achievements;
+  }
+
+  function contributionDayKey(value) {
+    const date = value ? new Date(Number(value)) : null;
+    if (!date || Number.isNaN(date.getTime())) return "";
+    return date.toISOString().slice(0, 10);
+  }
+
+  function contributionStreaks(dayKeys) {
+    const days = Array.from(new Set(dayKeys)).sort();
+    if (!days.length) return { current: 0, longest: 0 };
+    const dayMs = 24 * 60 * 60 * 1000;
+    let longest = 1;
+    let run = 1;
+    for (let index = 1; index < days.length; index += 1) {
+      const previous = Date.parse(`${days[index - 1]}T00:00:00Z`);
+      const current = Date.parse(`${days[index]}T00:00:00Z`);
+      if (current - previous === dayMs) run += 1;
+      else run = 1;
+      longest = Math.max(longest, run);
+    }
+    const today = new Date();
+    const todayKey = today.toISOString().slice(0, 10);
+    const yesterdayKey = new Date(today.getTime() - dayMs).toISOString().slice(0, 10);
+    let currentStreak = 0;
+    if (days.includes(todayKey) || days.includes(yesterdayKey)) {
+      currentStreak = 1;
+      for (let index = days.length - 1; index > 0; index -= 1) {
+        const current = Date.parse(`${days[index]}T00:00:00Z`);
+        const previous = Date.parse(`${days[index - 1]}T00:00:00Z`);
+        if (current - previous === dayMs) currentStreak += 1;
+        else break;
+      }
+    }
+    return { current: currentStreak, longest };
+  }
+
+  function isFounderContributor(name) {
+    const normalized = normalizePersonName(name).replace(/\./g, "");
+    return ["darren", "donna", "larry", "bhumika", "dr duda", "drduda"].includes(normalized);
   }
 
   function userAvatarMarkup(user) {
@@ -3260,7 +3503,10 @@ Please contact the school office if you need anything else.`,
   }
 
   function renderHistory() {
-    els.versionTimeline.innerHTML = state.changelogEntries.map((entry, index) => `
+    const visibleCount = 8;
+    const visibleEntries = state.changelogEntries.slice(0, visibleCount);
+    const olderEntries = state.changelogEntries.slice(visibleCount);
+    const entryMarkup = (entry, index) => `
       <details class="changelog-entry" ${index === 0 ? "open" : ""}>
         <summary>
           <time>${escapeHtml(entry.date)}</time>
@@ -3274,7 +3520,25 @@ Please contact the school office if you need anything else.`,
           ${markdownToHtml(entry.body)}
         </div>
       </details>
-    `).join("") || `<div class="empty-state">No changelog entries found.</div>`;
+    `;
+    const archiveMarkup = olderEntries.length ? `
+      <details class="changelog-entry changelog-archive">
+        <summary>
+          <time>Archive</time>
+          <span>
+            <strong>Older Versions</strong>
+            <em>${olderEntries.length} previous update${olderEntries.length === 1 ? "" : "s"} hidden for easier scanning.</em>
+          </span>
+          <i class="bi bi-chevron-down"></i>
+        </summary>
+        <div class="changelog-archive-list">
+          ${olderEntries.map((entry, index) => entryMarkup(entry, index + visibleCount)).join("")}
+        </div>
+      </details>
+    ` : "";
+    els.versionTimeline.innerHTML = visibleEntries.map((entry, index) => entryMarkup(entry, index)).join("")
+      + archiveMarkup
+      || `<div class="empty-state">No changelog entries found.</div>`;
   }
 
   async function loadChangelog() {

@@ -189,7 +189,7 @@
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Recent Activity</p>
-                    <h2>Latest Archive Changes</h2>
+                    <h2>Latest Dashboard Changes</h2>
                     <p class="section-subtitle">The most recent edits, additions, deletions, and transcript work.</p>
                   </div>
                 </div>
@@ -197,18 +197,7 @@
                 <div class="overview-mini-pagination" id="overviewActivityPagination" aria-label="Recent activity pagination"></div>
               </article>
 
-              <article class="archive-panel overview-panel">
-                <div class="section-heading compact-heading">
-                  <div>
-                    <p class="eyebrow">Needs Attention</p>
-                    <h2>Archive Review</h2>
-                    <p class="section-subtitle">Data quality checks that may need cleanup.</p>
-                  </div>
-                </div>
-                <div class="overview-list overview-attention-list" id="overviewAttentionList"></div>
-              </article>
-
-              <article class="archive-panel overview-panel">
+              <article class="archive-panel overview-panel overview-tasks-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Tasks</p>
@@ -219,7 +208,7 @@
                 <div class="overview-list" id="overviewTasksList"></div>
               </article>
 
-              <article class="archive-panel overview-panel">
+              <article class="archive-panel overview-panel overview-notices-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Notices</p>
@@ -230,7 +219,51 @@
                 <div class="overview-list" id="overviewNoticesList"></div>
               </article>
 
-              <article class="archive-panel overview-panel">
+              <article class="archive-panel overview-panel overview-users-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Users</p>
+                    <h2>Staff Status</h2>
+                    <p class="section-subtitle">Last login and live online status for dashboard users.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-user-list" id="overviewUserStatusList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel overview-contributors-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Contributions</p>
+                    <h2>Dashboard Contributors</h2>
+                    <p class="section-subtitle">Creations, edits, deletions, and logged work by user.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-contribution-list" id="overviewContributionList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel overview-drafts-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Transcripts</p>
+                    <h2>Recent Drafts</h2>
+                    <p class="section-subtitle">Recently saved transcript drafts.</p>
+                  </div>
+                </div>
+                <div class="overview-list" id="overviewDraftList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel overview-gamification-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Staff Progress</p>
+                    <h2>Contribution Progress</h2>
+                    <p class="section-subtitle">Levels, titles, badges, and streaks from dashboard activity.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-gamification-list" id="overviewGamificationList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel overview-health-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Health Snapshot</p>
@@ -241,15 +274,15 @@
                 <div class="overview-list overview-health-list" id="overviewHealthList"></div>
               </article>
 
-              <article class="archive-panel overview-panel">
+              <article class="archive-panel overview-panel overview-review-panel">
                 <div class="section-heading compact-heading">
                   <div>
-                    <p class="eyebrow">Transcripts</p>
-                    <h2>Recent Drafts</h2>
-                    <p class="section-subtitle">Recently saved transcript drafts.</p>
+                    <p class="eyebrow">Needs Attention</p>
+                    <h2>Dashboard Review</h2>
+                    <p class="section-subtitle">Data quality checks that may need cleanup.</p>
                   </div>
                 </div>
-                <div class="overview-list" id="overviewDraftList"></div>
+                <div class="overview-list overview-attention-list" id="overviewAttentionList"></div>
               </article>
 
               <article class="archive-panel overview-panel overview-trends-panel">
@@ -261,28 +294,6 @@
                   </div>
                 </div>
                 <div class="overview-trend-grid" id="overviewTrendCards"></div>
-              </article>
-
-              <article class="archive-panel overview-panel">
-                <div class="section-heading compact-heading">
-                  <div>
-                    <p class="eyebrow">Users</p>
-                    <h2>Staff Status</h2>
-                    <p class="section-subtitle">Last login and live online status for archive users.</p>
-                  </div>
-                </div>
-                <div class="overview-list overview-user-list" id="overviewUserStatusList"></div>
-              </article>
-
-              <article class="archive-panel overview-panel">
-                <div class="section-heading compact-heading">
-                  <div>
-                    <p class="eyebrow">Contributions</p>
-                    <h2>Archive Contributors</h2>
-                    <p class="section-subtitle">Creations, edits, deletions, and logged work by user.</p>
-                  </div>
-                </div>
-                <div class="overview-list overview-contribution-list" id="overviewContributionList"></div>
               </article>
             </div>
           </section>
@@ -751,7 +762,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.5.2</span></p>
+            <p>Version <span id="appVersion">1.5.3</span></p>
           </footer>
         </div>
       </main>

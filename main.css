@@ -1063,8 +1063,18 @@ body[data-active-view="history"] .archive-summary {
   font-weight: 750;
 }
 
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .btn i {
-  margin-right: 6px;
+  margin-right: 0;
 }
 
 .icon-btn i,
@@ -1824,7 +1834,10 @@ body:not(.is-admin) .admin-only {
 }
 
 .program-curriculum-table .course-row-actions .btn {
-  padding-inline: 0.65rem;
+  min-width: 86px;
+  min-height: 36px;
+  padding: 6px 10px;
+  line-height: 1;
 }
 
 .program-structure-table {
@@ -1859,7 +1872,10 @@ body:not(.is-admin) .admin-only {
 }
 
 .program-structure-table .course-row-actions .btn {
-  padding-inline: 0.65rem;
+  min-width: 96px;
+  min-height: 38px;
+  padding: 6px 10px;
+  line-height: 1;
 }
 
 .timeline {
@@ -1920,6 +1936,16 @@ body:not(.is-admin) .admin-only {
 .changelog-body {
   padding: 0 18px 18px 186px;
   color: #303a33;
+}
+
+.changelog-archive-list {
+  display: grid;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+
+.changelog-archive-list .changelog-entry {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 .changelog-body h4 {
@@ -2244,6 +2270,11 @@ mark {
   grid-column: span 2;
 }
 
+.overview-gamification-panel,
+.overview-review-panel {
+  grid-column: span 2;
+}
+
 .overview-trends-panel {
   grid-column: 1 / -1;
 }
@@ -2470,6 +2501,127 @@ mark {
   font-size: 1.28rem;
 }
 
+.overview-level-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.overview-level-card .overview-user-avatar {
+  width: 44px;
+  height: 44px;
+}
+
+.overview-level-main {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.overview-level-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.overview-level-title strong {
+  color: var(--eden-ink);
+  font-size: 1rem;
+}
+
+.overview-level-title span,
+.overview-level-main small {
+  color: var(--eden-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.overview-xp-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(23, 61, 42, 0.12);
+}
+
+.overview-xp-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--eden-forest), var(--eden-gold));
+}
+
+.overview-badge-row,
+.overview-achievements,
+.overview-leaderboard {
+  display: grid;
+  gap: 8px;
+}
+
+.overview-badge-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.overview-badge-row span,
+.overview-achievements span,
+.overview-leaderboard div {
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.overview-badge-row span {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  color: var(--eden-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.overview-badge-row strong {
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.overview-achievements {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.overview-achievements span {
+  padding: 7px 9px;
+  color: var(--eden-forest);
+  font-size: 0.78rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.overview-leaderboard div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 0.7fr) minmax(0, 1.3fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.overview-leaderboard strong {
+  color: var(--eden-ink);
+  font-size: 0.88rem;
+}
+
+.overview-leaderboard small {
+  color: var(--eden-muted);
+  font-size: 0.76rem;
+}
+
 .transcript-icon {
   display: grid;
   width: 86px;
@@ -2520,7 +2672,8 @@ mark {
 .transcript-actions {
   display: flex;
   gap: 10px;
-  align-items: stretch;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .transcript-import-row {
@@ -2621,12 +2774,24 @@ mark {
 
 .transcript-draft-actions .btn {
   min-width: 68px;
-  min-height: 42px;
+  min-height: 38px;
+  padding: 6px 10px;
   justify-content: center;
+  line-height: 1;
+}
+
+.transcript-actions .btn {
+  min-width: 78px;
+  min-height: 38px;
+  padding: 6px 10px;
+  font-size: 0.88rem;
+  line-height: 1.08;
 }
 
 .transcript-option-modal {
-  width: min(760px, calc(100vw - 32px));
+  width: min(980px, calc(100vw - 40px));
+  max-width: 980px;
+  overflow-x: hidden;
 }
 
 .transcript-option-grid,
@@ -2637,7 +2802,7 @@ mark {
 }
 
 .transcript-option-grid {
-  grid-template-columns: minmax(180px, 0.42fr) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
 }
 
 .transcript-option-btn {
@@ -2699,8 +2864,10 @@ mark {
 }
 
 .transcript-save-options .btn {
-  min-height: 76px;
+  min-height: 58px;
+  padding: 10px 14px;
   justify-content: center;
+  line-height: 1.15;
 }
 
 body.theme-dark .transcript-file-manager-pick,
@@ -2966,26 +3133,41 @@ body.theme-dark .transcript-icon {
 
 .file-send-form {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(320px, 1.35fr) auto;
+  grid-template-columns: minmax(220px, 280px) minmax(410px, 1fr) auto;
   gap: 12px;
   align-items: end;
   padding: 0 16px 16px;
 }
 
+.file-send-form .form-label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.file-send-form .form-control,
+.file-send-form .form-select,
+.email-template-controls .btn,
+.file-send-actions .btn {
+  min-height: 42px;
+}
+
 .email-template-controls {
   display: flex;
   align-items: end;
-  gap: 6px;
+  gap: 10px;
+  min-width: 0;
 }
 
 .email-template-controls .btn {
-  justify-content: flex-start;
-  min-height: 42px;
+  min-width: 154px;
+  padding: 8px 12px;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .email-template-controls .form-select {
-  min-width: 190px;
-  min-height: 42px;
+  min-width: 180px;
 }
 
 .email-template-manager-head {
@@ -3005,6 +3187,7 @@ body.theme-dark .transcript-icon {
   min-width: 96px;
   min-height: 42px;
   padding: 8px 12px;
+  line-height: 1;
 }
 
 .file-send-message:empty {
@@ -3016,6 +3199,7 @@ body.theme-dark .transcript-icon {
   min-height: 36px;
   padding: 6px 10px;
   font-size: 0.88rem;
+  line-height: 1;
 }
 
 .email-template-editor-grid {
@@ -3158,8 +3342,18 @@ body.theme-dark .markdown-guide code {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .overview-activity-panel {
+  .overview-activity-panel,
+  .overview-gamification-panel,
+  .overview-review-panel,
+  .overview-trends-panel {
     grid-column: auto;
+  }
+
+  .transcript-option-grid,
+  .transcript-save-options,
+  .overview-badge-row,
+  .overview-leaderboard div {
+    grid-template-columns: 1fr;
   }
 
   .notice-banner,
@@ -3200,6 +3394,11 @@ body.theme-dark .markdown-guide code {
 
   .changelog-body {
     padding: 0 18px 18px;
+  }
+
+  .email-template-controls,
+  .file-send-actions {
+    flex-wrap: wrap;
   }
 }
 

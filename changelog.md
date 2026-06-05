@@ -1,5 +1,21 @@
 # New Eden Archive Changelog
 
+## V1.5.3 - 2026-06-05 10:00 AM CT - Dashboard Polish and Staff Progress
+
+### Summary
+- Polished dashboard layout, transcript/file/email/program button sizing, and added the first Staff Progress gamification panel.
+
+### New Features
+- Added a Staff Progress overview module powered by activity log XP, levels, titles, badges, rankings, and contribution streaks.
+- Added Founder badge support for Darren, Bhumika, Donna, Larry, and Dr. Duda.
+- Collapsed older version history entries into an Older Versions accordion so the Version History page stays compact without deleting changelog data.
+
+### Fixes
+- Rearranged Overview modules into the requested row layout and renamed archive-facing dashboard panel titles.
+- Enlarged Transcript PDF import/save modals so their content no longer overflows.
+- Standardized button icon spacing, button height, and text alignment across transcript actions, saved drafts, Email Dispatch, File Manager, and program/curriculum action tables.
+- Updated the visible app version label to V1.5.3.
+
 ## V1.5.2 - 2026-06-05 8:55 AM CT - Transcript File Manager Save and Import
 
 ### Summary
