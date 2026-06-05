@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.0";
+  const appVersion = "1.5.1";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -34,6 +34,7 @@
     records: [],
     selectedFiles: [],
     selectedCourseIds: [],
+    editingFileId: "",
     courseSearch: "",
     search: "",
     page: 1,
@@ -289,6 +290,7 @@ Please contact the school office if you need anything else.`,
     saveRequirements: document.querySelector("#saveRequirements"),
     fileBuilderDialog: document.querySelector("#fileBuilderDialog"),
     fileBuilderForm: document.querySelector("#fileBuilderForm"),
+    fileBuilderTitle: document.querySelector("#fileBuilderTitle"),
     managedFileInput: document.querySelector("#managedFileInput"),
     managedFilePreview: document.querySelector("#managedFilePreview"),
     managedFileCategory: document.querySelector("#managedFileCategory"),
@@ -1027,6 +1029,7 @@ Please contact the school office if you need anything else.`,
             <a class="btn btn-sm btn-outline-eden" href="${escapeAttr(file.downloadURL || "#")}" target="_blank" rel="noopener" ${file.downloadURL ? "" : "aria-disabled=\"true\""}>
               Download
             </a>
+            <button class="btn btn-sm btn-outline-eden admin-only" type="button" data-edit-managed-file="${escapeAttr(file._docId)}">Edit</button>
             <button class="btn btn-sm btn-outline-danger admin-only" type="button" data-delete-managed-file="${escapeAttr(file._docId)}">Delete</button>
           </div>
         </td>
@@ -1039,6 +1042,9 @@ Please contact the school office if you need anything else.`,
     if (els.fileManagerPagination) {
       renderPagination(els.fileManagerPagination, page, totalPages(allFiles.length, fileManagerState.rowsPerPage), "files");
     }
+    els.fileManagerRows.querySelectorAll("[data-edit-managed-file]").forEach((button) => {
+      button.addEventListener("click", () => openFileBuilder(button.dataset.editManagedFile));
+    });
     els.fileManagerRows.querySelectorAll("[data-delete-managed-file]").forEach((button) => {
       button.addEventListener("click", () => deleteManagedFile(button.dataset.deleteManagedFile));
     });
@@ -1070,14 +1076,19 @@ Please contact the school office if you need anything else.`,
     }).concat((file.courseIds || []).length > 4 ? [`<span class="linked-course-badge">+${file.courseIds.length - 4} more</span>`] : []);
   }
 
-  function openFileBuilder() {
+  function openFileBuilder(docId = "") {
     if (!state.admin) return;
+    const requestedDocId = typeof docId === "string" ? docId : "";
+    const existingFile = requestedDocId ? fileManagerState.records.find((file) => file._docId === requestedDocId) : null;
+    fileManagerState.editingFileId = existingFile?._docId || "";
     fileManagerState.selectedFiles = [];
-    fileManagerState.selectedCourseIds = [];
+    fileManagerState.selectedCourseIds = existingFile ? [...(existingFile.courseIds || [])] : [];
     fileManagerState.courseSearch = "";
     if (els.managedFileInput) els.managedFileInput.value = "";
     if (els.fileCourseSearch) els.fileCourseSearch.value = "";
-    if (els.managedFileCategory) els.managedFileCategory.value = "CI";
+    if (els.fileBuilderTitle) els.fileBuilderTitle.textContent = existingFile ? "Edit Course File" : "Add Course File";
+    if (els.saveManagedFile) els.saveManagedFile.textContent = existingFile ? "Save Changes" : "Save File";
+    if (els.managedFileCategory) els.managedFileCategory.value = existingFile?.category || "CI";
     renderFileBuilder();
     els.fileBuilderDialog?.showModal();
   }
@@ -1085,6 +1096,9 @@ Please contact the school office if you need anything else.`,
   function renderFileBuilder() {
     if (!els.managedFilePreview) return;
     const files = fileManagerState.selectedFiles || [];
+    const existingFile = fileManagerState.editingFileId
+      ? fileManagerState.records.find((file) => file._docId === fileManagerState.editingFileId)
+      : null;
     els.managedFilePreview.innerHTML = files.length ? files.map((file) => `
       <article class="managed-file-card managed-file-card-compact">
         <i class="bi bi-file-earmark-check"></i>
@@ -1093,7 +1107,16 @@ Please contact the school office if you need anything else.`,
           <span>${escapeHtml(file.type || "Unknown type")} - ${escapeHtml(formatBytes(file.size))}</span>
         </div>
       </article>
-    `).join("") : `<div class="empty-state">No files selected yet.</div>`;
+    `).join("") : existingFile ? `
+      <article class="managed-file-card managed-file-card-compact">
+        <i class="bi bi-file-earmark-text"></i>
+        <div>
+          <strong>${escapeHtml(existingFile.name)}</strong>
+          <span>${escapeHtml(existingFile.contentType || "Stored file")} - ${escapeHtml(formatBytes(existingFile.size))}</span>
+        </div>
+      </article>
+      <p class="form-note">Editing metadata only. The stored file in Cloud Storage will stay unchanged.</p>
+    ` : `<div class="empty-state">No files selected yet.</div>`;
 
     const selectedIds = new Set(fileManagerState.selectedCourseIds);
     const query = fileManagerState.courseSearch;
@@ -1137,7 +1160,10 @@ Please contact the school office if you need anything else.`,
   async function saveManagedFile() {
     if (!state.admin) return;
     const files = fileManagerState.selectedFiles || [];
-    if (!files.length) {
+    const editingFile = fileManagerState.editingFileId
+      ? fileManagerState.records.find((file) => file._docId === fileManagerState.editingFileId)
+      : null;
+    if (!editingFile && !files.length) {
       setCloudStatus("Choose at least one file before saving.");
       return;
     }
@@ -1151,6 +1177,34 @@ Please contact the school office if you need anything else.`,
       const course = courseById(id);
       return course ? `${course.id} ${course.name} Credit ${course.credit}` : id;
     });
+
+    if (editingFile) {
+      const updatedAtMs = Date.now();
+      const updatedFile = normalizeFiles([{
+        ...editingFile,
+        category,
+        courseIds,
+        courseLabels,
+        updatedAtMs,
+      }])[0];
+      fileManagerState.records = normalizeFiles(fileManagerState.records.map((item) => (
+        item._docId === editingFile._docId ? updatedFile : item
+      )));
+      if (canWriteCloud()) {
+        const { dbRef, update, serverTimestamp } = firebaseState.modules;
+        await update(dbRef(firebaseState.db, `files/${editingFile._docId}`), {
+          category,
+          courseIds,
+          courseLabels,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await writeActivity("Edited File", "File", editingFile.name, `Category: ${category}. Linked course(s): ${courseIds.join(", ")}`);
+      fileManagerState.editingFileId = "";
+      els.fileBuilderDialog?.close("saved");
+      render();
+      return;
+    }
 
     if (firebaseDisabled || !firebaseState.ready || !firebaseState.user) {
       const createdAtMs = Date.now();
@@ -1938,7 +1992,7 @@ Please contact the school office if you need anything else.`,
             th { font-weight: 700; border-bottom: 1px solid #222; }
             .title { width: 62%; }
             .footer { margin-top: 28px; display: flex; justify-content: space-between; align-items: end; }
-            .seal-img { width: 98px; height: auto; object-fit: contain; }
+            .seal-img { width: 150px; height: auto; object-fit: contain; }
             .signature { text-align: right; }
             .signature-img { display: block; width: 190px; height: auto; margin: 0 0 4px auto; object-fit: contain; }
             @media print { .no-print { display: none; } }
@@ -1962,7 +2016,7 @@ Please contact the school office if you need anything else.`,
             </div>
             <div class="right">Date Created: ${escapeHtml(today)}</div>
           </div>
-          <p class="center">**************************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS*************************************************</p>
+          <p class="center">****************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS***************************************</p>
           <div class="row divider">
             <div><strong>Program</strong><br />${escapeHtml(state.transcriptSelectedProgram || "")}</div>
             <div class="right"><strong>Attended From/To</strong><br />${escapeHtml(attended)}</div>
@@ -1978,7 +2032,7 @@ Please contact the school office if you need anything else.`,
             <div class="right"><strong>GPA</strong><br />${escapeHtml(els.transcriptGpa?.textContent || "0.0")}</div>
           </div>
           <p class="center"><strong>${els.transcriptGraduated?.checked ? "Graduated" : "Not Graduated"}</strong></p>
-          <p class="center">*************************************************************END OF PAGE*************************************************************</p>
+          <p class="center">********************************************************END OF PAGE********************************************************</p>
           <div class="footer">
             <img class="seal-img" src="${escapeAttr(sealUrl)}" alt="New Eden seal" />
             <div class="signature">
@@ -2314,23 +2368,35 @@ Please contact the school office if you need anything else.`,
   function archiveUsers() {
     const connectedByUid = new Map(state.connectedUsers.map((user) => [user.uid, user]));
     const users = new Map();
-    const addUser = (user = {}) => {
+    const userKey = (user = {}) => {
+      const email = String(user.email || "").trim().toLowerCase();
+      if (email) return `email:${email}`;
+      const name = normalizePersonName(user.displayName || user.name || "");
+      if (name) return `name:${name}`;
+      return `uid:${user.uid || user._docId || slugify("employee")}`;
+    };
+    const addMergedUser = (user = {}) => {
       const uid = user.uid || user._docId || `staff:${slugify(user.name || user.email || "employee")}`;
-      const existing = users.get(uid) || {};
       const connected = connectedByUid.get(uid) || {};
-      users.set(uid, {
+      const merged = { ...user, ...connected, uid };
+      const key = userKey(merged);
+      const existing = users.get(key) || {};
+      const existingIsFallback = String(existing.uid || "").startsWith("staff:");
+      const mergedIsFallback = String(uid || "").startsWith("staff:");
+      users.set(key, {
         ...existing,
-        ...user,
-        ...connected,
-        uid,
-        name: connected.name || user.displayName || user.name || existing.name || user.email?.split("@")[0] || "Employee",
-        email: user.email || existing.email || connected.email || "",
-        photoURL: connected.photoURL || user.photoURL || existing.photoURL || "",
-        online: Boolean(connectedByUid.has(uid)),
-        lastLoginAtMs: Number(user.lastLoginAtMs || existing.lastLoginAtMs || connected.connectedAtMs || 0),
+        ...merged,
+        uid: existing.uid && !existingIsFallback && mergedIsFallback ? existing.uid : uid,
+        name: connected.name || merged.displayName || merged.name || existing.name || merged.email?.split("@")[0] || "Employee",
+        email: merged.email || existing.email || connected.email || "",
+        photoURL: connected.photoURL || merged.photoURL || existing.photoURL || "",
+        online: Boolean(existing.online || connectedByUid.has(uid)),
+        lastLoginAtMs: Number(merged.lastLoginAtMs || existing.lastLoginAtMs || connected.connectedAtMs || 0),
       });
     };
-    staffDirectory.forEach(addUser);
+    const addUser = (user = {}) => {
+      addMergedUser(user);
+    };
     state.directoryUsers.forEach(addUser);
     state.connectedUsers.forEach(addUser);
     if (firebaseState.user) {
@@ -2342,6 +2408,11 @@ Please contact the school office if you need anything else.`,
         lastLoginAtMs: firebaseState.profile?.lastLoginAtMs || Date.parse(firebaseState.user.metadata?.lastSignInTime || ""),
       });
     }
+    staffDirectory.forEach((staff) => {
+      const staffName = normalizePersonName(staff.name);
+      const alreadyLoaded = Array.from(users.values()).some((user) => normalizePersonName(user.name) === staffName);
+      if (!alreadyLoaded) addUser(staff);
+    });
     return Array.from(users.values());
   }
 

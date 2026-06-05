@@ -21,7 +21,10 @@
   "storage": {
     "rules": "storage.rules"
   },
-  "functions": {
-    "source": "functions"
-  }
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions"
+    }
+  ]
 }

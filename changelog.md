@@ -1,5 +1,20 @@
 # New Eden Archive Changelog
 
+## V1.5.1 - 2026-06-05 12:53 AM CT - Staff Status and File Metadata Editing
+
+### Summary
+- Cleaned up the Overview Staff Status panel and added metadata editing for existing File Manager records.
+
+### New Features
+- Added an Edit action for File Manager files so admins can change file category and linked course IDs without reuploading the file.
+- Reused the File Builder in edit mode with a stored-file preview and metadata-only save behavior.
+
+### Fixes
+- Deduplicated Staff Status users so real profile/presence records replace matching fallback staff entries.
+- Kept fallback staff visible only when no matching real profile has been loaded yet.
+- Included the updated transcript print formatting and Firebase functions config changes in this release.
+- Updated the visible app version label to V1.5.1.
+
 ## V1.5.0 - 2026-06-04 11:36 PM CT - Dashboard Users and Email Dispatch Templates
 
 ### Summary
