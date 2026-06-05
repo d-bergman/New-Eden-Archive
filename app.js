@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.5";
+  const appVersion = "1.5.6";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -138,6 +138,13 @@ Please contact the school office if you need anything else.`,
     overviewRowsPerPage: 10,
     historyPage: 1,
     historyRowsPerPage: 6,
+    achievementPages: {
+      unlocked: 1,
+      locked: 1,
+    },
+    emailFileCategory: "all",
+    guideTopic: "overview",
+    toastId: 0,
     coursePage: 1,
     courseRowsPerPage: 10,
     requirementSearch: "",
@@ -221,6 +228,9 @@ Please contact the school office if you need anything else.`,
     addProgram: document.querySelector("#addProgram"),
     helpButton: document.querySelector("#helpButton"),
     helpDialog: document.querySelector("#helpDialog"),
+    guideTopicGrid: document.querySelector("#guideTopicGrid"),
+    guideContent: document.querySelector("#guideContent"),
+    toastStack: document.querySelector("#toastStack"),
     noticeBanner: document.querySelector("#noticeBanner"),
     activityLogSearch: document.querySelector("#activityLogSearch"),
     activityLogRows: document.querySelector("#activityLogRows"),
@@ -243,6 +253,7 @@ Please contact the school office if you need anything else.`,
     emailTemplateSelect: document.querySelector("#emailTemplateSelect"),
     emailTemplateEditorSelect: document.querySelector("#emailTemplateEditorSelect"),
     addEmailTemplate: document.querySelector("#addEmailTemplate"),
+    deleteEmailTemplate: document.querySelector("#deleteEmailTemplate"),
     emailTemplateNameInput: document.querySelector("#emailTemplateNameInput"),
     emailSubjectInput: document.querySelector("#emailSubjectInput"),
     emailContentDialog: document.querySelector("#emailContentDialog"),
@@ -342,6 +353,7 @@ Please contact the school office if you need anything else.`,
     fileSelectorDialog: document.querySelector("#fileSelectorDialog"),
     fileSelectorForm: document.querySelector("#fileSelectorForm"),
     emailFileSearch: document.querySelector("#emailFileSearch"),
+    emailFileTypeFilter: document.querySelector("#emailFileTypeFilter"),
     emailFilePicker: document.querySelector("#emailFilePicker"),
     emailCurriculumFilter: document.querySelector("#emailCurriculumFilter"),
     emailCurriculumFiles: document.querySelector("#emailCurriculumFiles"),
@@ -647,6 +659,12 @@ Please contact the school office if you need anything else.`,
       fileManagerState.emailSearch = event.target.value.trim().toLowerCase();
       renderEmailFileSelector();
     });
+    els.emailFileTypeFilter?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-email-file-category]");
+      if (!button) return;
+      state.emailFileCategory = button.dataset.emailFileCategory || "all";
+      renderEmailFileSelector();
+    });
     els.emailCurriculumFilter?.addEventListener("change", (event) => {
       fileManagerState.emailCurriculum = event.target.value;
       renderEmailFileSelector();
@@ -665,6 +683,7 @@ Please contact the school office if you need anything else.`,
       renderEmailTemplateEditorFields();
     });
     els.addEmailTemplate?.addEventListener("click", addEmailTemplateDraft);
+    els.deleteEmailTemplate?.addEventListener("click", deleteEmailTemplate);
     els.saveEmailContent?.addEventListener("click", (event) => {
       event.preventDefault();
       saveEmailTemplate();
@@ -677,6 +696,14 @@ Please contact the school office if you need anything else.`,
       prepareStudentFileEmail();
     });
     els.progressInfoButton?.addEventListener("click", openProgressInfoDialog);
+    els.progressInfoContent?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-achievement-page]");
+      if (!button) return;
+      const [kind, page] = String(button.dataset.achievementPage || "").split(":");
+      if (!kind || !Object.hasOwn(state.achievementPages, kind)) return;
+      state.achievementPages[kind] = Number(page || 1);
+      renderProgressInfoContent();
+    });
     els.overviewGamificationList?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-open-progress-info]");
       if (!button) return;
@@ -758,7 +785,16 @@ Please contact the school office if you need anything else.`,
       setCloudStatus("Upload course files from File Manager.");
       els.attachmentUpload.value = "";
     });
-    els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
+    els.helpButton.addEventListener("click", () => {
+      renderGuide();
+      els.helpDialog.showModal();
+    });
+    els.guideTopicGrid?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-guide-topic]");
+      if (!button) return;
+      state.guideTopic = button.dataset.guideTopic || "overview";
+      renderGuide();
+    });
     document.querySelectorAll(".modal-native").forEach((dialog) => {
       dialog.addEventListener("click", (event) => {
         if (event.target === dialog) dialog.close("cancel");
@@ -906,9 +942,150 @@ Please contact the school office if you need anything else.`,
         </span>
       </div>
       <div class="sidebar-rank-bar" aria-label="Contributor level progress">
-        <span style="width:${Number(current.progress || 0).toFixed(1)}%; background:${escapeAttr(current.rankColor)}"></span>
+        <span style="width:${Number(current.progress || 0).toFixed(1)}%"></span>
       </div>
       <small>${current.xp} XP &bull; ${xpRemaining} XP to next level</small>
+    `;
+  }
+
+  const guideTopics = [
+    { id: "overview", icon: "bi-speedometer2", title: "Overview" },
+    { id: "courses", icon: "bi-book", title: "Courses" },
+    { id: "curriculums", icon: "bi-clipboard2-data", title: "Curriculums" },
+    { id: "programs", icon: "bi-mortarboard", title: "Programs" },
+    { id: "transcripts", icon: "bi-file-earmark-text", title: "Transcripts" },
+    { id: "files", icon: "bi-folder2-open", title: "File Manager" },
+    { id: "log", icon: "bi-journal-text", title: "Log, Notices, Tasks" },
+    { id: "profile", icon: "bi-person-gear", title: "Profile & Admin" },
+  ];
+
+  const guideDetails = {
+    overview: {
+      title: "Overview Dashboard",
+      subtitle: "Use Overview as the compact health check for the dashboard.",
+      visual: ["Latest Dashboard Changes", "Assigned to Me", "Staff Status", "Dashboard Progress"],
+      steps: [
+        "Review Latest Dashboard Changes for recent edits, uploads, transcript work, and deletions.",
+        "Use Assigned to Me to see open tasks assigned to your account.",
+        "Check Staff Status for online/offline state and the last recorded login time.",
+        "Open Dashboard Progress for contribution totals, rank progress, achievements, and dashboard-wide totals.",
+      ],
+    },
+    courses: {
+      title: "Courses Tab",
+      subtitle: "Courses are the master catalog used everywhere else.",
+      visual: ["Add Course", "Search", "Credit Filter", "Sortable Columns", "Edit/Delete"],
+      steps: [
+        "Click Add Course to create a new course record. Course IDs are validated so duplicate course numbers cannot be saved.",
+        "Use the search box to find records by ID, course name, credit, comment, or status.",
+        "Use the credit/status filters and column sort buttons to narrow or order the course table.",
+        "Admins can edit or delete courses from the Actions menu. Deleting a course is password protected.",
+        "Create courses here before attaching them to curriculums or transcript rows.",
+      ],
+    },
+    curriculums: {
+      title: "Curriculums Tab",
+      subtitle: "Build each curriculum and maintain its required course list.",
+      visual: ["Program Filter", "Curriculum Filter", "Add Curriculum", "Manage Requirements", "Attachments"],
+      steps: [
+        "Choose a program and curriculum from the top filters.",
+        "Click Add Curriculum to create a new curriculum and add initial course requirements in one builder.",
+        "Use Edit Curriculum to change curriculum name, code, status, version, description, notes, or program.",
+        "Use Manage Requirements to add, remove, or reorder course requirements later.",
+        "The Attachments tab is read-only. It automatically shows File Manager files linked to courses in that curriculum.",
+      ],
+    },
+    programs: {
+      title: "Programs Tab",
+      subtitle: "Programs are the main school categories that hold curriculums.",
+      visual: ["Program Selector", "Program Overview", "Add Program", "Manage Curriculums"],
+      steps: [
+        "Select a program from the dropdown to review its details.",
+        "Click Add Program to create a new main category.",
+        "Use Edit Program for program description, notes, and status.",
+        "Use Manage Curriculums to choose which curriculums belong under that program.",
+        "Course requirements are edited from the Curriculums tab, not the Programs tab.",
+      ],
+    },
+    transcripts: {
+      title: "Transcripts Tab",
+      subtitle: "Build transcripts from Firebase course and curriculum data.",
+      visual: ["Student Details", "Import Curriculum", "Add Courses", "Import PDF", "Save PDF"],
+      steps: [
+        "Fill in student details before creating the transcript.",
+        "Import a curriculum to bring its course rows into the transcript, then edit rows as needed.",
+        "Search and add individual courses manually when a custom transcript is needed.",
+        "Import PDF can rebuild a transcript from your computer or a transcript PDF stored in File Manager.",
+        "Save PDF can save to your computer, File Manager, or both. Transcript files are standalone and do not link to course attachments.",
+      ],
+    },
+    files: {
+      title: "File Manager and Email Dispatch",
+      subtitle: "Upload files once, link them to courses, and send selected files to students.",
+      visual: ["Add File", "Category", "Linked Courses", "Email Dispatch", "File Selector"],
+      steps: [
+        "Use Add File to upload one or more files to Cloud Storage.",
+        "Choose a category such as eBook, CI, Transcript, or Other.",
+        "Link course files to one or more course IDs so curriculums can display the correct attachments automatically.",
+        "Transcript files stay standalone and should not be linked to course IDs.",
+        "Email Dispatch selects existing File Manager files. Use file type filters, search, or Browse by Curriculum to find files.",
+        "Email Templates are shared templates stored in Realtime Database. Admins can add, save, or delete templates.",
+      ],
+    },
+    log: {
+      title: "Log, Notices, and Tasks",
+      subtitle: "Track dashboard activity and coordinate staff work.",
+      visual: ["Activity Log", "Search", "Notices", "Task Board"],
+      steps: [
+        "The Activity Log records important add, edit, delete, upload, task, notice, and transcript actions.",
+        "Search the log by user, action, record, or details.",
+        "Admins can post notices for all signed-in users. Notices are limited to prevent clutter.",
+        "Admins can create tasks with an assignee and status. Assigned users can see and update their tasks.",
+        "Task and notice actions feed the Activity Log and Dashboard Progress XP system.",
+      ],
+    },
+    profile: {
+      title: "Profile, Notifications, and Admin Mode",
+      subtitle: "Control your account preferences and dashboard access.",
+      visual: ["Display Name", "Profile Picture", "Dark Mode", "Notifications", "Admin Toggle"],
+      steps: [
+        "Use Profile Settings to change display name, profile picture, password, dark mode, notification preferences, landing page, and task defaults.",
+        "Your display name and profile picture appear in Connected Users, Staff Status, tasks, and contribution progress.",
+        "Notification toggles control notice, task, achievement, and level-up toasts.",
+        "The Admin button in the top bar toggles admin/viewer mode when your account has admin permission.",
+        "Viewer mode can read and search. Admin mode can add, edit, remove, upload, and save to Firebase.",
+      ],
+    },
+  };
+
+  function renderGuide() {
+    if (!els.guideTopicGrid || !els.guideContent) return;
+    const active = guideDetails[state.guideTopic] ? state.guideTopic : "overview";
+    state.guideTopic = active;
+    els.guideTopicGrid.innerHTML = guideTopics.map((topic) => `
+      <button class="guide-topic-button ${topic.id === active ? "active" : ""}" type="button" data-guide-topic="${escapeAttr(topic.id)}">
+        <i class="bi ${escapeAttr(topic.icon)}"></i>
+        <span>${escapeHtml(topic.title)}</span>
+      </button>
+    `).join("");
+    const guide = guideDetails[active];
+    els.guideContent.innerHTML = `
+      <section class="guide-snapshot" aria-label="${escapeAttr(guide.title)} visual guide">
+        ${guide.visual.map((item, index) => `
+          <span style="--guide-index:${index + 1}">
+            <b>${index + 1}</b>${escapeHtml(item)}
+          </span>
+        `).join("")}
+      </section>
+      <section class="guide-walkthrough">
+        <div>
+          <p class="eyebrow">${escapeHtml(guide.title)}</p>
+          <h3>${escapeHtml(guide.subtitle)}</h3>
+        </div>
+        <ol>
+          ${guide.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("")}
+        </ol>
+      </section>
     `;
   }
 
@@ -1401,8 +1578,21 @@ Please contact the school office if you need anything else.`,
     if (!els.emailFilePicker) return;
     const selected = new Set(fileManagerState.emailPickerSelectedIds);
     const query = fileManagerState.emailSearch;
+    const categoryOptions = [
+      ["all", "All"],
+      ["Transcript", "Transcripts"],
+      ["eBook", "eBooks"],
+      ["CI", "Course Instructions"],
+      ["Other", "Other"],
+    ];
+    if (els.emailFileTypeFilter) {
+      els.emailFileTypeFilter.innerHTML = categoryOptions.map(([value, label]) => `
+        <button class="${state.emailFileCategory === value ? "active" : ""}" type="button" data-email-file-category="${escapeAttr(value)}">${escapeHtml(label)}</button>
+      `).join("");
+    }
     const allMatches = fileManagerState.records
       .filter((file) => !query || fileSearchText(file).includes(query))
+      .filter((file) => state.emailFileCategory === "all" || (file.category || "Other") === state.emailFileCategory)
       .sort((a, b) => naturalCompare(a.name, b.name))
       .slice(0, 30);
     els.emailFilePicker.innerHTML = allMatches.map((file) => fileSelectorRow(file, selected.has(file._docId))).join("")
@@ -1621,7 +1811,7 @@ Please contact the school office if you need anything else.`,
     els.emailContentDialog?.close("saved");
   }
 
-  async function saveStudentEmailTemplates() {
+  async function saveStudentEmailTemplates(action = "Updated Email Template", details = "Updated shared email subject/content template.") {
     if (!state.admin) return;
     renderEmailTemplateControls();
 
@@ -1635,9 +1825,39 @@ Please contact the school office if you need anything else.`,
       });
     }
 
-    await writeActivity("Updated Email Template", "Email Dispatch Template", activeEmailTemplate().name, "Updated shared email subject/content template.");
+    await writeActivity(action, "Email Dispatch Template", activeEmailTemplate().name, details);
     setCloudStatus("Saved email dispatch template");
     render();
+  }
+
+  async function deleteEmailTemplate() {
+    if (!state.admin) return;
+    const templates = normalizedEmailTemplates();
+    const templateId = emailTemplateState.editorTemplateId || emailTemplateState.activeTemplateId;
+    const template = templates.find((item) => item._docId === templateId);
+    if (!template) return;
+    if (templates.length <= 1) {
+      await alertAction({
+        eyebrow: "Email Dispatch",
+        title: "Template Required",
+        message: "At least one email template must remain available for Email Dispatch.",
+        confirmText: "OK",
+      });
+      return;
+    }
+    const confirmed = await confirmAction({
+      eyebrow: "Email Dispatch",
+      title: "Delete Email Template",
+      message: `Delete "${template.name}"? This removes the shared template for everyone.`,
+      confirmText: "Delete Template",
+    });
+    if (!confirmed) return;
+
+    emailTemplateState.templates = templates.filter((item) => item._docId !== templateId);
+    emailTemplateState.activeTemplateId = emailTemplateState.templates[0]?._docId || defaultStudentEmailTemplate._docId;
+    emailTemplateState.editorTemplateId = emailTemplateState.activeTemplateId;
+    await saveStudentEmailTemplates("Deleted Email Template", `Deleted template "${template.name}".`);
+    renderEmailTemplateEditor();
   }
 
   function renderTranscripts() {
@@ -1856,11 +2076,11 @@ Please contact the school office if you need anything else.`,
 
   async function importManagedTranscriptPdf(docId) {
     const file = fileManagerState.records.find((item) => item._docId === docId);
-    if (!file?.downloadURL) {
+    if (!file?.downloadURL && !file?.storagePath) {
       await alertAction({
         eyebrow: "Transcripts",
         title: "File Missing",
-        message: "That File Manager record does not have a downloadable PDF URL yet.",
+        message: "That File Manager record does not have a downloadable PDF URL or Storage path yet.",
         confirmText: "OK",
       });
       return;
@@ -1868,9 +2088,7 @@ Please contact the school office if you need anything else.`,
     try {
       els.transcriptImportDialog?.close("file-manager");
       setCloudStatus(`Importing transcript from File Manager: ${file.name}`);
-      const response = await fetch(file.downloadURL);
-      if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
-      const blob = await response.blob();
+      const blob = await downloadManagedFileBlob(file);
       const importedFile = new File([blob], file.name, { type: file.contentType || "application/pdf" });
       await importTranscriptPdf(importedFile);
     } catch (error) {
@@ -1883,6 +2101,17 @@ Please contact the school office if you need anything else.`,
       });
       setCloudStatus("File Manager transcript import failed.");
     }
+  }
+
+  async function downloadManagedFileBlob(file) {
+    if (file?.storagePath && firebaseState.storage && firebaseState.modules?.getBlob) {
+      const { storageRef, getBlob } = firebaseState.modules;
+      return getBlob(storageRef(firebaseState.storage, file.storagePath));
+    }
+    if (!file?.downloadURL) throw new Error("No downloadable file URL is available.");
+    const response = await fetch(file.downloadURL, { cache: "no-store" });
+    if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+    return response.blob();
   }
 
   function openTranscriptSaveDialog() {
@@ -2799,7 +3028,7 @@ Please contact the school office if you need anything else.`,
             </div>
           </div>
           <div class="overview-xp-bar" aria-label="Level progress">
-            <span style="width: ${selected.progress.toFixed(1)}%; background:${escapeAttr(rankColor)}"></span>
+            <span style="width: ${selected.progress.toFixed(1)}%"></span>
           </div>
           <small>${selected.xp} XP &bull; ${xpRemaining} XP to next level &bull; Rank #${rank}</small>
         </div>
@@ -2844,30 +3073,56 @@ Please contact the school office if you need anything else.`,
         longestStreak: 0,
         isFounder: isFounderContributor(currentUserDisplayName()),
       };
+    renderProgressInfoContent(selected);
+    els.progressInfoDialog.showModal();
+  }
+
+  function renderProgressInfoContent(selectedUser = null) {
+    if (!els.progressInfoContent) return;
+    const selected = selectedUser || currentContributorStats() || contributorStats()[0] || {
+      name: currentUserDisplayName() || "Archive User",
+      xp: 0,
+      level: 1,
+      title: "New Member",
+      rankColor: contributionRankColor(1),
+      counts: {},
+      currentStreak: 0,
+      longestStreak: 0,
+      isFounder: isFounderContributor(currentUserDisplayName()),
+    };
     const achievements = contributionAchievementCatalog(selected);
     const achieved = achievements.filter((item) => item.achieved);
     const locked = achievements.filter((item) => !item.achieved);
     const levels = contributionRanks;
+    const pageSize = 10;
+    const unlockedPage = normalizeSimplePage(state.achievementPages.unlocked, achieved.length, pageSize);
+    const lockedPage = normalizeSimplePage(state.achievementPages.locked, locked.length, pageSize);
+    state.achievementPages.unlocked = unlockedPage;
+    state.achievementPages.locked = lockedPage;
+    const unlockedItems = pageSlice(achieved, unlockedPage, pageSize);
+    const lockedItems = pageSlice(locked, lockedPage, pageSize);
 
     els.progressInfoContent.innerHTML = `
       <section class="progress-info-section progress-info-summary">
         <h3>${escapeHtml(selected.name)}</h3>
         <div class="overview-xp-bar" aria-label="Current level progress">
-          <span style="width: ${Number(selected.progress || 0).toFixed(1)}%; background:${escapeAttr(selected.rankColor || contributionRankColor(selected.level || 1))}"></span>
+          <span style="width: ${Number(selected.progress || 0).toFixed(1)}%"></span>
         </div>
         <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; <span style="color:${escapeAttr(selected.rankColor || contributionRankColor(selected.level || 1))}">${escapeHtml(selected.title || "New Member")}</span></p>
       </section>
       <section class="progress-info-section">
         <h3>Unlocked Achievements</h3>
         <div class="achievement-grid">
-          ${achieved.map((item) => achievementCardMarkup(item)).join("") || `<p class="empty-state">No achievements unlocked yet.</p>`}
+          ${unlockedItems.map((item) => achievementCardMarkup(item)).join("") || `<p class="empty-state">No achievements unlocked yet.</p>`}
         </div>
+        ${achievementPagerMarkup("unlocked", unlockedPage, achieved.length, pageSize)}
       </section>
       <section class="progress-info-section">
         <h3>Locked Achievements</h3>
         <div class="achievement-grid">
-          ${locked.map((item) => achievementCardMarkup(item)).join("")}
+          ${lockedItems.map((item) => achievementCardMarkup(item)).join("") || `<p class="empty-state">No locked achievements remain.</p>`}
         </div>
+        ${achievementPagerMarkup("locked", lockedPage, locked.length, pageSize)}
       </section>
       <section class="progress-info-section">
         <h3>XP Ranks</h3>
@@ -2882,7 +3137,25 @@ Please contact the school office if you need anything else.`,
         </div>
       </section>
     `;
-    els.progressInfoDialog.showModal();
+  }
+
+  function normalizeSimplePage(page, totalRows, rowsPerPage) {
+    const pages = Math.max(1, Math.ceil(Number(totalRows || 0) / Number(rowsPerPage || 1)));
+    return Math.min(Math.max(1, Number(page || 1)), pages);
+  }
+
+  function pageSlice(items, page, rowsPerPage) {
+    const start = (normalizeSimplePage(page, items.length, rowsPerPage) - 1) * rowsPerPage;
+    return items.slice(start, start + rowsPerPage);
+  }
+
+  function achievementPagerMarkup(kind, currentPage, totalRows, rowsPerPage) {
+    const pages = Math.ceil(Number(totalRows || 0) / Number(rowsPerPage || 1));
+    if (pages <= 1) return "";
+    const buttons = Array.from({ length: pages }, (_, index) => index + 1).map((page) => `
+      <button class="${page === currentPage ? "active" : ""}" type="button" data-achievement-page="${escapeAttr(kind)}:${page}" aria-label="${escapeAttr(kind)} achievements page ${page}">${page}</button>
+    `).join("");
+    return `<nav class="achievement-pager" aria-label="${escapeAttr(kind)} achievements pagination">${buttons}</nav>`;
   }
 
   function achievementCardMarkup(item) {
@@ -3115,11 +3388,13 @@ Please contact the school office if you need anything else.`,
   function contributionAchievementCatalog(item) {
     const counts = item.counts || {};
     const fileCount = (counts.createdFile || 0) + (counts.editedFile || 0);
+    const transcriptCount = (counts.createdTranscript || 0) + (counts.editedTranscript || 0);
     const categoriesUnlocked = [
       (counts.createdCourse || 0) >= 1,
       (counts.createdProgram || 0) >= 1,
       (counts.createdCurriculum || 0) >= 1,
       fileCount >= 1,
+      transcriptCount >= 1,
       (counts.createdNotice || 0) >= 1,
       (counts.createdTask || 0) >= 1,
       (counts.sentMaterials || 0) >= 1,
@@ -3129,19 +3404,13 @@ Please contact the school office if you need anything else.`,
     const weekendCount = Array.isArray(item.weekendDays) ? item.weekendDays.length : 0;
     const entries = [
       ["Courses", "First Course", "Create your first course.", (counts.createdCourse || 0) >= 1],
-      ["Courses", "Course Builder", "Create 10 courses.", (counts.createdCourse || 0) >= 10],
-      ["Courses", "Course Architect", "Create 25 courses.", (counts.createdCourse || 0) >= 25],
-      ["Courses", "Master Course Builder", "Create 100 courses.", (counts.createdCourse || 0) >= 100],
-      ["Courses", "Course Legend", "Create 250 courses.", (counts.createdCourse || 0) >= 250],
       ["Curriculums", "Curriculum Creator", "Create your first curriculum.", (counts.createdCurriculum || 0) >= 1],
-      ["Curriculums", "Curriculum Planner", "Create 5 curriculums.", (counts.createdCurriculum || 0) >= 5],
-      ["Curriculums", "Curriculum Architect", "Create 10 curriculums.", (counts.createdCurriculum || 0) >= 10],
-      ["Curriculums", "Curriculum Engineer", "Create 25 curriculums.", (counts.createdCurriculum || 0) >= 25],
-      ["Curriculums", "Master Curriculum Architect", "Create 50 curriculums.", (counts.createdCurriculum || 0) >= 50],
       ["Programs", "Program Creator", "Create your first program.", (counts.createdProgram || 0) >= 1],
-      ["Programs", "Program Builder", "Create 5 programs.", (counts.createdProgram || 0) >= 5],
-      ["Programs", "Program Director", "Create 10 programs.", (counts.createdProgram || 0) >= 10],
-      ["Programs", "Master Program Director", "Create 25 programs.", (counts.createdProgram || 0) >= 25],
+      ["Transcripts", "Transcript Starter", "Create or import your first transcript.", transcriptCount >= 1],
+      ["Transcripts", "Transcript Clerk", "Create or import 25 transcripts.", transcriptCount >= 25],
+      ["Transcripts", "Transcript Specialist", "Create or import 100 transcripts.", transcriptCount >= 100],
+      ["Transcripts", "Transcript Archivist", "Create or import 250 transcripts.", transcriptCount >= 250],
+      ["Transcripts", "Transcript Master", "Create or import 500 transcripts.", transcriptCount >= 500],
       ["Files", "First Upload", "Upload your first file.", fileCount >= 1],
       ["Files", "Librarian", "Upload or edit 25 files.", fileCount >= 25],
       ["Files", "Master Librarian", "Upload or edit 100 files.", fileCount >= 100],
@@ -4791,6 +5060,7 @@ Please contact the school office if you need anything else.`,
         uploadBytes: storageModule.uploadBytes,
         uploadBytesResumable: storageModule.uploadBytesResumable,
         getDownloadURL: storageModule.getDownloadURL,
+        getBlob: storageModule.getBlob,
         deleteObject: storageModule.deleteObject,
         getFunctions: functionsModule.getFunctions,
         httpsCallable: functionsModule.httpsCallable,
@@ -5354,7 +5624,7 @@ Please contact the school office if you need anything else.`,
     if (!newNotice || !noticeModalsEnabled()) return;
     showThemedNotification({
       eyebrow: "Notice",
-      title: "New Archive Notice",
+      title: "New Notice",
       message: newNotice.message,
       confirmText: "OK",
     });
@@ -5395,8 +5665,44 @@ Please contact the school office if you need anything else.`,
   }
 
   function showThemedNotification(options) {
-    if (document.querySelector("dialog[open]")) return;
-    void alertAction(options);
+    if (!els.toastStack) {
+      void alertAction(options);
+      return;
+    }
+    const toast = document.createElement("article");
+    const icon = toastIcon(options.eyebrow || options.title);
+    toast.className = "dashboard-toast";
+    toast.setAttribute("role", "status");
+    toast.innerHTML = `
+      <span class="toast-icon"><i class="bi ${escapeAttr(icon)}"></i></span>
+      <div>
+        <small>${escapeHtml(options.eyebrow || "Dashboard")}</small>
+        <strong>${escapeHtml(options.title || "New Update")}</strong>
+        <p>${escapeHtml(options.message || "")}</p>
+      </div>
+      <button type="button" aria-label="Dismiss notification" data-dismiss-toast><i class="bi bi-x-lg"></i></button>
+    `;
+    els.toastStack.appendChild(toast);
+    const timer = window.setTimeout(() => dismissToast(toast), 5200);
+    toast.querySelector("[data-dismiss-toast]")?.addEventListener("click", () => {
+      window.clearTimeout(timer);
+      dismissToast(toast);
+    });
+  }
+
+  function toastIcon(label) {
+    const value = String(label || "").toLowerCase();
+    if (/achievement/.test(value)) return "bi-trophy-fill";
+    if (/level/.test(value)) return "bi-star-fill";
+    if (/notice|announcement/.test(value)) return "bi-megaphone";
+    if (/task/.test(value)) return "bi-check2-square";
+    return "bi-bell";
+  }
+
+  function dismissToast(toast) {
+    if (!toast || toast.classList.contains("is-leaving")) return;
+    toast.classList.add("is-leaving");
+    window.setTimeout(() => toast.remove(), 190);
   }
 
   function handleContributionNotifications() {

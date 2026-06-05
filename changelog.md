@@ -1,5 +1,38 @@
 # New Eden Archive Changelog
 
+## V1.5.6 - 2026-06-05 2:57 PM CT - Dashboard Guide, Notifications, and Achievement Cleanup
+
+### Summary
+- Fixed transcript PDF imports from File Manager, cleaned up dashboard layout issues, rebuilt the help guide, and tightened the achievement and notification systems.
+
+### Fixes
+- Fixed File Manager transcript PDF imports by loading Cloud Storage files through the Firebase Storage SDK when a storage path is available.
+- Removed the metric header from the Log page so Activity Log starts directly below the page heading.
+- Tightened curriculum and program curriculum table column widths so action buttons stay visible and centered without horizontal overflow.
+- Standardized the sidebar contributor badge spacing so it keeps the same padding and alignment across dashboard tabs.
+- Widened the transcript import/save PDF dialogs so the File Manager import and save destination controls have room to display.
+
+### Dashboard Guide
+- Rebuilt the help button modal as a Dashboard Guide with section buttons for Overview, Courses, Curriculums, Programs, Transcripts, File Manager, Log, and Profile/Admin.
+- Updated guide wording from Archive Guide/New Eden Archive to Dashboard Guide/New Eden Dashboard.
+- Added compact visual guide snapshots and step-by-step procedures for the main dashboard workflows.
+
+### Notifications
+- Replaced modal-style notifications with bottom-right dashboard toast notifications for notices, tasks, achievements, and level-ups.
+- Toasts now auto-dismiss and use small notification icons for notice, task, achievement, and level-up events.
+
+### Achievements and XP
+- Removed unrealistic high-volume course, curriculum, and program creation achievements while keeping First Course, Curriculum Creator, and Program Creator.
+- Added the transcript achievement track: Transcript Starter, Transcript Clerk, Transcript Specialist, Transcript Archivist, and Transcript Master.
+- Added independent pagination for unlocked and locked achievements, showing 10 achievements per page when needed.
+- Updated XP rank cards to use full-width rows in the progress information modal.
+- Restored the XP bar to a dedicated metallic green gradient independent from rank colors.
+
+### Email Dispatch and File Selection
+- Added file type filters to the Email Dispatch file selector for All, Transcripts, eBooks, Course Instructions, and Other files.
+- Added Delete Template support for Email Dispatch templates with confirmation, Firebase removal, refresh, and activity logging.
+- Improved button and filter styling for better spacing, focus, hover contrast, and centered text.
+
 ## V1.5.5 - 2026-06-05 12:30 PM CT - Dashboard Progress and Version History Polish
 
 ### Summary

@@ -768,11 +768,13 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.5.5</span></p>
+          <p>Version <span id="appVersion">1.5.6</span></p>
           </footer>
         </div>
       </main>
     </div>
+
+    <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
 
     <dialog class="modal-native" id="adminDialog">
       <form method="dialog" class="modal-card">
@@ -957,55 +959,16 @@
       <form method="dialog" class="modal-card guide-card">
         <div class="modal-heading">
           <div>
-            <p class="eyebrow">Archive Guide</p>
-            <h2>How to Use New Eden Archive</h2>
+            <p class="eyebrow">Dashboard Guide</p>
+            <h2>How to Use New Eden Dashboard</h2>
           </div>
           <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close help guide">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
 
-        <div class="guide-hero">
-          <div class="guide-step-card">
-            <span>1</span>
-            <i class="bi bi-mortarboard"></i>
-            <strong>Programs</strong>
-            <p>Create the main school categories, then attach curriculums to each program.</p>
-          </div>
-          <div class="guide-arrow"><i class="bi bi-arrow-right"></i></div>
-          <div class="guide-step-card">
-            <span>2</span>
-            <i class="bi bi-clipboard2-data"></i>
-            <strong>Curriculums</strong>
-            <p>Build each curriculum, add course requirements, notes, and attachments.</p>
-          </div>
-          <div class="guide-arrow"><i class="bi bi-arrow-right"></i></div>
-          <div class="guide-step-card">
-            <span>3</span>
-            <i class="bi bi-book"></i>
-            <strong>Courses</strong>
-            <p>Maintain the master course catalog used by curriculum requirements.</p>
-          </div>
-        </div>
-
-        <div class="guide-sections">
-          <section>
-            <h3><i class="bi bi-book"></i> Courses Tab</h3>
-            <p>Use Courses as the master catalog. Add a course here before attaching it to a curriculum. Search, filter by credits, sort by ID, credit, or course name, and use Edit/Delete actions when admin access is unlocked.</p>
-          </section>
-          <section>
-            <h3><i class="bi bi-clipboard2-data"></i> Curriculums Tab</h3>
-            <p>Select a curriculum from the top dropdowns to review its overview, notes, attachments, and required courses. Add Curriculum opens a builder where you can create the curriculum and choose course requirements in one place. Manage Requirements is for later edits.</p>
-          </section>
-          <section>
-            <h3><i class="bi bi-mortarboard"></i> Programs Tab</h3>
-            <p>Use Programs for the main school categories. Select a program to see its details on the left and the curriculums that belong to it on the right. Manage Curriculums organizes which curriculums belong under that program.</p>
-          </section>
-          <section>
-            <h3><i class="bi bi-lock"></i> Admin Access</h3>
-            <p>Viewers can search and read archive data. Admins can add, edit, remove, upload attachments, and save changes to Firebase. If a button is hidden, check that Admin is unlocked in the top bar.</p>
-          </section>
-        </div>
+        <div class="guide-topic-grid" id="guideTopicGrid"></div>
+        <div class="guide-content" id="guideContent"></div>
       </form>
     </dialog>
 
@@ -1298,7 +1261,7 @@
             Save Both
           </button>
         </div>
-        <p class="form-note">File Manager saves use category Transcript and link to the course IDs currently listed in the transcript rows.</p>
+        <p class="form-note">File Manager saves use category Transcript and stay standalone without course links.</p>
       </form>
     </dialog>
 
@@ -1320,6 +1283,7 @@
               Search All Files
               <input class="form-control" id="emailFileSearch" type="search" placeholder="Search by file, course, or ID" />
             </label>
+            <div class="segmented-control file-type-filter" id="emailFileTypeFilter" aria-label="Filter files by type"></div>
             <div class="course-picker" id="emailFilePicker"></div>
           </section>
 
@@ -1365,6 +1329,10 @@
               <button class="btn btn-outline-eden" id="addEmailTemplate" type="button">
                 <i class="bi bi-plus-circle"></i>
                 Add Template
+              </button>
+              <button class="btn btn-outline-danger" id="deleteEmailTemplate" type="button">
+                <i class="bi bi-trash"></i>
+                Delete Template
               </button>
             </div>
             <label class="form-label">
