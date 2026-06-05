@@ -82,6 +82,10 @@
             <i class="bi bi-file-earmark-text"></i>
             <span>Transcripts</span>
           </button>
+          <button class="nav-link" data-view="administration">
+            <i class="bi bi-shield-lock"></i>
+            <span>Administration</span>
+          </button>
           <button class="nav-link" data-view="log">
             <i class="bi bi-journal-text"></i>
             <span>Log</span>
@@ -272,7 +276,7 @@
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Health Snapshot</p>
-                    <h2>Archive Health</h2>
+                    <h2>Dashboard Health</h2>
                     <p class="section-subtitle">Usage and completeness checks across the archive.</p>
                   </div>
                 </div>
@@ -600,7 +604,7 @@
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Admin</p>
-                  <h2>Archive Health</h2>
+                  <h2>Dashboard Health</h2>
                 </div>
                 <button class="btn btn-outline-danger admin-only" id="removeBlankCourses" type="button">
                   <i class="bi bi-trash"></i>
@@ -641,8 +645,45 @@
                 </table>
               </div>
             </article>
+          </section>
 
+          <section class="view" id="administrationView">
             <div class="log-workspace">
+              <article class="archive-panel">
+                <div class="section-heading catalog-heading">
+                  <div>
+                    <p class="eyebrow">Student Email</p>
+                    <h2>Email Dispatch</h2>
+                    <p class="section-subtitle">Select stored files and prepare a student email. Sending requires a secure Firebase Cloud Function.</p>
+                  </div>
+                </div>
+                <form class="file-send-form admin-only" id="fileSendForm">
+                  <label class="form-label">
+                    Student Email
+                    <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
+                  </label>
+                  <div class="email-template-controls">
+                    <button class="btn btn-outline-eden" id="editEmailTemplates" type="button">
+                      <i class="bi bi-envelope-paper"></i>
+                      Email Templates
+                    </button>
+                    <select class="form-select" id="emailTemplateSelect" aria-label="Choose email dispatch template"></select>
+                  </div>
+                  <div class="file-send-actions">
+                    <button class="btn btn-outline-eden" id="openFileSelector" type="button">
+                      <i class="bi bi-paperclip"></i>
+                      Add File
+                    </button>
+                    <button class="btn btn-eden" type="submit">
+                      <i class="bi bi-send"></i>
+                      Send
+                    </button>
+                  </div>
+                </form>
+                <div class="selected-email-files" id="selectedEmailFiles"></div>
+                <p class="form-note file-send-message" id="fileSendMessage" aria-live="polite"></p>
+              </article>
+
               <article class="archive-panel">
                 <div class="section-heading">
                   <div>
@@ -725,40 +766,6 @@
               </div>
             </article>
 
-            <article class="archive-panel mt-3">
-              <div class="section-heading catalog-heading">
-                <div>
-                  <p class="eyebrow">Student Email</p>
-                  <h2>Email Dispatch</h2>
-                  <p class="section-subtitle">Select stored files and prepare a student email. Sending requires a secure Firebase Cloud Function.</p>
-                </div>
-              </div>
-              <form class="file-send-form admin-only" id="fileSendForm">
-                <label class="form-label">
-                  Student Email
-                  <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
-                </label>
-                <div class="email-template-controls">
-                  <button class="btn btn-outline-eden" id="editEmailTemplates" type="button">
-                    <i class="bi bi-envelope-paper"></i>
-                    Email Templates
-                  </button>
-                  <select class="form-select" id="emailTemplateSelect" aria-label="Choose email dispatch template"></select>
-                </div>
-                <div class="file-send-actions">
-                  <button class="btn btn-outline-eden" id="openFileSelector" type="button">
-                    <i class="bi bi-paperclip"></i>
-                    Add File
-                  </button>
-                  <button class="btn btn-eden" type="submit">
-                    <i class="bi bi-send"></i>
-                    Send
-                  </button>
-                </div>
-              </form>
-              <div class="selected-email-files" id="selectedEmailFiles"></div>
-              <p class="form-note file-send-message" id="fileSendMessage" aria-live="polite"></p>
-            </article>
           </section>
 
           <footer class="archive-footer">
@@ -768,7 +775,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-          <p>Version <span id="appVersion">1.5.6</span></p>
+          <p>Version <span id="appVersion">1.5.7</span></p>
           </footer>
         </div>
       </main>

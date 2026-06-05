@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.6";
+  const appVersion = "1.5.7";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -932,13 +932,14 @@ Please contact the school office if you need anything else.`,
       return;
     }
     const xpRemaining = Math.max(0, current.nextXp - current.xp);
+    const rankGradient = metallicRankGradient(current.rankColor);
     els.sidebarRankCard.hidden = false;
     els.sidebarRankCard.innerHTML = `
       <div class="sidebar-rank-head">
         <span class="sidebar-rank-icon"><i class="bi bi-award"></i></span>
         <span>
           <strong>Level ${current.level}</strong>
-          <small style="color:${escapeAttr(current.rankColor)}">${escapeHtml(current.title)}</small>
+          <small class="rank-metallic-text" style="--rank-gradient:${escapeAttr(rankGradient)}">${escapeHtml(current.title)}</small>
         </span>
       </div>
       <div class="sidebar-rank-bar" aria-label="Contributor level progress">
@@ -954,8 +955,9 @@ Please contact the school office if you need anything else.`,
     { id: "curriculums", icon: "bi-clipboard2-data", title: "Curriculums" },
     { id: "programs", icon: "bi-mortarboard", title: "Programs" },
     { id: "transcripts", icon: "bi-file-earmark-text", title: "Transcripts" },
+    { id: "administration", icon: "bi-shield-lock", title: "Administration" },
     { id: "files", icon: "bi-folder2-open", title: "File Manager" },
-    { id: "log", icon: "bi-journal-text", title: "Log, Notices, Tasks" },
+    { id: "log", icon: "bi-journal-text", title: "Activity Log" },
     { id: "profile", icon: "bi-person-gear", title: "Profile & Admin" },
   ];
 
@@ -963,6 +965,7 @@ Please contact the school office if you need anything else.`,
     overview: {
       title: "Overview Dashboard",
       subtitle: "Use Overview as the compact health check for the dashboard.",
+      image: "assets/guide/overview.png",
       visual: ["Latest Dashboard Changes", "Assigned to Me", "Staff Status", "Dashboard Progress"],
       steps: [
         "Review Latest Dashboard Changes for recent edits, uploads, transcript work, and deletions.",
@@ -974,6 +977,7 @@ Please contact the school office if you need anything else.`,
     courses: {
       title: "Courses Tab",
       subtitle: "Courses are the master catalog used everywhere else.",
+      image: "assets/guide/courses.png",
       visual: ["Add Course", "Search", "Credit Filter", "Sortable Columns", "Edit/Delete"],
       steps: [
         "Click Add Course to create a new course record. Course IDs are validated so duplicate course numbers cannot be saved.",
@@ -986,6 +990,7 @@ Please contact the school office if you need anything else.`,
     curriculums: {
       title: "Curriculums Tab",
       subtitle: "Build each curriculum and maintain its required course list.",
+      image: "assets/guide/curriculums.png",
       visual: ["Program Filter", "Curriculum Filter", "Add Curriculum", "Manage Requirements", "Attachments"],
       steps: [
         "Choose a program and curriculum from the top filters.",
@@ -998,6 +1003,7 @@ Please contact the school office if you need anything else.`,
     programs: {
       title: "Programs Tab",
       subtitle: "Programs are the main school categories that hold curriculums.",
+      image: "assets/guide/programs.png",
       visual: ["Program Selector", "Program Overview", "Add Program", "Manage Curriculums"],
       steps: [
         "Select a program from the dropdown to review its details.",
@@ -1010,6 +1016,7 @@ Please contact the school office if you need anything else.`,
     transcripts: {
       title: "Transcripts Tab",
       subtitle: "Build transcripts from Firebase course and curriculum data.",
+      image: "assets/guide/transcripts.png",
       visual: ["Student Details", "Import Curriculum", "Add Courses", "Import PDF", "Save PDF"],
       steps: [
         "Fill in student details before creating the transcript.",
@@ -1019,29 +1026,43 @@ Please contact the school office if you need anything else.`,
         "Save PDF can save to your computer, File Manager, or both. Transcript files are standalone and do not link to course attachments.",
       ],
     },
+    administration: {
+      title: "Administration Tab",
+      subtitle: "Send files, publish notices, and manage assigned work.",
+      image: "assets/guide/administration.png",
+      visual: ["Email Dispatch", "Email Templates", "Announcements", "Task Board", "Activity Logging"],
+      steps: [
+        "Use Email Dispatch to select existing File Manager files and prepare student emails.",
+        "Email Templates are shared templates stored in Realtime Database. Admins can add, save, or delete templates.",
+        "Post Announcements to broadcast one-way notices to all signed-in users.",
+        "Create tasks with a title, description, assignee, and status.",
+        "Email, notice, and task actions are recorded in the Activity Log and Dashboard Progress system.",
+      ],
+    },
     files: {
-      title: "File Manager and Email Dispatch",
-      subtitle: "Upload files once, link them to courses, and send selected files to students.",
-      visual: ["Add File", "Category", "Linked Courses", "Email Dispatch", "File Selector"],
+      title: "File Manager",
+      subtitle: "Upload files once, link them to courses, and reuse them across curriculums.",
+      image: "assets/guide/file-manager.png",
+      visual: ["Add File", "Category", "Linked Courses", "Search", "Download"],
       steps: [
         "Use Add File to upload one or more files to Cloud Storage.",
         "Choose a category such as eBook, CI, Transcript, or Other.",
         "Link course files to one or more course IDs so curriculums can display the correct attachments automatically.",
         "Transcript files stay standalone and should not be linked to course IDs.",
-        "Email Dispatch selects existing File Manager files. Use file type filters, search, or Browse by Curriculum to find files.",
-        "Email Templates are shared templates stored in Realtime Database. Admins can add, save, or delete templates.",
+        "Use search to find files by file name, linked course, category, or course ID.",
+        "Use Download from File Manager or from a curriculum's read-only Attachments tab.",
       ],
     },
     log: {
-      title: "Log, Notices, and Tasks",
-      subtitle: "Track dashboard activity and coordinate staff work.",
-      visual: ["Activity Log", "Search", "Notices", "Task Board"],
+      title: "Activity Log",
+      subtitle: "Track dashboard activity and search staff changes.",
+      image: "assets/guide/activity-log.png",
+      visual: ["Activity Log", "Search", "User", "Action", "Details"],
       steps: [
         "The Activity Log records important add, edit, delete, upload, task, notice, and transcript actions.",
         "Search the log by user, action, record, or details.",
-        "Admins can post notices for all signed-in users. Notices are limited to prevent clutter.",
-        "Admins can create tasks with an assignee and status. Assigned users can see and update their tasks.",
-        "Task and notice actions feed the Activity Log and Dashboard Progress XP system.",
+        "Use the log to audit who changed courses, curriculums, programs, files, notices, tasks, transcripts, and templates.",
+        "Activity entries also power Dashboard Progress, XP, ranks, and contribution stats.",
       ],
     },
     profile: {
@@ -1071,6 +1092,7 @@ Please contact the school office if you need anything else.`,
     const guide = guideDetails[active];
     els.guideContent.innerHTML = `
       <section class="guide-snapshot" aria-label="${escapeAttr(guide.title)} visual guide">
+        ${guide.image ? `<img class="guide-screenshot" src="${escapeAttr(guide.image)}" alt="${escapeAttr(guide.title)} screenshot" loading="lazy" />` : ""}
         ${guide.visual.map((item, index) => `
           <span style="--guide-index:${index + 1}">
             <b>${index + 1}</b>${escapeHtml(item)}
@@ -1155,11 +1177,11 @@ Please contact the school office if you need anything else.`,
   }
 
   function noticeModalsEnabled() {
-    return userSettings().notifyNotices === true;
+    return userSettings().notifyNotices !== false;
   }
 
   function taskModalsEnabled() {
-    return userSettings().notifyTasks === true;
+    return userSettings().notifyTasks !== false;
   }
 
   function achievementModalsEnabled() {
@@ -2093,10 +2115,11 @@ Please contact the school office if you need anything else.`,
       await importTranscriptPdf(importedFile);
     } catch (error) {
       console.warn("File Manager transcript import failed.", error);
+      const message = storageCorsMessage(error);
       await alertAction({
         eyebrow: "Transcripts",
         title: "Could Not Import File",
-        message: error?.message || "The selected File Manager transcript could not be downloaded or parsed.",
+        message,
         confirmText: "OK",
       });
       setCloudStatus("File Manager transcript import failed.");
@@ -2104,14 +2127,34 @@ Please contact the school office if you need anything else.`,
   }
 
   async function downloadManagedFileBlob(file) {
-    if (file?.storagePath && firebaseState.storage && firebaseState.modules?.getBlob) {
-      const { storageRef, getBlob } = firebaseState.modules;
-      return getBlob(storageRef(firebaseState.storage, file.storagePath));
+    const errors = [];
+    if (file?.downloadURL) {
+      try {
+        const response = await fetch(`${file.downloadURL}${file.downloadURL.includes("?") ? "&" : "?"}cacheBust=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+        return response.blob();
+      } catch (error) {
+        errors.push(error);
+      }
     }
-    if (!file?.downloadURL) throw new Error("No downloadable file URL is available.");
-    const response = await fetch(file.downloadURL, { cache: "no-store" });
-    if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
-    return response.blob();
+    if (file?.storagePath && firebaseState.storage && firebaseState.modules?.getBlob) {
+      try {
+        const { storageRef, getBlob } = firebaseState.modules;
+        return await getBlob(storageRef(firebaseState.storage, file.storagePath));
+      } catch (error) {
+        errors.push(error);
+      }
+    }
+    if (!file?.downloadURL && !file?.storagePath) throw new Error("No downloadable file URL or Storage path is available.");
+    throw errors[0] || new Error("The file could not be downloaded from Firebase Storage.");
+  }
+
+  function storageCorsMessage(error) {
+    const message = error?.message || "The selected File Manager transcript could not be downloaded or parsed.";
+    if (/cors|access-control-allow-origin|retry-limit|max retry|failed to fetch|net::err_failed/i.test(message)) {
+      return "Firebase Storage blocked the browser from downloading this PDF for import. Publish the Storage CORS settings in storage-cors.json, then try importing from File Manager again.";
+    }
+    return message;
   }
 
   function openTranscriptSaveDialog() {
@@ -3016,6 +3059,7 @@ Please contact the school office if you need anything else.`,
     )) || selected;
     const xpRemaining = Math.max(0, selected.nextXp - selected.xp);
     const rankColor = selected.rankColor || contributionRankColor(selected.level);
+    const rankGradient = metallicRankGradient(rankColor);
 
     els.overviewGamificationList.innerHTML = `
       <article class="overview-level-card">
@@ -3024,7 +3068,7 @@ Please contact the school office if you need anything else.`,
           <div class="overview-level-title">
             <strong>${escapeHtml(selected.name)}</strong>
             <div class="overview-level-actions">
-              <span class="rank-title" style="color:${escapeAttr(rankColor)}">Level ${selected.level} ${escapeHtml(selected.title)}</span>
+              <span class="rank-title rank-metallic-text" style="--rank-gradient:${escapeAttr(rankGradient)}">Level ${selected.level} ${escapeHtml(selected.title)}</span>
             </div>
           </div>
           <div class="overview-xp-bar" aria-label="Level progress">
@@ -3094,6 +3138,7 @@ Please contact the school office if you need anything else.`,
     const achieved = achievements.filter((item) => item.achieved);
     const locked = achievements.filter((item) => !item.achieved);
     const levels = contributionRanks;
+    const rankColumns = [levels.slice(0, 10), levels.slice(10)];
     const pageSize = 10;
     const unlockedPage = normalizeSimplePage(state.achievementPages.unlocked, achieved.length, pageSize);
     const lockedPage = normalizeSimplePage(state.achievementPages.locked, locked.length, pageSize);
@@ -3108,7 +3153,7 @@ Please contact the school office if you need anything else.`,
         <div class="overview-xp-bar" aria-label="Current level progress">
           <span style="width: ${Number(selected.progress || 0).toFixed(1)}%"></span>
         </div>
-        <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; <span style="color:${escapeAttr(selected.rankColor || contributionRankColor(selected.level || 1))}">${escapeHtml(selected.title || "New Member")}</span></p>
+        <p><strong>${selected.xp || 0} XP</strong> &bull; Level ${selected.level || 1} &bull; <span class="rank-metallic-text" style="--rank-gradient:${escapeAttr(metallicRankGradient(selected.rankColor || contributionRankColor(selected.level || 1)))}">${escapeHtml(selected.title || "New Member")}</span></p>
       </section>
       <section class="progress-info-section">
         <h3>Unlocked Achievements</h3>
@@ -3124,15 +3169,22 @@ Please contact the school office if you need anything else.`,
         </div>
         ${achievementPagerMarkup("locked", lockedPage, locked.length, pageSize)}
       </section>
-      <section class="progress-info-section">
+      <section class="progress-info-section progress-ranks-section">
         <h3>XP Ranks</h3>
         <div class="rank-grid">
-          ${levels.map((item) => `
-            <article class="rank-card ${selected.level >= item.level ? "is-unlocked" : "is-locked"}" style="border-left-color:${escapeAttr(item.color)}">
-              <strong>Level ${item.level}</strong>
-              <span style="color:${escapeAttr(item.color)}">${escapeHtml(item.title)}</span>
-              <small>${item.xp.toLocaleString()} XP required</small>
-            </article>
+          ${rankColumns.map((column) => `
+            <div class="rank-column">
+              ${column.map((item) => {
+                const gradient = metallicRankGradient(item.color);
+                return `
+                  <article class="rank-card ${selected.level >= item.level ? "is-unlocked" : "is-locked"}" style="--rank-color:${escapeAttr(item.color)};--rank-gradient:${escapeAttr(gradient)}">
+                    <strong>Level ${item.level}</strong>
+                    <span class="rank-metallic-text">${escapeHtml(item.title)}</span>
+                    <small>${item.xp.toLocaleString()} XP required</small>
+                  </article>
+                `;
+              }).join("")}
+            </div>
           `).join("")}
         </div>
       </section>
@@ -3377,6 +3429,37 @@ Please contact the school office if you need anything else.`,
 
   function contributionRankColor(level) {
     return contributionRanks.find((rank) => rank.level === level)?.color || contributionRanks[0].color;
+  }
+
+  function metallicRankGradient(color) {
+    const base = sanitizeHexColor(color) || "#4CAF50";
+    return `linear-gradient(90deg, ${mixHex(base, "#050505", 0.16)} 0%, ${base} 24%, ${mixHex(base, "#ffffff", 0.62)} 46%, ${mixHex(base, "#fff6c9", 0.34)} 54%, ${base} 74%, ${mixHex(base, "#050505", 0.24)} 100%)`;
+  }
+
+  function sanitizeHexColor(color) {
+    const value = String(color || "").trim();
+    if (/^#[0-9a-f]{6}$/i.test(value)) return value;
+    if (/^#[0-9a-f]{3}$/i.test(value)) {
+      return `#${value.slice(1).split("").map((char) => char + char).join("")}`;
+    }
+    return "";
+  }
+
+  function mixHex(color, target, amount) {
+    const from = hexToRgb(sanitizeHexColor(color) || "#4CAF50");
+    const to = hexToRgb(sanitizeHexColor(target) || "#ffffff");
+    const mix = Math.min(1, Math.max(0, Number(amount || 0)));
+    const channel = (a, b) => Math.round(a + (b - a) * mix).toString(16).padStart(2, "0");
+    return `#${channel(from.r, to.r)}${channel(from.g, to.g)}${channel(from.b, to.b)}`;
+  }
+
+  function hexToRgb(color) {
+    const value = sanitizeHexColor(color).slice(1);
+    return {
+      r: parseInt(value.slice(0, 2), 16),
+      g: parseInt(value.slice(2, 4), 16),
+      b: parseInt(value.slice(4, 6), 16),
+    };
   }
 
   function contributionAchievements(item, streak) {
@@ -3644,7 +3727,7 @@ Please contact the school office if you need anything else.`,
     const blankCourses = archiveHealthReport().blankCourses;
     if (!blankCourses.length) return;
     const confirmed = await confirmAction({
-      eyebrow: "Archive Health",
+      eyebrow: "Dashboard Health",
       title: "Remove Blank Courses",
       message: `Remove ${blankCourses.length} blank course record(s)?`,
       confirmText: "Remove",

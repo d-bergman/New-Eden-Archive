@@ -918,6 +918,8 @@ body[data-active-view="transcripts"] .hero-band,
 body[data-active-view="transcripts"] .archive-summary,
 body[data-active-view="files"] .hero-band,
 body[data-active-view="files"] .archive-summary,
+body[data-active-view="administration"] .hero-band,
+body[data-active-view="administration"] .archive-summary,
 body[data-active-view="log"] .hero-band,
 body[data-active-view="log"] .archive-summary,
 body[data-active-view="overview"] .hero-band,
@@ -2456,12 +2458,20 @@ mark {
   font-size: 0.8rem;
 }
 
-.rank-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.rank-card {
+  position: relative;
+  overflow: hidden;
+  border-left-width: 4px;
+  border-left-color: var(--rank-color);
 }
 
-.rank-card {
-  border-left-width: 4px;
+.rank-card::before {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 0 36%, rgba(255, 255, 255, 0.26) 45%, transparent 56%);
+  content: "";
+  opacity: 0.28;
+  pointer-events: none;
 }
 
 .rank-card.is-locked {
@@ -2498,8 +2508,31 @@ mark {
   color: var(--eden-cream);
 }
 
+.progress-ranks-section {
+  grid-column: 1 / -1;
+}
+
 .rank-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.progress-ranks-section .rank-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rank-column {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.rank-metallic-text {
+  background: var(--rank-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .guide-topic-grid {
@@ -2565,6 +2598,18 @@ mark {
   background:
     linear-gradient(135deg, rgba(223, 232, 215, 0.44), rgba(255, 255, 255, 0.82)),
     rgba(251, 250, 245, 0.8);
+}
+
+.guide-screenshot {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-height: 340px;
+  object-fit: cover;
+  object-position: top left;
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: var(--eden-paper);
+  box-shadow: 0 12px 32px rgba(23, 61, 42, 0.12);
 }
 
 .guide-snapshot > span {
@@ -3432,8 +3477,8 @@ body.theme-dark .guide-topic-button small {
 }
 
 .transcript-option-modal {
-  width: 100%;
-  max-width: none;
+  width: min(1080px, calc(100vw - 56px));
+  max-width: 100%;
   overflow-x: hidden;
 }
 

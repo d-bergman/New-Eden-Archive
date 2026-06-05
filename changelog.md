@@ -1,5 +1,28 @@
 # New Eden Archive Changelog
 
+## V1.5.7 - 2026-06-05 3:27 PM CT - Administration Tab, Storage CORS, and Rank Polish
+
+### Summary
+- Moved admin coordination tools into a dedicated Administration tab, improved transcript File Manager import feedback, repaired notification defaults, and polished XP rank visuals.
+
+### New Features
+- Added an Administration sidebar tab under Transcripts.
+- Moved Email Dispatch, Announcements, and Task Board into Administration so Log can focus on audit history and File Manager can focus on files.
+- Added `storage-cors.json` with the allowed local and Firebase Hosting origins needed for browser PDF imports from Firebase Storage.
+- Added generated guide screenshot assets for Overview, Courses, Curriculums, Programs, Transcripts, Administration, File Manager, and Activity Log.
+
+### Fixes
+- Changed notice and task toast preferences to default on unless a user explicitly disables them in Profile Settings.
+- Updated transcript File Manager import failures to explain Firebase Storage CORS setup when the browser is blocked from downloading the PDF.
+- Added a collection-level authenticated read rule for `/users` so staff status, profile display data, and task assignee options can load consistently.
+- Renamed Overview health labels from Archive Health to Dashboard Health.
+- Updated the visible app version label to V1.5.7.
+
+### Achievements and XP
+- Reworked the XP Ranks area to use the full modal width.
+- Split XP ranks into two columns: levels 1-10 on the left and levels 11-20 on the right.
+- Converted rank title colors to metallic gradients while keeping each rank's existing color family.
+
 ## V1.5.6 - 2026-06-05 2:57 PM CT - Dashboard Guide, Notifications, and Achievement Cleanup
 
 ### Summary
