@@ -262,6 +262,28 @@
                 </div>
                 <div class="overview-trend-grid" id="overviewTrendCards"></div>
               </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Users</p>
+                    <h2>Staff Status</h2>
+                    <p class="section-subtitle">Last login and live online status for archive users.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-user-list" id="overviewUserStatusList"></div>
+              </article>
+
+              <article class="archive-panel overview-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Contributions</p>
+                    <h2>Archive Contributors</h2>
+                    <p class="section-subtitle">Creations, edits, deletions, and logged work by user.</p>
+                  </div>
+                </div>
+                <div class="overview-list overview-contribution-list" id="overviewContributionList"></div>
+              </article>
             </div>
           </section>
 
@@ -513,7 +535,7 @@
                       </button>
                       <button class="btn btn-eden" id="printTranscript" type="button">
                         <i class="bi bi-printer"></i>
-                        Print / Save PDF
+                        Save PDF
                       </button>
                     </div>
                   </div>
@@ -668,6 +690,7 @@
                   <thead>
                     <tr>
                       <th>File</th>
+                      <th>Category</th>
                       <th>Linked Courses</th>
                       <th>Size</th>
                       <th>Uploaded</th>
@@ -689,7 +712,7 @@
               <div class="section-heading catalog-heading">
                 <div>
                   <p class="eyebrow">Student Email</p>
-                  <h2>File Send Tool</h2>
+                  <h2>Email Dispatch</h2>
                   <p class="section-subtitle">Select stored files and prepare a student email. Sending requires a secure Firebase Cloud Function.</p>
                 </div>
               </div>
@@ -699,18 +722,11 @@
                   <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
                 </label>
                 <div class="email-template-controls">
-                  <button class="btn btn-outline-eden" id="editEmailSubject" type="button">
-                    <i class="bi bi-pencil-square"></i>
-                    Edit Subject
+                  <button class="btn btn-outline-eden" id="editEmailTemplates" type="button">
+                    <i class="bi bi-envelope-paper"></i>
+                    Email Templates
                   </button>
-                  <span id="studentEmailSubjectPreview">Requested New Eden Course Materials</span>
-                </div>
-                <div class="email-template-controls">
-                  <button class="btn btn-outline-eden" id="editEmailContent" type="button">
-                    <i class="bi bi-markdown"></i>
-                    Edit Email Content
-                  </button>
-                  <span id="studentEmailBodyPreview">Markdown template saved for all staff.</span>
+                  <select class="form-select" id="emailTemplateSelect" aria-label="Choose email dispatch template"></select>
                 </div>
                 <div class="file-send-actions">
                   <button class="btn btn-outline-eden" id="openFileSelector" type="button">
@@ -735,7 +751,7 @@
             </div>
             <p>New Eden Archive - Course & Curriculum Management</p>
             <p>WebApp Made by Darren Bergman</p>
-            <p>Version <span id="appVersion">1.4.2</span></p>
+            <p>Version <span id="appVersion">1.5.0</span></p>
           </footer>
         </div>
       </main>
@@ -1153,6 +1169,15 @@
               <input class="visually-hidden" id="managedFileInput" type="file" multiple />
             </label>
             <div class="managed-file-preview" id="managedFilePreview"></div>
+            <label class="form-label mt-3">
+              File Category
+              <select class="form-select" id="managedFileCategory">
+                <option value="CI">CI - Course Instructions</option>
+                <option value="eBook">eBook</option>
+                <option value="Transcript">Transcript</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
           </section>
 
           <section class="builder-pane">
@@ -1218,35 +1243,12 @@
       </form>
     </dialog>
 
-    <dialog class="modal-native" id="emailSubjectDialog">
-      <form method="dialog" class="modal-card email-template-modal" id="emailSubjectForm">
-        <div class="modal-heading">
-          <div>
-            <p class="eyebrow">Email Template</p>
-            <h2>Edit Subject</h2>
-          </div>
-          <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
-        <label class="form-label">
-          Student Email Subject
-          <input class="form-control" id="emailSubjectInput" type="text" placeholder="Requested New Eden Course Materials" />
-        </label>
-        <p class="form-note">This subject is saved to Realtime Database and shared by every admin using the File Send Tool.</p>
-        <div class="modal-actions">
-          <button class="btn btn-outline-eden" data-close-email-subject type="button">Cancel</button>
-          <button class="btn btn-eden" id="saveEmailSubject" type="button">Save Subject</button>
-        </div>
-      </form>
-    </dialog>
-
     <dialog class="modal-native requirement-modal" id="emailContentDialog">
       <form method="dialog" class="modal-card email-template-modal" id="emailContentForm">
         <div class="modal-heading">
           <div>
-            <p class="eyebrow">Email Template</p>
-            <h2>Edit Email Content</h2>
+            <p class="eyebrow">Email Dispatch</p>
+            <h2>Email Templates</h2>
           </div>
           <button class="btn icon-btn" value="cancel" type="submit" aria-label="Close">
             <i class="bi bi-x-lg"></i>
@@ -1254,6 +1256,24 @@
         </div>
         <div class="email-template-editor-grid">
           <section>
+            <div class="email-template-manager-head">
+              <label class="form-label flex-grow-1">
+                Template
+                <select class="form-select" id="emailTemplateEditorSelect"></select>
+              </label>
+              <button class="btn btn-outline-eden" id="addEmailTemplate" type="button">
+                <i class="bi bi-plus-circle"></i>
+                Add Template
+              </button>
+            </div>
+            <label class="form-label">
+              Template Name
+              <input class="form-control" id="emailTemplateNameInput" type="text" placeholder="Course Materials" />
+            </label>
+            <label class="form-label">
+              Email Subject
+              <input class="form-control" id="emailSubjectInput" type="text" placeholder="Requested New Eden Course Materials" />
+            </label>
             <label class="form-label">
               Markdown Email Body
               <textarea class="form-control markdown-editor" id="emailContentInput" rows="14" placeholder="Write the saved email body in Markdown"></textarea>
@@ -1274,7 +1294,7 @@
         </div>
         <div class="modal-actions">
           <button class="btn btn-outline-eden" data-close-email-content type="button">Cancel</button>
-          <button class="btn btn-eden" id="saveEmailContent" type="button">Save Email Content</button>
+          <button class="btn btn-eden" id="saveEmailContent" type="button">Save Template</button>
         </div>
       </form>
     </dialog>

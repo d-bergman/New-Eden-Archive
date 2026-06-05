@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.4.2";
+  const appVersion = "1.5.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -44,6 +44,8 @@
     emailCurriculum: "",
   };
   const defaultStudentEmailTemplate = {
+    _docId: "course-materials",
+    name: "Course Materials",
     subject: "Requested New Eden Course Materials",
     bodyMarkdown: `Hello,
 
@@ -52,7 +54,9 @@ Your requested New Eden course material files are attached.
 Please contact the school office if you need anything else.`,
   };
   const emailTemplateState = {
-    studentFiles: { ...defaultStudentEmailTemplate },
+    templates: [{ ...defaultStudentEmailTemplate }],
+    activeTemplateId: "course-materials",
+    editorTemplateId: "course-materials",
   };
   const requirementBuilder = {
     programName: "",
@@ -168,6 +172,8 @@ Please contact the school office if you need anything else.`,
     overviewHealthList: document.querySelector("#overviewHealthList"),
     overviewDraftList: document.querySelector("#overviewDraftList"),
     overviewTrendCards: document.querySelector("#overviewTrendCards"),
+    overviewUserStatusList: document.querySelector("#overviewUserStatusList"),
+    overviewContributionList: document.querySelector("#overviewContributionList"),
     featuredProgramDetail: document.querySelector("#featuredProgramDetail"),
     courseCreditFilter: document.querySelector("#courseCreditFilter"),
     courseCatalogSearch: document.querySelector("#courseCatalogSearch"),
@@ -200,14 +206,12 @@ Please contact the school office if you need anything else.`,
     fileManagerPagination: document.querySelector("#fileManagerPagination"),
     fileSendForm: document.querySelector("#fileSendForm"),
     studentEmail: document.querySelector("#studentEmail"),
-    editEmailSubject: document.querySelector("#editEmailSubject"),
-    editEmailContent: document.querySelector("#editEmailContent"),
-    studentEmailSubjectPreview: document.querySelector("#studentEmailSubjectPreview"),
-    studentEmailBodyPreview: document.querySelector("#studentEmailBodyPreview"),
-    emailSubjectDialog: document.querySelector("#emailSubjectDialog"),
-    emailSubjectForm: document.querySelector("#emailSubjectForm"),
+    editEmailTemplates: document.querySelector("#editEmailTemplates"),
+    emailTemplateSelect: document.querySelector("#emailTemplateSelect"),
+    emailTemplateEditorSelect: document.querySelector("#emailTemplateEditorSelect"),
+    addEmailTemplate: document.querySelector("#addEmailTemplate"),
+    emailTemplateNameInput: document.querySelector("#emailTemplateNameInput"),
     emailSubjectInput: document.querySelector("#emailSubjectInput"),
-    saveEmailSubject: document.querySelector("#saveEmailSubject"),
     emailContentDialog: document.querySelector("#emailContentDialog"),
     emailContentForm: document.querySelector("#emailContentForm"),
     emailContentInput: document.querySelector("#emailContentInput"),
@@ -287,6 +291,7 @@ Please contact the school office if you need anything else.`,
     fileBuilderForm: document.querySelector("#fileBuilderForm"),
     managedFileInput: document.querySelector("#managedFileInput"),
     managedFilePreview: document.querySelector("#managedFilePreview"),
+    managedFileCategory: document.querySelector("#managedFileCategory"),
     fileCourseSearch: document.querySelector("#fileCourseSearch"),
     fileCoursePicker: document.querySelector("#fileCoursePicker"),
     fileCourseSelectedCount: document.querySelector("#fileCourseSelectedCount"),
@@ -600,18 +605,19 @@ Please contact the school office if you need anything else.`,
     document.querySelectorAll("[data-close-file-selector]").forEach((button) => {
       button.addEventListener("click", () => els.fileSelectorDialog?.close("cancel"));
     });
-    els.editEmailSubject?.addEventListener("click", openEmailSubjectEditor);
-    els.editEmailContent?.addEventListener("click", openEmailContentEditor);
-    els.saveEmailSubject?.addEventListener("click", (event) => {
-      event.preventDefault();
-      saveEmailSubjectTemplate();
+    els.editEmailTemplates?.addEventListener("click", openEmailTemplateEditor);
+    els.emailTemplateSelect?.addEventListener("change", (event) => {
+      emailTemplateState.activeTemplateId = event.target.value;
+      renderEmailTemplateControls();
     });
+    els.emailTemplateEditorSelect?.addEventListener("change", (event) => {
+      emailTemplateState.editorTemplateId = event.target.value;
+      renderEmailTemplateEditorFields();
+    });
+    els.addEmailTemplate?.addEventListener("click", addEmailTemplateDraft);
     els.saveEmailContent?.addEventListener("click", (event) => {
       event.preventDefault();
-      saveEmailContentTemplate();
-    });
-    document.querySelectorAll("[data-close-email-subject]").forEach((button) => {
-      button.addEventListener("click", () => els.emailSubjectDialog?.close("cancel"));
+      saveEmailTemplate();
     });
     document.querySelectorAll("[data-close-email-content]").forEach((button) => {
       button.addEventListener("click", () => els.emailContentDialog?.close("cancel"));
@@ -1012,6 +1018,7 @@ Please contact the school office if you need anything else.`,
             </div>
           </div>
         </td>
+        <td><span class="linked-course-badge">${escapeHtml(file.category || "Other")}</span></td>
         <td>${linkedCourseBadges(file).join("") || `<span class="text-muted">No linked courses</span>`}</td>
         <td>${escapeHtml(formatBytes(file.size))}</td>
         <td>${escapeHtml(formatTimestamp(file.createdAtMs || file.updatedAtMs))}</td>
@@ -1024,7 +1031,7 @@ Please contact the school office if you need anything else.`,
           </div>
         </td>
       </tr>
-    `).join("") || emptyRow(5, "No files match the current search.");
+    `).join("") || emptyRow(6, "No files match the current search.");
 
     if (els.fileManagerPageSummary) {
       els.fileManagerPageSummary.textContent = `Showing ${shownStart} to ${shownEnd} of ${allFiles.length} files`;
@@ -1049,6 +1056,7 @@ Please contact the school office if you need anything else.`,
     return [
       file.name,
       file.contentType,
+      file.category,
       ...(file.courseIds || []),
       ...(file.courseLabels || []),
     ].join(" ").toLowerCase();
@@ -1069,6 +1077,7 @@ Please contact the school office if you need anything else.`,
     fileManagerState.courseSearch = "";
     if (els.managedFileInput) els.managedFileInput.value = "";
     if (els.fileCourseSearch) els.fileCourseSearch.value = "";
+    if (els.managedFileCategory) els.managedFileCategory.value = "CI";
     renderFileBuilder();
     els.fileBuilderDialog?.showModal();
   }
@@ -1137,6 +1146,7 @@ Please contact the school office if you need anything else.`,
       return;
     }
     const courseIds = uniqueValues(fileManagerState.selectedCourseIds);
+    const category = els.managedFileCategory?.value || "Other";
     const courseLabels = courseIds.map((id) => {
       const course = courseById(id);
       return course ? `${course.id} ${course.name} Credit ${course.credit}` : id;
@@ -1149,6 +1159,7 @@ Please contact the school office if you need anything else.`,
         name: file.name,
         size: file.size,
         contentType: file.type,
+        category,
         courseIds,
         courseLabels,
         downloadURL: "",
@@ -1178,6 +1189,7 @@ Please contact the school office if you need anything else.`,
           name: file.name,
           size: file.size,
           contentType: file.type || "",
+          category,
           storagePath,
           downloadURL,
           courseIds,
@@ -1281,7 +1293,7 @@ Please contact the school office if you need anything else.`,
   function fileSelectorRow(file, selected) {
     return `
       <button class="course-picker-row ${selected ? "is-selected" : ""}" type="button" data-toggle-email-file="${escapeAttr(file._docId)}">
-        <span><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(formatBytes(file.size))} - ${escapeHtml((file.courseIds || []).join(", ") || "No linked course")}</small></span>
+        <span><strong>${escapeHtml(file.name)}</strong><small>${escapeHtml(file.category || "Other")} - ${escapeHtml(formatBytes(file.size))} - ${escapeHtml((file.courseIds || []).join(", ") || "No linked course")}</small></span>
         <i class="bi ${selected ? "bi-check-circle-fill" : "bi-plus-circle"}"></i>
       </button>
     `;
@@ -1326,7 +1338,7 @@ Please contact the school office if you need anything else.`,
 
   async function prepareStudentFileEmail() {
     const email = els.studentEmail?.value.trim() || "";
-    const template = emailTemplateState.studentFiles || defaultStudentEmailTemplate;
+    const template = activeEmailTemplate();
     const subject = template.subject || defaultStudentEmailTemplate.subject;
     const bodyMarkdown = template.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
     const selectedFiles = fileManagerState.emailSelectedFileIds
@@ -1367,75 +1379,117 @@ Please contact the school office if you need anything else.`,
   }
 
   function renderEmailTemplateControls() {
-    const template = emailTemplateState.studentFiles || defaultStudentEmailTemplate;
-    if (els.studentEmailSubjectPreview) {
-      els.studentEmailSubjectPreview.textContent = template.subject || defaultStudentEmailTemplate.subject;
+    const templates = normalizedEmailTemplates();
+    if (!templates.some((template) => template._docId === emailTemplateState.activeTemplateId)) {
+      emailTemplateState.activeTemplateId = templates[0]?._docId || defaultStudentEmailTemplate._docId;
     }
-    if (els.studentEmailBodyPreview) {
-      const body = template.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
-      els.studentEmailBodyPreview.textContent = `${body.replace(/\s+/g, " ").trim().slice(0, 92)}${body.length > 92 ? "..." : ""}`;
+    if (els.emailTemplateSelect) {
+      els.emailTemplateSelect.innerHTML = templates.map((template) => `
+        <option value="${escapeAttr(template._docId)}">${escapeHtml(template.name)}</option>
+      `).join("");
+      els.emailTemplateSelect.value = emailTemplateState.activeTemplateId;
     }
   }
 
-  function openEmailSubjectEditor() {
+  function openEmailTemplateEditor() {
     if (!state.admin) return;
-    if (els.emailSubjectInput) {
-      els.emailSubjectInput.value = emailTemplateState.studentFiles.subject || defaultStudentEmailTemplate.subject;
-    }
-    els.emailSubjectDialog?.showModal();
-  }
-
-  function openEmailContentEditor() {
-    if (!state.admin) return;
-    if (els.emailContentInput) {
-      els.emailContentInput.value = emailTemplateState.studentFiles.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
-    }
+    emailTemplateState.editorTemplateId = emailTemplateState.activeTemplateId || normalizedEmailTemplates()[0]?._docId || defaultStudentEmailTemplate._docId;
+    renderEmailTemplateEditor();
     els.emailContentDialog?.showModal();
   }
 
-  async function saveEmailSubjectTemplate() {
+  function renderEmailTemplateEditor() {
+    const templates = normalizedEmailTemplates();
+    if (!templates.some((template) => template._docId === emailTemplateState.editorTemplateId)) {
+      emailTemplateState.editorTemplateId = templates[0]?._docId || defaultStudentEmailTemplate._docId;
+    }
+    if (els.emailTemplateEditorSelect) {
+      els.emailTemplateEditorSelect.innerHTML = templates.map((template) => `
+        <option value="${escapeAttr(template._docId)}">${escapeHtml(template.name)}</option>
+      `).join("");
+      els.emailTemplateEditorSelect.value = emailTemplateState.editorTemplateId;
+    }
+    renderEmailTemplateEditorFields();
+  }
+
+  function renderEmailTemplateEditorFields() {
+    const template = activeEmailTemplate(emailTemplateState.editorTemplateId);
+    if (els.emailTemplateNameInput) els.emailTemplateNameInput.value = template.name || "";
+    if (els.emailSubjectInput) els.emailSubjectInput.value = template.subject || "";
+    if (els.emailContentInput) els.emailContentInput.value = template.bodyMarkdown || "";
+  }
+
+  function addEmailTemplateDraft() {
+    const docId = slugify(`email-template-${Date.now()}`);
+    const draft = {
+      ...defaultStudentEmailTemplate,
+      _docId: docId,
+      name: "New Email Template",
+      subject: "New Eden Course Materials",
+      bodyMarkdown: "Hello,\n\nYour requested New Eden files are attached.",
+      createdAtMs: Date.now(),
+      updatedAtMs: Date.now(),
+    };
+    emailTemplateState.templates = [...normalizedEmailTemplates(), draft];
+    emailTemplateState.editorTemplateId = docId;
+    emailTemplateState.activeTemplateId = docId;
+    renderEmailTemplateControls();
+    renderEmailTemplateEditor();
+  }
+
+  async function saveEmailTemplate() {
+    const templateId = emailTemplateState.editorTemplateId || defaultStudentEmailTemplate._docId;
+    const name = els.emailTemplateNameInput?.value.trim() || "";
     const subject = els.emailSubjectInput?.value.trim() || "";
+    const bodyMarkdown = els.emailContentInput?.value.trim() || "";
+    if (!name) {
+      setCloudStatus("Email template name cannot be blank.");
+      return;
+    }
     if (!subject) {
       setCloudStatus("Email subject cannot be blank.");
       return;
     }
-    await saveStudentEmailTemplate({ subject });
-    els.emailSubjectDialog?.close("saved");
-  }
-
-  async function saveEmailContentTemplate() {
-    const bodyMarkdown = els.emailContentInput?.value.trim() || "";
     if (!bodyMarkdown) {
       setCloudStatus("Email content cannot be blank.");
       return;
     }
-    await saveStudentEmailTemplate({ bodyMarkdown });
+    const templates = normalizedEmailTemplates();
+    const nextTemplate = normalizeEmailTemplate({
+      ...(templates.find((template) => template._docId === templateId) || {}),
+      _docId: templateId,
+      name,
+      subject,
+      bodyMarkdown,
+      updatedAtMs: Date.now(),
+    });
+    emailTemplateState.templates = templates.map((template) => (
+      template._docId === templateId ? nextTemplate : template
+    ));
+    if (!emailTemplateState.templates.some((template) => template._docId === templateId)) {
+      emailTemplateState.templates.push(nextTemplate);
+    }
+    emailTemplateState.activeTemplateId = templateId;
+    await saveStudentEmailTemplates();
     els.emailContentDialog?.close("saved");
   }
 
-  async function saveStudentEmailTemplate(partial) {
+  async function saveStudentEmailTemplates() {
     if (!state.admin) return;
-    const nextTemplate = normalizeStudentEmailTemplate({
-      ...emailTemplateState.studentFiles,
-      ...partial,
-      updatedAtMs: Date.now(),
-    });
-    emailTemplateState.studentFiles = nextTemplate;
     renderEmailTemplateControls();
 
     if (canWriteCloud()) {
       const { dbRef, update, serverTimestamp } = firebaseState.modules;
       await update(dbRef(firebaseState.db, "emailTemplates/studentFiles"), {
-        subject: nextTemplate.subject,
-        bodyMarkdown: nextTemplate.bodyMarkdown,
+        templates: Object.fromEntries(normalizedEmailTemplates().map((template) => [template._docId, template])),
+        activeTemplateId: emailTemplateState.activeTemplateId,
         updatedBy: firebaseState.user?.uid || "",
         updatedAt: serverTimestamp(),
       });
     }
 
-    const changed = partial.subject ? "subject" : "content";
-    await writeActivity("Updated Email Template", "Student Email Template", "File Send Tool", `Updated ${changed}.`);
-    setCloudStatus(`Saved email ${changed} template`);
+    await writeActivity("Updated Email Template", "Email Dispatch Template", activeEmailTemplate().name, "Updated shared email subject/content template.");
+    setCloudStatus("Saved email dispatch template");
     render();
   }
 
@@ -2025,6 +2079,8 @@ Please contact the school office if you need anything else.`,
     renderOverviewHealth();
     renderOverviewDrafts();
     renderOverviewTrends();
+    renderOverviewUsers();
+    renderOverviewContributions();
   }
 
   function renderOverviewActivity() {
@@ -2218,6 +2274,107 @@ Please contact the school office if you need anything else.`,
         <span>${escapeHtml(label)}</span>
       </div>
     `).join("");
+  }
+
+  function renderOverviewUsers() {
+    if (!els.overviewUserStatusList) return;
+    const users = archiveUsers()
+      .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name))
+      .slice(0, 8);
+    els.overviewUserStatusList.innerHTML = users.map((user) => `
+      <article class="overview-user-row">
+        ${userAvatarMarkup(user)}
+        <div>
+          <strong>${escapeHtml(user.name)}</strong>
+          <small>${escapeHtml(user.email || user.uid || "Archive user")}</small>
+        </div>
+        <span class="presence-pill ${user.online ? "is-online" : "is-offline"}">
+          <i></i>${user.online ? "Online" : "Offline"}
+        </span>
+        <small class="text-end">${escapeHtml(user.lastLoginAtMs ? formatTimestamp(user.lastLoginAtMs) : "No login recorded")}</small>
+      </article>
+    `).join("") || overviewEmptyState("No users have been loaded yet.");
+  }
+
+  function renderOverviewContributions() {
+    if (!els.overviewContributionList) return;
+    const stats = contributorStats().slice(0, 8);
+    els.overviewContributionList.innerHTML = stats.map((item, index) => `
+      <article class="overview-contribution-row">
+        <span class="contribution-rank">${index + 1}</span>
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <small>${item.created} created &bull; ${item.edited} edited &bull; ${item.deleted} deleted</small>
+        </div>
+        <b>${item.total}</b>
+      </article>
+    `).join("") || overviewEmptyState("No contributions have been logged yet.");
+  }
+
+  function archiveUsers() {
+    const connectedByUid = new Map(state.connectedUsers.map((user) => [user.uid, user]));
+    const users = new Map();
+    const addUser = (user = {}) => {
+      const uid = user.uid || user._docId || `staff:${slugify(user.name || user.email || "employee")}`;
+      const existing = users.get(uid) || {};
+      const connected = connectedByUid.get(uid) || {};
+      users.set(uid, {
+        ...existing,
+        ...user,
+        ...connected,
+        uid,
+        name: connected.name || user.displayName || user.name || existing.name || user.email?.split("@")[0] || "Employee",
+        email: user.email || existing.email || connected.email || "",
+        photoURL: connected.photoURL || user.photoURL || existing.photoURL || "",
+        online: Boolean(connectedByUid.has(uid)),
+        lastLoginAtMs: Number(user.lastLoginAtMs || existing.lastLoginAtMs || connected.connectedAtMs || 0),
+      });
+    };
+    staffDirectory.forEach(addUser);
+    state.directoryUsers.forEach(addUser);
+    state.connectedUsers.forEach(addUser);
+    if (firebaseState.user) {
+      addUser({
+        uid: firebaseState.user.uid,
+        name: currentUserDisplayName(),
+        email: firebaseState.user.email || "",
+        photoURL: firebaseState.profile?.photoURL || firebaseState.user.photoURL || "",
+        lastLoginAtMs: firebaseState.profile?.lastLoginAtMs || Date.parse(firebaseState.user.metadata?.lastSignInTime || ""),
+      });
+    }
+    return Array.from(users.values());
+  }
+
+  function contributorStats() {
+    const stats = new Map();
+    const bucketFor = (entry) => {
+      const key = entry.userUid || normalizePersonName(entry.userName) || "unknown";
+      const current = stats.get(key) || {
+        name: entry.userName || "Unknown",
+        created: 0,
+        edited: 0,
+        deleted: 0,
+        other: 0,
+        total: 0,
+      };
+      const action = String(entry.action || "").toLowerCase();
+      if (/add|create|upload|opened task|saved transcript|imported/.test(action)) current.created += 1;
+      else if (/edit|update|save|complete|reopen|requirements/.test(action)) current.edited += 1;
+      else if (/delete|remove/.test(action)) current.deleted += 1;
+      else current.other += 1;
+      current.total += 1;
+      stats.set(key, current);
+    };
+    state.activityLog.forEach(bucketFor);
+    return Array.from(stats.values()).sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  }
+
+  function userAvatarMarkup(user) {
+    const label = initials(user.name);
+    if (user.photoURL) {
+      return `<span class="overview-user-avatar"><img src="${escapeAttr(user.photoURL)}" alt="" /></span>`;
+    }
+    return `<span class="overview-user-avatar">${escapeHtml(label)}</span>`;
   }
 
   function overviewListItem({ icon, title, meta, detail, warning = false }) {
@@ -4106,7 +4263,7 @@ Please contact the school office if you need anything else.`,
     if (!firebaseState.hasCloudArchive) {
       attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
       fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
-      emailTemplateState.studentFiles = normalizeStudentEmailTemplate(emailTemplateSnap?.val());
+      normalizeStudentEmailTemplate(emailTemplateSnap?.val());
       return sizes;
     }
 
@@ -4117,7 +4274,7 @@ Please contact the school office if you need anything else.`,
     state.versionHistory = rtdbList(versionSnap.val());
     attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
     fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
-    emailTemplateState.studentFiles = normalizeStudentEmailTemplate(emailTemplateSnap?.val());
+    normalizeStudentEmailTemplate(emailTemplateSnap?.val());
     state.activityLog = normalizeActivityLog(rtdbList(activitySnap?.val()));
     state.notices = normalizeNotices(rtdbList(noticeSnap?.val()));
     state.tasks = normalizeTasks(rtdbList(taskSnap?.val()));
@@ -4205,13 +4362,14 @@ Please contact the school office if you need anything else.`,
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "emailTemplates/studentFiles"), (snapshot) => {
-      emailTemplateState.studentFiles = normalizeStudentEmailTemplate(snapshot.val());
+      normalizeStudentEmailTemplate(snapshot.val());
       renderEmailTemplateControls();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "activityLog"), (snapshot) => {
       state.activityLog = normalizeActivityLog(rtdbList(snapshot.val()));
       renderActivityLog();
+      renderOverview();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "notices"), (snapshot) => {
@@ -4237,11 +4395,13 @@ Please contact the school office if you need anything else.`,
       state.directoryUsers = normalizeDirectoryUsers(rtdbList(snapshot.val()));
       renderTasks();
       renderUserChip();
+      renderOverview();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "presence"), (snapshot) => {
       state.connectedUsers = normalizePresence(snapshot.val());
       renderConnectionMeta();
+      renderOverview();
     }, (error) => {
       console.warn("Presence listener failed.", error);
     }));
@@ -4333,6 +4493,7 @@ Please contact the school office if you need anything else.`,
         uid: user.uid,
         name: displayName,
         email: user.email || "",
+        photoURL: firebaseState.profile?.photoURL || user.photoURL || "",
         role: state.admin ? "admin" : "viewer",
         connectedAt: serverTimestamp(),
         lastSeen: serverTimestamp(),
@@ -4356,6 +4517,8 @@ Please contact the school office if you need anything else.`,
         uid: record.uid || record._docId,
         name: record.name || record.email?.split("@")[0] || "Employee",
         email: record.email || "",
+        photoURL: record.photoURL || "",
+        connectedAtMs: Number(record.connectedAt || record.connectedAtMs || 0),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
@@ -5312,6 +5475,7 @@ Please contact the school office if you need anything else.`,
       return {
         _docId: file._docId || slugify(`${file.name || "file"}-${file.createdAtMs || Date.now()}`),
         name: file.name || "",
+        category: file.category || inferFileCategory(file),
         size: Number(file.size || 0),
         contentType: file.contentType || "",
         storagePath: file.storagePath || "",
@@ -5328,12 +5492,59 @@ Please contact the school office if you need anything else.`,
 
   function normalizeStudentEmailTemplate(template) {
     const value = template || {};
+    const rawTemplates = value.templates
+      ? rtdbList(value.templates)
+      : [{
+        _docId: value._docId || defaultStudentEmailTemplate._docId,
+        name: value.name || defaultStudentEmailTemplate.name,
+        subject: value.subject,
+        bodyMarkdown: value.bodyMarkdown,
+        updatedBy: value.updatedBy,
+        updatedAtMs: value.updatedAtMs || value.updatedAt,
+      }];
+    const templates = rawTemplates.map(normalizeEmailTemplate).filter((item) => item.name && item.subject && item.bodyMarkdown);
+    emailTemplateState.templates = templates.length ? templates : [{ ...defaultStudentEmailTemplate }];
+    emailTemplateState.activeTemplateId = value.activeTemplateId && emailTemplateState.templates.some((item) => item._docId === value.activeTemplateId)
+      ? value.activeTemplateId
+      : emailTemplateState.templates[0]._docId;
+    emailTemplateState.editorTemplateId = emailTemplateState.activeTemplateId;
     return {
-      subject: String(value.subject || defaultStudentEmailTemplate.subject).trim(),
-      bodyMarkdown: String(value.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown).trim(),
+      templates: emailTemplateState.templates,
+      activeTemplateId: emailTemplateState.activeTemplateId,
       updatedBy: value.updatedBy || "",
       updatedAtMs: Number(value.updatedAtMs || value.updatedAt || 0),
     };
+  }
+
+  function normalizeEmailTemplate(template) {
+    const value = template || {};
+    return {
+      _docId: value._docId || slugify(value.name || value.subject || defaultStudentEmailTemplate._docId),
+      name: String(value.name || defaultStudentEmailTemplate.name).trim(),
+      subject: String(value.subject || defaultStudentEmailTemplate.subject).trim(),
+      bodyMarkdown: String(value.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown).trim(),
+      updatedBy: value.updatedBy || "",
+      createdAtMs: Number(value.createdAtMs || value.createdAt || 0),
+      updatedAtMs: Number(value.updatedAtMs || value.updatedAt || 0),
+    };
+  }
+
+  function normalizedEmailTemplates() {
+    const templates = (emailTemplateState.templates || []).map(normalizeEmailTemplate).filter((template) => template.name);
+    return templates.length ? templates : [{ ...defaultStudentEmailTemplate }];
+  }
+
+  function activeEmailTemplate(templateId = emailTemplateState.activeTemplateId) {
+    const templates = normalizedEmailTemplates();
+    return templates.find((template) => template._docId === templateId) || templates[0] || defaultStudentEmailTemplate;
+  }
+
+  function inferFileCategory(file) {
+    const text = `${file.name || ""} ${file.contentType || ""}`.toLowerCase();
+    if (text.includes("transcript")) return "Transcript";
+    if (text.includes("ebook") || text.includes("e-book") || text.includes("book")) return "eBook";
+    if (text.includes("instruction") || text.includes("course")) return "CI";
+    return "Other";
   }
 
   function normalizeActivityLog(entries) {
@@ -5384,6 +5595,8 @@ Please contact the school office if you need anything else.`,
         uid: user.uid || user._docId || "",
         name: user.displayName || user.name || user.fullName || emailName || "Employee",
         email: user.email || "",
+        photoURL: user.photoURL || "",
+        lastLoginAtMs: Number(user.lastLoginAtMs || user.lastLoginAt || 0),
       };
     }).filter((user) => user.uid && user.name)
       .sort((a, b) => a.name.localeCompare(b.name));

@@ -1,5 +1,24 @@
 # New Eden Archive Changelog
 
+## V1.5.0 - 2026-06-04 11:36 PM CT - Dashboard Users and Email Dispatch Templates
+
+### Summary
+- Expanded the Overview dashboard with staff status and contribution modules, then converted the student file email area into a themed Email Dispatch tool with reusable templates.
+
+### New Features
+- Added a Staff Status overview panel showing known users, online/offline state, last login when available, and profile pictures or initials.
+- Added an Archive Contributors overview panel with creation, edit, deletion, and total contribution counts from the activity log.
+- Renamed File Send Tool to Email Dispatch.
+- Replaced separate subject/content controls with a single Email Templates builder for reusable dispatch templates.
+- Added support for multiple email templates with a selected active template for sending.
+- Added File Manager categories for CI, eBook, Transcript, and Other.
+
+### Fixes
+- Removed email subject/body preview text beside the Email Dispatch template controls.
+- Added category display/search support in File Manager and Email Dispatch file selection.
+- Updated the transcript action label from Print / Save PDF to Save PDF while keeping the existing local save/print behavior available.
+- Updated the visible app version label to V1.5.0.
+
 ## V1.4.2 - 2026-06-04 6:21 PM CT - Shared Email Template Controls
 
 ### Summary
