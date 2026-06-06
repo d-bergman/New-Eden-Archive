@@ -1,4 +1,35 @@
-# New Eden Archive Changelog
+# New Eden Dashboard Changelog
+
+## V1.5.8 - 2026-06-05 7:54 PM CT - Administration Control Center
+
+### Summary
+- Expanded Administration into a practical operations area for backups, system health, email delivery tracking, maintenance checks, and shared dashboard settings.
+
+### Darren's Manual Fixes
+- Darren fixed the transcript File Manager import issue with ChatGPT OpenAI by adding `https://d-bergman.github.io` to `storage-cors.json`, publishing the Firebase Storage CORS configuration, and deploying updated database/storage rules.
+- Darren fixed the notification pipeline with ChatGPT OpenAI by preventing `startRealtimeListeners()` from wiping notification baseline state during listener restarts.
+- Darren updated rank colors with ChatGPT OpenAI before this release; this version preserves those color families and keeps the shiny rank treatment.
+
+### New Features
+- Added Backup Center with last backup summaries, backup action buttons, and Firebase-backed backup history framework.
+- Added System Health cards for Realtime Database, Firebase Storage, Cloud Functions, Email Service, and Authentication.
+- Added an informational Storage CORS origins card for quick troubleshooting visibility.
+- Added Email Dispatch metrics, recent deliveries, failed deliveries, and a Send Test Email control.
+- Added Maintenance Tools for duplicate course IDs, duplicate files, unlinked files, empty curriculums, transcript metadata issues, and failed email diagnostics.
+- Added App Settings with a Firebase-backed transcript filename pattern.
+- Added Firebase rules for `appSettings`, `backupHistory`, and `emailDeliveries`.
+
+### Fixes
+- Reworked the Administration layout so Email Dispatch fields are split into clean rows and the template dropdown is not covered by the Add File button.
+- Enlarged the Announcements textarea and moved Send Notice beneath it as a smaller standard button.
+- Removed generated guide snapshot images from the guide modal and deleted the snapshot assets from the repo.
+- Updated visible app naming from New Eden Archive to New Eden Dashboard.
+- Updated footer text to `New Eden Dashboard - Archive & Realtime Database`.
+- Changed transcript PDF filenames to the requested pattern: `LastName_FirstName_Transcript_YYYY-MM-DD.pdf`.
+
+### Notes
+- Backup buttons currently record backup attempts and activity history. Future OneDrive integration can connect the actual file/database export process.
+- Test email uses the existing Cloud Function entry point. If the backend rejects test payloads, the failed attempt is recorded for diagnostics.
 
 ## V1.5.7 - 2026-06-05 3:27 PM CT - Administration Tab, Storage CORS, and Rank Polish
 

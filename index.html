@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>New Eden Archive</title>
+    <title>New Eden Dashboard</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -33,7 +33,7 @@
         <div class="brand-seal auth-seal" aria-hidden="true">
           <i class="bi bi-flower1"></i>
         </div>
-        <p class="eyebrow">New Eden Archive</p>
+        <p class="eyebrow">New Eden Dashboard</p>
         <h1>Employee Sign In</h1>
         <p>Sign in to view the course and curriculum archive.</p>
         <label class="form-label">
@@ -154,8 +154,8 @@
 
           <section class="hero-band">
             <div>
-              <h1>New Eden Archive</h1>
-              <p>Course & Curriculum Management</p>
+              <h1>New Eden Dashboard</h1>
+              <p>Archive, transcripts, files, and realtime operations</p>
             </div>
           </section>
 
@@ -621,7 +621,7 @@
                 <div>
                   <p class="eyebrow">Log</p>
                   <h2>Activity Log</h2>
-                  <p class="section-subtitle">Search archive activity by user, action, record name, or details.</p>
+                  <p class="section-subtitle">Search dashboard activity by user, action, record name, or details.</p>
                 </div>
               </div>
               <div class="catalog-toolbar">
@@ -648,15 +648,72 @@
           </section>
 
           <section class="view" id="administrationView">
-            <div class="log-workspace">
-              <article class="archive-panel">
-                <div class="section-heading catalog-heading">
+            <div class="administration-dashboard">
+              <article class="archive-panel administration-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Backups</p>
+                    <h2>Backup Center</h2>
+                    <p class="section-subtitle">Prepare database and file backups for future OneDrive integration.</p>
+                  </div>
+                </div>
+                <div class="admin-status-grid">
+                  <div><span>Last Database Backup</span><strong id="backupLastDatabase">Not recorded</strong></div>
+                  <div><span>Last File Backup</span><strong id="backupLastFiles">Not recorded</strong></div>
+                  <div><span>Last Full Backup</span><strong id="backupLastFull">Not recorded</strong></div>
+                  <div><span>Backup Status</span><strong id="backupStatus">Ready</strong></div>
+                  <div><span>Backup Destination</span><strong id="backupDestination">OneDrive integration pending</strong></div>
+                </div>
+                <div class="admin-action-row">
+                  <button class="btn btn-outline-eden admin-only" id="runDatabaseBackup" type="button">Run Database Backup</button>
+                  <button class="btn btn-outline-eden admin-only" id="runFileBackup" type="button">Run File Backup</button>
+                  <button class="btn btn-eden admin-only" id="runFullBackup" type="button">Run Full Backup</button>
+                </div>
+                <div class="mini-table-wrap">
+                  <table class="table archive-table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Started By</th>
+                        <th>Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody id="backupHistoryRows"></tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="archive-panel administration-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Health</p>
+                    <h2>System Health</h2>
+                    <p class="section-subtitle">Live service visibility for the dashboard environment.</p>
+                  </div>
+                </div>
+                <div class="system-health-grid" id="systemHealthGrid"></div>
+                <div class="admin-status-grid">
+                  <div><span>Last Health Check</span><strong id="healthLastCheck">Not checked</strong></div>
+                  <div><span>Current Environment</span><strong id="healthEnvironment">Browser</strong></div>
+                </div>
+                <div class="cors-info-card">
+                  <strong>Storage CORS Origins</strong>
+                  <p>Informational only. CORS is managed from Firebase/Google Cloud, not from this dashboard.</p>
+                  <ul id="corsOriginList"></ul>
+                </div>
+              </article>
+
+              <article class="archive-panel administration-panel admin-email-panel">
+                <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Student Email</p>
                     <h2>Email Dispatch</h2>
                     <p class="section-subtitle">Select stored files and prepare a student email. Sending requires a secure Firebase Cloud Function.</p>
                   </div>
                 </div>
+                <div class="email-dispatch-summary" id="emailDispatchSummary"></div>
                 <form class="file-send-form admin-only" id="fileSendForm">
                   <label class="form-label">
                     Student Email
@@ -682,10 +739,26 @@
                 </form>
                 <div class="selected-email-files" id="selectedEmailFiles"></div>
                 <p class="form-note file-send-message" id="fileSendMessage" aria-live="polite"></p>
+                <div class="email-service-test">
+                  <form id="testEmailForm" class="test-email-form admin-only">
+                    <input class="form-control" id="testEmailAddress" type="email" placeholder="test@example.com" aria-label="Test email address" />
+                    <button class="btn btn-outline-eden" type="submit">Send Test Email</button>
+                  </form>
+                </div>
+                <div class="email-delivery-grid">
+                  <div>
+                    <h3>Recent Deliveries</h3>
+                    <div id="recentDeliveryList" class="admin-mini-list"></div>
+                  </div>
+                  <div>
+                    <h3>Failed Deliveries</h3>
+                    <div id="failedDeliveryList" class="admin-mini-list"></div>
+                  </div>
+                </div>
               </article>
 
-              <article class="archive-panel">
-                <div class="section-heading">
+              <article class="archive-panel administration-panel">
+                <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Notices</p>
                     <h2>Announcements</h2>
@@ -702,8 +775,8 @@
                 <div class="notice-list" id="noticeList"></div>
               </article>
 
-              <article class="archive-panel">
-                <div class="section-heading">
+              <article class="archive-panel administration-panel">
+                <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Tasks</p>
                     <h2>Task Board</h2>
@@ -720,6 +793,43 @@
                   </button>
                 </form>
                 <div class="task-list" id="taskList"></div>
+              </article>
+
+              <article class="archive-panel administration-panel maintenance-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Maintenance</p>
+                    <h2>Maintenance Tools</h2>
+                    <p class="section-subtitle">Run practical archive validation checks.</p>
+                  </div>
+                </div>
+                <div class="maintenance-tool-grid">
+                  <button class="btn btn-outline-eden" data-maintenance-check="courseIds" type="button">Validate Course IDs</button>
+                  <button class="btn btn-outline-eden" data-maintenance-check="duplicateFiles" type="button">Find Duplicate Files</button>
+                  <button class="btn btn-outline-eden" data-maintenance-check="unlinkedFiles" type="button">Find Unlinked Files</button>
+                  <button class="btn btn-outline-eden" data-maintenance-check="emptyCurriculums" type="button">Find Empty Curriculums</button>
+                  <button class="btn btn-outline-eden" data-maintenance-check="transcripts" type="button">Transcript Validation</button>
+                  <button class="btn btn-outline-eden" data-maintenance-check="failedEmails" type="button">Failed Email Diagnostics</button>
+                </div>
+                <div class="maintenance-results" id="maintenanceResults"></div>
+              </article>
+
+              <article class="archive-panel administration-panel app-settings-panel">
+                <div class="section-heading compact-heading">
+                  <div>
+                    <p class="eyebrow">Settings</p>
+                    <h2>App Settings</h2>
+                    <p class="section-subtitle">Shared dashboard configuration stored in Firebase.</p>
+                  </div>
+                </div>
+                <form class="app-settings-form admin-only" id="appSettingsForm">
+                  <label class="form-label">
+                    Transcript File Naming Format
+                    <input class="form-control" id="transcriptFilenameFormat" placeholder="LastName_FirstName_Transcript_YYYY-MM-DD.pdf" />
+                  </label>
+                  <button class="btn btn-eden" type="submit">Save App Settings</button>
+                </form>
+                <p class="form-note">Default: LastName_FirstName_Transcript_YYYY-MM-DD.pdf</p>
               </article>
             </div>
           </section>
@@ -771,11 +881,11 @@
           <footer class="archive-footer">
             <div>
               <strong id="connectedUsers">Connected Users: --</strong>
-              <span>Archive changes are synced in real time.</span>
+              <span>Dashboard changes are synced in real time.</span>
             </div>
-            <p>New Eden Archive - Course & Curriculum Management</p>
+          <p>New Eden Dashboard - Archive & Realtime Database</p>
             <p>WebApp Made by Darren Bergman</p>
-          <p>Version <span id="appVersion">1.5.7</span></p>
+          <p>Version <span id="appVersion">1.5.8</span></p>
           </footer>
         </div>
       </main>
@@ -860,7 +970,7 @@
               <input class="form-check-input" id="profileDarkMode" type="checkbox" />
               <span>
                 <strong>Dark mode</strong>
-                <small>Use a darker archive theme for your account.</small>
+                <small>Use a darker dashboard theme for your account.</small>
               </span>
             </label>
             <label class="settings-toggle">

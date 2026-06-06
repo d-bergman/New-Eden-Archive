@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.7";
+  const appVersion = "1.5.8";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -54,6 +54,17 @@ Your requested New Eden course material files are attached.
 
 Please contact the school office if you need anything else.`,
   };
+  const defaultAppSettings = {
+    transcriptFilenameFormat: "LastName_FirstName_Transcript_YYYY-MM-DD.pdf",
+    backupDestination: "OneDrive integration pending",
+  };
+  const storageCorsOrigins = [
+    "localhost",
+    "127.0.0.1",
+    "new-eden-archive.web.app",
+    "new-eden-archive.firebaseapp.com",
+    "d-bergman.github.io",
+  ];
   const emailTemplateState = {
     templates: [{ ...defaultStudentEmailTemplate }],
     activeTemplateId: "course-materials",
@@ -84,26 +95,30 @@ Please contact the school office if you need anything else.`,
     { uid: "staff:dr-duda", name: "Dr. Duda" },
   ];
   const contributionRanks = [
-    { level: 1, title: "New Member", xp: 0, color: "#9E9E9E" },
-    { level: 2, title: "Contributor", xp: 100, color: "#8BC34A" },
-    { level: 3, title: "Regular Contributor", xp: 250, color: "#4CAF50" },
-    { level: 4, title: "Active Contributor", xp: 500, color: "#43A047" },
-    { level: 5, title: "Editor", xp: 1000, color: "#2196F3" },
-    { level: 6, title: "Senior Editor", xp: 1750, color: "#1E88E5" },
-    { level: 7, title: "Content Curator", xp: 2750, color: "#1976D2" },
-    { level: 8, title: "Senior Curator", xp: 4000, color: "#7E57C2" },
-    { level: 9, title: "Archivist", xp: 5750, color: "#673AB7" },
-    { level: 10, title: "Senior Archivist", xp: 8000, color: "#5E35B1" },
-    { level: 11, title: "Knowledge Steward", xp: 11000, color: "#FFB300" },
-    { level: 12, title: "Documentation Specialist", xp: 15000, color: "#FFA000" },
-    { level: 13, title: "Knowledge Manager", xp: 20000, color: "#FB8C00" },
-    { level: 14, title: "Archive Manager", xp: 26000, color: "#EF6C00" },
-    { level: 15, title: "Archive Authority", xp: 33000, color: "#E65100" },
-    { level: 16, title: "Senior Authority", xp: 42000, color: "#D4AF37" },
-    { level: 17, title: "Knowledge Authority", xp: 53000, color: "#C9B037" },
-    { level: 18, title: "Archive Sage", xp: 67000, color: "#00ACC1" },
-    { level: 19, title: "Master Curator", xp: 84000, color: "#00897B" },
-    { level: 20, title: "Archive Legend", xp: 105000, color: "#FFD700" },
+  { level: 1, title: "New Member", xp: 0, color: "#6B7280" },
+  { level: 2, title: "Contributor", xp: 100, color: "#2E7D32" },
+  { level: 3, title: "Regular Contributor", xp: 250, color: "#1B8A4B" },
+  { level: 4, title: "Active Contributor", xp: 500, color: "#006B4F" },
+
+  { level: 5, title: "Editor", xp: 1000, color: "#4F46E5" },
+  { level: 6, title: "Senior Editor", xp: 1750, color: "#4338CA" },
+  { level: 7, title: "Content Curator", xp: 2750, color: "#7C3AED" },
+  { level: 8, title: "Senior Curator", xp: 4000, color: "#9333EA" },
+
+  { level: 9, title: "Archivist", xp: 5750, color: "#A97142" },
+  { level: 10, title: "Senior Archivist", xp: 8000, color: "#B87333" },
+  { level: 11, title: "Knowledge Steward", xp: 11000, color: "#C98910" },
+  { level: 12, title: "Documentation Specialist", xp: 15000, color: "#D4A017" },
+
+  { level: 13, title: "Knowledge Manager", xp: 20000, color: "#C96C8A" },
+  { level: 14, title: "Archive Manager", xp: 26000, color: "#B04E78" },
+  { level: 15, title: "Archive Authority", xp: 33000, color: "#9A4DCC" },
+  { level: 16, title: "Senior Authority", xp: 42000, color: "#8B5CF6" },
+
+  { level: 17, title: "Knowledge Authority", xp: 53000, color: "#007A5E" },
+  { level: 18, title: "Archive Sage", xp: 67000, color: "#2563EB" },
+  { level: 19, title: "Master Curator", xp: 84000, color: "#B8860B" },
+  { level: 20, title: "Archive Legend", xp: 105000, color: "#D4AF37" },
   ];
 
   const state = {
@@ -116,6 +131,9 @@ Please contact the school office if you need anything else.`,
     notices: [],
     tasks: [],
     transcriptDrafts: [],
+    backupHistory: [],
+    emailDeliveries: [],
+    appSettings: { ...defaultAppSettings },
     directoryUsers: [],
     transcriptRows: [],
     transcriptCourseSearch: "",
@@ -144,6 +162,7 @@ Please contact the school office if you need anything else.`,
     },
     emailFileCategory: "all",
     guideTopic: "overview",
+    maintenanceCheck: "",
     toastId: 0,
     coursePage: 1,
     courseRowsPerPage: 10,
@@ -242,6 +261,27 @@ Please contact the school office if you need anything else.`,
     taskAssignee: document.querySelector("#taskAssignee"),
     taskDescription: document.querySelector("#taskDescription"),
     taskList: document.querySelector("#taskList"),
+    backupLastDatabase: document.querySelector("#backupLastDatabase"),
+    backupLastFiles: document.querySelector("#backupLastFiles"),
+    backupLastFull: document.querySelector("#backupLastFull"),
+    backupStatus: document.querySelector("#backupStatus"),
+    backupDestination: document.querySelector("#backupDestination"),
+    runDatabaseBackup: document.querySelector("#runDatabaseBackup"),
+    runFileBackup: document.querySelector("#runFileBackup"),
+    runFullBackup: document.querySelector("#runFullBackup"),
+    backupHistoryRows: document.querySelector("#backupHistoryRows"),
+    systemHealthGrid: document.querySelector("#systemHealthGrid"),
+    healthLastCheck: document.querySelector("#healthLastCheck"),
+    healthEnvironment: document.querySelector("#healthEnvironment"),
+    corsOriginList: document.querySelector("#corsOriginList"),
+    emailDispatchSummary: document.querySelector("#emailDispatchSummary"),
+    recentDeliveryList: document.querySelector("#recentDeliveryList"),
+    failedDeliveryList: document.querySelector("#failedDeliveryList"),
+    testEmailForm: document.querySelector("#testEmailForm"),
+    testEmailAddress: document.querySelector("#testEmailAddress"),
+    maintenanceResults: document.querySelector("#maintenanceResults"),
+    appSettingsForm: document.querySelector("#appSettingsForm"),
+    transcriptFilenameFormat: document.querySelector("#transcriptFilenameFormat"),
     addManagedFile: document.querySelector("#addManagedFile"),
     fileManagerSearch: document.querySelector("#fileManagerSearch"),
     fileManagerRows: document.querySelector("#fileManagerRows"),
@@ -627,6 +667,21 @@ Please contact the school office if you need anything else.`,
       createTask();
     });
 
+    els.runDatabaseBackup?.addEventListener("click", () => runBackup("Database"));
+    els.runFileBackup?.addEventListener("click", () => runBackup("File"));
+    els.runFullBackup?.addEventListener("click", () => runBackup("Full"));
+    els.testEmailForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendTestEmail();
+    });
+    document.querySelectorAll("[data-maintenance-check]").forEach((button) => {
+      button.addEventListener("click", () => runMaintenanceCheck(button.dataset.maintenanceCheck));
+    });
+    els.appSettingsForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveAppSettings();
+    });
+
     els.addManagedFile?.addEventListener("click", openFileBuilder);
     els.fileManagerSearch?.addEventListener("input", (event) => {
       fileManagerState.search = event.target.value.trim().toLowerCase();
@@ -889,6 +944,7 @@ Please contact the school office if you need anything else.`,
     renderFileManager();
     renderEmailTemplateControls();
     renderSelectedEmailFiles();
+    renderAdministration();
     renderDataHealth();
   }
 
@@ -965,7 +1021,6 @@ Please contact the school office if you need anything else.`,
     overview: {
       title: "Overview Dashboard",
       subtitle: "Use Overview as the compact health check for the dashboard.",
-      image: "assets/guide/overview.png",
       visual: ["Latest Dashboard Changes", "Assigned to Me", "Staff Status", "Dashboard Progress"],
       steps: [
         "Review Latest Dashboard Changes for recent edits, uploads, transcript work, and deletions.",
@@ -977,7 +1032,6 @@ Please contact the school office if you need anything else.`,
     courses: {
       title: "Courses Tab",
       subtitle: "Courses are the master catalog used everywhere else.",
-      image: "assets/guide/courses.png",
       visual: ["Add Course", "Search", "Credit Filter", "Sortable Columns", "Edit/Delete"],
       steps: [
         "Click Add Course to create a new course record. Course IDs are validated so duplicate course numbers cannot be saved.",
@@ -990,7 +1044,6 @@ Please contact the school office if you need anything else.`,
     curriculums: {
       title: "Curriculums Tab",
       subtitle: "Build each curriculum and maintain its required course list.",
-      image: "assets/guide/curriculums.png",
       visual: ["Program Filter", "Curriculum Filter", "Add Curriculum", "Manage Requirements", "Attachments"],
       steps: [
         "Choose a program and curriculum from the top filters.",
@@ -1003,7 +1056,6 @@ Please contact the school office if you need anything else.`,
     programs: {
       title: "Programs Tab",
       subtitle: "Programs are the main school categories that hold curriculums.",
-      image: "assets/guide/programs.png",
       visual: ["Program Selector", "Program Overview", "Add Program", "Manage Curriculums"],
       steps: [
         "Select a program from the dropdown to review its details.",
@@ -1016,7 +1068,6 @@ Please contact the school office if you need anything else.`,
     transcripts: {
       title: "Transcripts Tab",
       subtitle: "Build transcripts from Firebase course and curriculum data.",
-      image: "assets/guide/transcripts.png",
       visual: ["Student Details", "Import Curriculum", "Add Courses", "Import PDF", "Save PDF"],
       steps: [
         "Fill in student details before creating the transcript.",
@@ -1028,21 +1079,22 @@ Please contact the school office if you need anything else.`,
     },
     administration: {
       title: "Administration Tab",
-      subtitle: "Send files, publish notices, and manage assigned work.",
-      image: "assets/guide/administration.png",
-      visual: ["Email Dispatch", "Email Templates", "Announcements", "Task Board", "Activity Logging"],
+      subtitle: "Use the operational control center for backups, health, email, notices, tasks, maintenance, and shared settings.",
+      visual: ["Backup Center", "System Health", "Email Dispatch", "Announcements", "Task Board", "Maintenance"],
       steps: [
+        "Use Backup Center to record database, file, or full backup attempts. OneDrive automation will plug into this area later.",
+        "Review System Health for Realtime Database, Storage, Cloud Functions, Email Service, and Authentication status.",
         "Use Email Dispatch to select existing File Manager files and prepare student emails.",
         "Email Templates are shared templates stored in Realtime Database. Admins can add, save, or delete templates.",
         "Post Announcements to broadcast one-way notices to all signed-in users.",
         "Create tasks with a title, description, assignee, and status.",
-        "Email, notice, and task actions are recorded in the Activity Log and Dashboard Progress system.",
+        "Run Maintenance Tools to find duplicate IDs, duplicate files, unlinked files, empty curriculums, transcript issues, and failed email records.",
+        "Edit App Settings when a shared dashboard setting, such as transcript file naming, needs to change.",
       ],
     },
     files: {
       title: "File Manager",
       subtitle: "Upload files once, link them to courses, and reuse them across curriculums.",
-      image: "assets/guide/file-manager.png",
       visual: ["Add File", "Category", "Linked Courses", "Search", "Download"],
       steps: [
         "Use Add File to upload one or more files to Cloud Storage.",
@@ -1056,7 +1108,6 @@ Please contact the school office if you need anything else.`,
     log: {
       title: "Activity Log",
       subtitle: "Track dashboard activity and search staff changes.",
-      image: "assets/guide/activity-log.png",
       visual: ["Activity Log", "Search", "User", "Action", "Details"],
       steps: [
         "The Activity Log records important add, edit, delete, upload, task, notice, and transcript actions.",
@@ -1092,7 +1143,6 @@ Please contact the school office if you need anything else.`,
     const guide = guideDetails[active];
     els.guideContent.innerHTML = `
       <section class="guide-snapshot" aria-label="${escapeAttr(guide.title)} visual guide">
-        ${guide.image ? `<img class="guide-screenshot" src="${escapeAttr(guide.image)}" alt="${escapeAttr(guide.title)} screenshot" loading="lazy" />` : ""}
         ${guide.visual.map((item, index) => `
           <span style="--guide-index:${index + 1}">
             <b>${index + 1}</b>${escapeHtml(item)}
@@ -1715,7 +1765,18 @@ Please contact the school office if you need anything else.`,
       if (els.fileSendMessage) {
         els.fileSendMessage.textContent = "Email backend is not connected in local preview. Deploy the Firebase Cloud Function before sending live email.";
       }
+      state.emailDeliveries.unshift({
+        _docId: `local-${Date.now()}`,
+        recipient: email,
+        templateId: template._docId,
+        templateName: template.name,
+        fileCount: selectedFiles.length,
+        status: "prepared",
+        createdByName: currentUserDisplayName() || "Local Preview",
+        createdAtMs: Date.now(),
+      });
       await writeActivity("Prepared File Email", "Student Email", email, `${selectedFiles.length} file(s) selected: ${selectedFiles.map((file) => file.name).join(", ")}`);
+      renderAdministration();
       return;
     }
     try {
@@ -1729,11 +1790,47 @@ Please contact the school office if you need anything else.`,
       });
       const message = result?.data?.message || `Email sent to ${email}.`;
       if (els.fileSendMessage) els.fileSendMessage.textContent = message;
+      await recordStudentFileDelivery({
+        recipient: email,
+        templateId: template._docId,
+        templateName: template.name,
+        fileCount: selectedFiles.length,
+        status: "success",
+        error: "",
+      });
       fileManagerState.emailSelectedFileIds = [];
       renderSelectedEmailFiles();
     } catch (error) {
       console.warn("Student file email failed.", error);
       if (els.fileSendMessage) els.fileSendMessage.textContent = firebaseErrorMessage(error);
+      await recordStudentFileDelivery({
+        recipient: email,
+        templateId: template._docId,
+        templateName: template.name,
+        fileCount: selectedFiles.length,
+        status: "failed",
+        error: firebaseErrorMessage(error),
+      });
+    }
+    renderAdministration();
+  }
+
+  async function recordStudentFileDelivery(delivery) {
+    const record = {
+      ...delivery,
+      createdByUid: firebaseState.user?.uid || "preview",
+      createdByName: currentUserDisplayName() || "Local Preview",
+      createdAtMs: Date.now(),
+    };
+    state.emailDeliveries.unshift({ _docId: `local-${record.createdAtMs}`, ...record });
+    if (canWriteCloud()) {
+      const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+      const deliveryRef = push(dbRef(firebaseState.db, "emailDeliveries"));
+      await set(deliveryRef, {
+        ...record,
+        _docId: deliveryRef.key,
+        createdAt: serverTimestamp(),
+      });
     }
   }
 
@@ -2609,8 +2706,26 @@ Please contact the school office if you need anything else.`,
   }
 
   function transcriptPdfFilename() {
-    const name = slugify(els.transcriptStudentName?.value || els.transcriptStudentId?.value || "new-eden-transcript");
-    return `${name || "new-eden-transcript"}-transcript.pdf`;
+    const rawName = String(els.transcriptStudentName?.value || "").trim();
+    const parts = rawName.split(/\s+/).filter(Boolean);
+    const firstName = safeFilenamePart(parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0] || "Student");
+    const lastName = safeFilenamePart(parts.length > 1 ? parts.at(-1) : els.transcriptStudentId?.value || "NewEden");
+    const today = new Date().toISOString().slice(0, 10);
+    const format = state.appSettings.transcriptFilenameFormat || defaultAppSettings.transcriptFilenameFormat;
+    return format
+      .replaceAll("LastName", lastName)
+      .replaceAll("FirstName", firstName)
+      .replaceAll("YYYY-MM-DD", today)
+      .replaceAll("StudentID", safeFilenamePart(els.transcriptStudentId?.value || ""))
+      .replace(/\.pdf$/i, "")
+      .concat(".pdf");
+  }
+
+  function safeFilenamePart(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "") || "Unknown";
   }
 
   function downloadBlob(blob, filename) {
@@ -2799,6 +2914,134 @@ Please contact the school office if you need anything else.`,
         <td>${escapeHtml(entry.details || "")}</td>
       </tr>
     `).join("") || emptyRow(5, "No log entries match the current search.");
+  }
+
+  function renderAdministration() {
+    renderBackupCenter();
+    renderSystemHealth();
+    renderEmailDispatchCenter();
+    renderMaintenanceResults();
+    renderAppSettings();
+  }
+
+  function renderBackupCenter() {
+    const history = state.backupHistory
+      .slice()
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
+    const latestByType = (type) => history.find((item) => String(item.type || "").toLowerCase() === type.toLowerCase());
+    if (els.backupLastDatabase) els.backupLastDatabase.textContent = formatTimestamp(latestByType("Database")?.createdAtMs) || "Not recorded";
+    if (els.backupLastFiles) els.backupLastFiles.textContent = formatTimestamp(latestByType("File")?.createdAtMs) || "Not recorded";
+    if (els.backupLastFull) els.backupLastFull.textContent = formatTimestamp(latestByType("Full")?.createdAtMs) || "Not recorded";
+    if (els.backupStatus) els.backupStatus.textContent = history[0]?.status || "Ready";
+    if (els.backupDestination) els.backupDestination.textContent = state.appSettings.backupDestination || defaultAppSettings.backupDestination;
+    if (els.backupHistoryRows) {
+      els.backupHistoryRows.innerHTML = history.slice(0, 8).map((entry) => `
+        <tr>
+          <td>${escapeHtml(formatTimestamp(entry.createdAtMs))}</td>
+          <td>${escapeHtml(entry.type || "Backup")}</td>
+          <td><span class="status-badge ${entry.status === "Completed" ? "" : "status-warning"}">${escapeHtml(entry.status || "Recorded")}</span></td>
+          <td>${escapeHtml(entry.startedByName || "Unknown")}</td>
+          <td>${escapeHtml(entry.duration || "Framework only")}</td>
+        </tr>
+      `).join("") || emptyRow(5, "No backup history has been recorded yet.");
+    }
+  }
+
+  function renderSystemHealth() {
+    if (els.systemHealthGrid) {
+      const functionReady = Boolean(firebaseState.functions);
+      const emailReady = functionReady && state.emailDeliveries.some((entry) => entry.status === "success");
+      const services = [
+        ["Realtime Database", firebaseState.ready && Boolean(firebaseState.db)],
+        ["Firebase Storage", firebaseState.ready && Boolean(firebaseState.storage)],
+        ["Cloud Functions", functionReady],
+        ["Email Service", emailReady],
+        ["Authentication", firebaseState.ready && Boolean(firebaseState.auth)],
+      ];
+      els.systemHealthGrid.innerHTML = services.map(([label, connected]) => `
+        <article class="system-health-card ${connected ? "is-connected" : "is-disconnected"}">
+          <span><i></i>${connected ? "Connected" : "Disconnected"}</span>
+          <strong>${escapeHtml(label)}</strong>
+        </article>
+      `).join("");
+    }
+    if (els.healthLastCheck) els.healthLastCheck.textContent = formatTimestamp(Date.now());
+    if (els.healthEnvironment) {
+      els.healthEnvironment.textContent = firebaseDisabled
+        ? "Local preview without Firebase"
+        : `${location.hostname || "Browser"}${location.hostname.includes("github.io") ? " / GitHub Pages" : ""}`;
+    }
+    if (els.corsOriginList) {
+      els.corsOriginList.innerHTML = storageCorsOrigins.map((origin) => `<li>${escapeHtml(origin)}</li>`).join("");
+    }
+  }
+
+  function renderEmailDispatchCenter() {
+    const deliveries = emailDeliveryRecords();
+    const sent = deliveries.filter((entry) => entry.status === "success").length;
+    const failed = deliveries.filter((entry) => entry.status === "failed").length;
+    if (els.emailDispatchSummary) {
+      els.emailDispatchSummary.innerHTML = [
+        ["Total Emails Sent", deliveries.length],
+        ["Successful Deliveries", sent],
+        ["Failed Deliveries", failed],
+      ].map(([label, value]) => `
+        <div class="overview-trend-card">
+          <strong>${escapeHtml(value)}</strong>
+          <span>${escapeHtml(label)}</span>
+        </div>
+      `).join("");
+    }
+    if (els.recentDeliveryList) {
+      els.recentDeliveryList.innerHTML = deliveries.slice(0, 5).map((entry) => adminMiniItem({
+        title: entry.recipient || entry.entityName || "Student email",
+        meta: [formatTimestamp(entry.createdAtMs), entry.templateName || "Template"].filter(Boolean).join(" - "),
+        detail: `${entry.fileCount || 0} file(s) - ${entry.status || "recorded"}`,
+      })).join("") || overviewEmptyState("No email deliveries have been recorded yet.");
+    }
+    if (els.failedDeliveryList) {
+      const failedDeliveries = deliveries.filter((entry) => entry.status === "failed");
+      els.failedDeliveryList.innerHTML = failedDeliveries.slice(0, 5).map((entry) => adminMiniItem({
+        title: entry.recipient || entry.entityName || "Failed email",
+        meta: formatTimestamp(entry.createdAtMs),
+        detail: entry.error || entry.details || "No error message recorded.",
+        warning: true,
+      })).join("") || overviewEmptyState("No failed deliveries have been recorded.");
+    }
+  }
+
+  function renderMaintenanceResults() {
+    if (!els.maintenanceResults) return;
+    if (!state.maintenanceCheck) {
+      els.maintenanceResults.innerHTML = overviewEmptyState("Choose a maintenance check to see findings.");
+      return;
+    }
+    const report = maintenanceReport(state.maintenanceCheck);
+    els.maintenanceResults.innerHTML = `
+      <div class="maintenance-result-head">
+        <strong>${escapeHtml(report.title)}</strong>
+        <span>${escapeHtml(report.items.length)} finding(s)</span>
+      </div>
+      <div class="admin-mini-list">
+        ${report.items.map((item) => adminMiniItem(item)).join("") || overviewEmptyState(report.empty)}
+      </div>
+    `;
+  }
+
+  function renderAppSettings() {
+    if (els.transcriptFilenameFormat) {
+      els.transcriptFilenameFormat.value = state.appSettings.transcriptFilenameFormat || defaultAppSettings.transcriptFilenameFormat;
+    }
+  }
+
+  function adminMiniItem({ title, meta = "", detail = "", warning = false }) {
+    return `
+      <article class="admin-mini-item ${warning ? "has-warning" : ""}">
+        <strong>${escapeHtml(title || "Item")}</strong>
+        ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+        ${detail ? `<p>${escapeHtml(detail)}</p>` : ""}
+      </article>
+    `;
   }
 
   function renderOverview() {
@@ -5491,7 +5734,7 @@ Please contact the school office if you need anything else.`,
       console.warn(`Optional Realtime Database path failed: ${path}`, error);
       return null;
     });
-    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, fileSnap, emailTemplateSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap] = await Promise.all([
+    const [courseSnap, programCategorySnap, programSnap, curriculumSnap, versionSnap, attachmentSnap, fileSnap, emailTemplateSnap, activitySnap, noticeSnap, taskSnap, usersSnap, transcriptSnap, backupSnap, emailDeliverySnap, appSettingsSnap] = await Promise.all([
       get(dbRef(firebaseState.db, "courses")),
       readOptionalPath("programCategories"),
       get(dbRef(firebaseState.db, "programs")),
@@ -5505,6 +5748,9 @@ Please contact the school office if you need anything else.`,
       readOptionalPath("tasks"),
       readOptionalPath("users"),
       readOptionalPath("transcripts"),
+      readOptionalPath("backupHistory"),
+      readOptionalPath("emailDeliveries"),
+      readOptionalPath("appSettings"),
     ]);
 
     const sizes = {
@@ -5521,6 +5767,8 @@ Please contact the school office if you need anything else.`,
       tasks: rtdbList(taskSnap?.val()).length,
       users: rtdbList(usersSnap?.val()).length,
       transcripts: rtdbList(transcriptSnap?.val()).length,
+      backupHistory: rtdbList(backupSnap?.val()).length,
+      emailDeliveries: rtdbList(emailDeliverySnap?.val()).length,
     };
     firebaseState.hasCloudArchive = Boolean(sizes.courses || sizes.programCategories || sizes.programs || sizes.curriculumRows);
 
@@ -5528,6 +5776,9 @@ Please contact the school office if you need anything else.`,
       attachmentState.records = normalizeAttachments(rtdbList(attachmentSnap.val()));
       fileManagerState.records = normalizeFiles(rtdbList(fileSnap?.val()));
       normalizeStudentEmailTemplate(emailTemplateSnap?.val());
+      state.backupHistory = normalizeBackupHistory(rtdbList(backupSnap?.val()));
+      state.emailDeliveries = normalizeEmailDeliveries(rtdbList(emailDeliverySnap?.val()));
+      state.appSettings = normalizeAppSettings(appSettingsSnap?.val());
       return sizes;
     }
 
@@ -5545,6 +5796,9 @@ Please contact the school office if you need anything else.`,
     primeNotificationBaselines();
     state.directoryUsers = normalizeDirectoryUsers(rtdbList(usersSnap?.val()));
     state.transcriptDrafts = normalizeTranscriptDrafts(rtdbList(transcriptSnap?.val()));
+    state.backupHistory = normalizeBackupHistory(rtdbList(backupSnap?.val()));
+    state.emailDeliveries = normalizeEmailDeliveries(rtdbList(emailDeliverySnap?.val()));
+    state.appSettings = normalizeAppSettings(appSettingsSnap?.val());
 
     return sizes;
   }
@@ -5573,7 +5827,7 @@ Please contact the school office if you need anything else.`,
 
   function startRealtimeListeners() {
     if (!firebaseState.ready) return;
-    stopRealtimeListeners();
+    stopRealtimeListeners({ resetNotifications: false });
     const { dbRef, onValue } = firebaseState.modules;
     const handleSnapshotError = (error) => {
       console.warn("Realtime Database listener failed.", error);
@@ -5655,6 +5909,22 @@ Please contact the school office if you need anything else.`,
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "transcripts"), (snapshot) => {
       state.transcriptDrafts = normalizeTranscriptDrafts(rtdbList(snapshot.val()));
       renderTranscriptDrafts();
+      renderAdministration();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "backupHistory"), (snapshot) => {
+      state.backupHistory = normalizeBackupHistory(rtdbList(snapshot.val()));
+      renderBackupCenter();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "emailDeliveries"), (snapshot) => {
+      state.emailDeliveries = normalizeEmailDeliveries(rtdbList(snapshot.val()));
+      renderEmailDispatchCenter();
+    }, handleSnapshotError));
+
+    firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "appSettings"), (snapshot) => {
+      state.appSettings = normalizeAppSettings(snapshot.val());
+      renderAdministration();
     }, handleSnapshotError));
 
     firebaseState.unsubscribers.push(onValue(dbRef(firebaseState.db, "users"), (snapshot) => {
@@ -5673,15 +5943,20 @@ Please contact the school office if you need anything else.`,
     }));
   }
 
-  function stopRealtimeListeners() {
+  function stopRealtimeListeners(options = {}) {
+    const { resetNotifications = true } = options;
+
     firebaseState.unsubscribers.forEach((unsubscribe) => unsubscribe());
     firebaseState.unsubscribers = [];
     stopUserPresence();
     state.connectedUsers = [];
-    state.notificationsReady = false;
-    state.contributionNotificationsReady = false;
-    state.knownContributionLevels = new Map();
-    state.knownAchievements = new Map();
+
+    if (resetNotifications) {
+      state.notificationsReady = false;
+      state.contributionNotificationsReady = false;
+      state.knownContributionLevels = new Map();
+      state.knownAchievements = new Map();
+    }
   }
 
   function primeNotificationBaselines() {
@@ -6112,6 +6387,233 @@ Please contact the school office if you need anything else.`,
 
   function canWriteCloud() {
     return firebaseState.ready && firebaseState.user && state.admin;
+  }
+
+  async function runBackup(type) {
+    if (!state.admin) return;
+    const started = Date.now();
+    const entry = {
+      type,
+      status: "Completed",
+      startedByUid: firebaseState.user?.uid || "preview",
+      startedByName: currentUserDisplayName() || "Local Preview",
+      duration: "Framework only",
+      destination: state.appSettings.backupDestination || defaultAppSettings.backupDestination,
+      createdAtMs: started,
+    };
+    state.backupHistory.unshift({ _docId: `local-${started}`, ...entry });
+    renderBackupCenter();
+    if (canWriteCloud()) {
+      const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+      const backupRef = push(dbRef(firebaseState.db, "backupHistory"));
+      await set(backupRef, {
+        ...entry,
+        _docId: backupRef.key,
+        createdAt: serverTimestamp(),
+      });
+    }
+    await writeActivity(`Ran ${type} Backup`, "Backup", `${type} Backup`, `${entry.status}; ${entry.destination}`);
+    setCloudStatus(`${type} backup recorded. OneDrive file transfer integration is pending.`);
+  }
+
+  async function sendTestEmail() {
+    if (!state.admin) return;
+    const email = els.testEmailAddress?.value.trim() || "";
+    if (!email) {
+      els.testEmailAddress?.focus();
+      return;
+    }
+    const template = activeEmailTemplate();
+    const deliveryBase = {
+      recipient: email,
+      templateId: template._docId,
+      templateName: template.name || "Email Dispatch",
+      fileCount: 0,
+      createdByUid: firebaseState.user?.uid || "preview",
+      createdByName: currentUserDisplayName() || "Local Preview",
+      createdAtMs: Date.now(),
+    };
+    try {
+      if (!firebaseState.ready || !firebaseState.functions) {
+        throw new Error("Cloud Functions are not connected in this preview.");
+      }
+      const sendStudentFilesEmail = firebaseState.modules.httpsCallable(firebaseState.functions, "sendStudentFilesEmail");
+      await sendStudentFilesEmail({
+        recipientEmail: email,
+        selectedFileIds: [],
+        subject: `New Eden Dashboard test email`,
+        bodyMarkdown: "This is a New Eden Dashboard email service test.",
+        test: true,
+      });
+      await recordEmailDelivery({ ...deliveryBase, status: "success", error: "" });
+      setCloudStatus(`Test email sent to ${email}.`);
+    } catch (error) {
+      await recordEmailDelivery({ ...deliveryBase, status: "failed", error: firebaseErrorMessage(error) });
+      setCloudStatus(`Test email failed: ${firebaseErrorMessage(error)}`);
+    }
+    els.testEmailAddress.value = "";
+    renderAdministration();
+  }
+
+  async function recordEmailDelivery(delivery) {
+    const record = { _docId: delivery._docId || `local-${Date.now()}`, ...delivery };
+    state.emailDeliveries.unshift(record);
+    if (canWriteCloud()) {
+      const { dbRef, push, set, serverTimestamp } = firebaseState.modules;
+      const deliveryRef = push(dbRef(firebaseState.db, "emailDeliveries"));
+      await set(deliveryRef, {
+        ...delivery,
+        _docId: deliveryRef.key,
+        createdAt: serverTimestamp(),
+      });
+    }
+    await writeActivity(
+      delivery.status === "success" ? "Sent Test Email" : "Failed Test Email",
+      "Student Email",
+      delivery.recipient,
+      delivery.error || `Template: ${delivery.templateName || "Email Dispatch"}`
+    );
+  }
+
+  async function saveAppSettings() {
+    if (!state.admin) return;
+    const transcriptFilenameFormat = els.transcriptFilenameFormat?.value.trim()
+      || defaultAppSettings.transcriptFilenameFormat;
+    state.appSettings = {
+      ...state.appSettings,
+      transcriptFilenameFormat,
+    };
+    if (canWriteCloud()) {
+      const { dbRef, update, serverTimestamp } = firebaseState.modules;
+      await update(dbRef(firebaseState.db, "appSettings"), {
+        ...state.appSettings,
+        updatedAt: serverTimestamp(),
+        updatedAtMs: Date.now(),
+      });
+    }
+    await writeActivity("Updated App Settings", "App Settings", "Transcript filename format", transcriptFilenameFormat);
+    setCloudStatus("Saved app settings.");
+    renderAdministration();
+  }
+
+  function runMaintenanceCheck(check) {
+    state.maintenanceCheck = check || "";
+    renderMaintenanceResults();
+    if (check) {
+      const report = maintenanceReport(check);
+      setCloudStatus(`${report.title}: ${report.items.length} finding(s).`);
+    }
+  }
+
+  function maintenanceReport(check) {
+    const report = archiveHealthReport();
+    const fileNameCounts = countBy(fileManagerState.records, (file) => String(file.name || "").trim().toLowerCase());
+    const filePathCounts = countBy(fileManagerState.records, (file) => String(file.storagePath || "").trim().toLowerCase());
+    const transcriptFiles = transcriptFileRecords();
+    const failedEmails = emailDeliveryRecords().filter((entry) => entry.status === "failed");
+    const courseIdIssues = [
+      ...report.duplicateCourseIds.map((item) => ({
+        title: `Duplicate course ID ${item.id}`,
+        meta: `${item.count} records`,
+        detail: item.names,
+        warning: true,
+      })),
+      ...state.courses.filter((course) => !String(course.id || "").trim()).map((course) => ({
+        title: course.name || "Course without ID",
+        detail: "Missing course ID.",
+        warning: true,
+      })),
+      ...state.courses.filter((course) => String(course.id || "").trim() && !/^[A-Za-z0-9-]+$/.test(String(course.id || "").trim())).map((course) => ({
+        title: `${course.id} ${course.name}`.trim(),
+        detail: "Course ID contains unusual formatting.",
+        warning: true,
+      })),
+    ];
+    const duplicateFiles = [
+      ...Object.entries(fileNameCounts).filter(([, count]) => count > 1).map(([name, count]) => ({
+        title: name || "Unnamed file",
+        meta: `${count} files share this name`,
+        detail: "Review duplicate file names in File Manager.",
+        warning: true,
+      })),
+      ...Object.entries(filePathCounts).filter(([path, count]) => path && count > 1).map(([path, count]) => ({
+        title: path,
+        meta: `${count} records share this storage path`,
+        detail: "Review duplicate storage references.",
+        warning: true,
+      })),
+    ];
+    const emptyCurriculums = programs().filter((program) => curriculumForProgram(program.name).length === 0);
+    const transcriptIssues = transcriptFiles
+      .filter((file) => !file.downloadURL || !file.storagePath || !file.size)
+      .map((file) => ({
+        title: file.name || "Transcript file",
+        meta: file.category || "Transcript",
+        detail: [
+          !file.downloadURL ? "missing download URL" : "",
+          !file.storagePath ? "missing storage path" : "",
+          !file.size ? "missing file size" : "",
+        ].filter(Boolean).join(", "),
+        warning: true,
+      }));
+    const reports = {
+      courseIds: {
+        title: "Course ID Validation",
+        empty: "No duplicate, missing, or unusual course IDs found.",
+        items: courseIdIssues,
+      },
+      duplicateFiles: {
+        title: "Duplicate Files",
+        empty: "No duplicate file names or storage references found.",
+        items: duplicateFiles,
+      },
+      unlinkedFiles: {
+        title: "Unlinked Files",
+        empty: "No unlinked non-transcript files found.",
+        items: fileManagerState.records
+          .filter((file) => file.category !== "Transcript" && !file.courseIds.length)
+          .map((file) => ({
+            title: file.name,
+            meta: file.category || "Other",
+            detail: "This file is not linked to any course.",
+            warning: true,
+          })),
+      },
+      emptyCurriculums: {
+        title: "Empty Curriculums",
+        empty: "No empty curriculums found.",
+        items: emptyCurriculums.map((program) => ({
+          title: programShortName(program.name),
+          meta: program.section || "Program",
+          detail: "No required courses are attached.",
+          warning: true,
+        })),
+      },
+      transcripts: {
+        title: "Transcript Validation",
+        empty: "No transcript file metadata issues found.",
+        items: transcriptIssues,
+      },
+      failedEmails: {
+        title: "Failed Email Diagnostics",
+        empty: "No failed email records found.",
+        items: failedEmails.map((entry) => ({
+          title: entry.recipient || entry.entityName || "Failed email",
+          meta: formatTimestamp(entry.createdAtMs),
+          detail: entry.error || entry.details || "No error message recorded.",
+          warning: true,
+        })),
+      },
+    };
+    return reports[check] || { title: "Maintenance", empty: "Choose a check.", items: [] };
+  }
+
+  function countBy(items, picker) {
+    return items.reduce((acc, item) => {
+      const key = picker(item);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
   }
 
   async function writeActivity(action, entityType, entityName, details = "") {
@@ -6834,6 +7336,43 @@ Please contact the school office if you need anything else.`,
     }).filter((file) => file.name);
   }
 
+  function normalizeBackupHistory(items) {
+    return (items || []).map((item) => ({
+      _docId: item._docId || slugify(`${item.type || "backup"}-${item.createdAtMs || Date.now()}`),
+      type: item.type || "Backup",
+      status: item.status || "Recorded",
+      startedByUid: item.startedByUid || item.userUid || "",
+      startedByName: item.startedByName || item.userName || "Unknown",
+      duration: item.duration || "Framework only",
+      destination: item.destination || defaultAppSettings.backupDestination,
+      createdAtMs: Number(item.createdAtMs || item.createdAt || 0),
+    })).filter((item) => item.type);
+  }
+
+  function normalizeEmailDeliveries(items) {
+    return (items || []).map((item) => ({
+      _docId: item._docId || slugify(`${item.recipient || "email"}-${item.createdAtMs || Date.now()}`),
+      recipient: item.recipient || item.entityName || "",
+      templateId: item.templateId || "",
+      templateName: item.templateName || item.template || "Email Dispatch",
+      fileCount: Number(item.fileCount || 0),
+      status: item.status || (/failed/i.test(item.action || "") ? "failed" : /sent/i.test(item.action || "") ? "success" : "recorded"),
+      error: item.error || "",
+      createdByUid: item.createdByUid || item.userUid || "",
+      createdByName: item.createdByName || item.userName || "Unknown",
+      createdAtMs: Number(item.createdAtMs || item.createdAt || 0),
+    })).filter((item) => item.recipient || item.status);
+  }
+
+  function normalizeAppSettings(settings) {
+    return {
+      ...defaultAppSettings,
+      ...(settings || {}),
+      transcriptFilenameFormat: settings?.transcriptFilenameFormat || defaultAppSettings.transcriptFilenameFormat,
+      backupDestination: settings?.backupDestination || defaultAppSettings.backupDestination,
+    };
+  }
+
   function normalizeStudentEmailTemplate(template) {
     const value = template || {};
     const rawTemplates = value.templates
@@ -6964,6 +7503,33 @@ Please contact the school office if you need anything else.`,
 
   function transcriptFileRecords() {
     return fileManagerState.records.filter((file) => file.category === "Transcript");
+  }
+
+  function emailDeliveryRecords() {
+    const stored = normalizeEmailDeliveries(state.emailDeliveries);
+    const fromLog = state.activityLog
+      .filter((entry) => /file email|student email|test email/i.test(`${entry.action || ""} ${entry.entityType || ""}`))
+      .map((entry) => normalizeEmailDeliveries([{
+        _docId: entry._docId,
+        recipient: entry.entityName,
+        templateName: "Activity Log",
+        fileCount: Number(String(entry.details || "").match(/(\d+)\s+file/i)?.[1] || 0),
+        status: /failed/i.test(entry.action || "") ? "failed" : /sent/i.test(entry.action || "") ? "success" : "recorded",
+        error: /failed/i.test(entry.action || "") ? entry.details : "",
+        createdByUid: entry.userUid,
+        createdByName: entry.userName,
+        createdAtMs: entry.createdAtMs,
+      }])[0])
+      .filter(Boolean);
+    const seen = new Set();
+    return [...stored, ...fromLog]
+      .filter((entry) => {
+        const key = entry._docId || `${entry.recipient}-${entry.createdAtMs}-${entry.status}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => Number(b.createdAtMs || 0) - Number(a.createdAtMs || 0));
   }
 
   function courseById(courseId) {

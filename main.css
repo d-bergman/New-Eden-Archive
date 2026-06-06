@@ -1370,11 +1370,133 @@ body[data-active-view="history"] .archive-summary {
   white-space: nowrap;
 }
 
-.log-workspace {
+.log-workspace,
+.administration-dashboard {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   gap: 16px;
   margin-top: 16px;
+}
+
+.administration-dashboard {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.administration-panel {
+  overflow: hidden;
+}
+
+.admin-email-panel,
+.maintenance-panel,
+.app-settings-panel {
+  grid-column: 1 / -1;
+}
+
+.admin-status-grid,
+.system-health-grid,
+.email-dispatch-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  padding: 0 16px 16px;
+}
+
+.admin-status-grid div,
+.system-health-card,
+.cors-info-card,
+.admin-mini-item {
+  border: 1px solid var(--eden-line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.admin-status-grid div,
+.system-health-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+}
+
+.admin-status-grid span,
+.system-health-card span,
+.admin-mini-item small {
+  color: var(--eden-muted);
+  font-size: 0.82rem;
+}
+
+.system-health-card span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.system-health-card i,
+.presence-pill i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.system-health-card.is-connected i {
+  background: #8bc34a;
+  box-shadow: 0 0 0 4px rgba(139, 195, 74, 0.16);
+}
+
+.system-health-card.is-disconnected i {
+  background: #b45a55;
+  box-shadow: 0 0 0 4px rgba(180, 90, 85, 0.12);
+}
+
+.cors-info-card {
+  margin: 0 16px 16px;
+  padding: 14px;
+}
+
+.cors-info-card p {
+  margin: 4px 0 10px;
+  color: var(--eden-muted);
+}
+
+.cors-info-card ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cors-info-card li {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--eden-sage);
+  color: var(--eden-forest);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.admin-action-row,
+.maintenance-tool-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.admin-action-row .btn,
+.maintenance-tool-grid .btn,
+.test-email-form .btn,
+.app-settings-form .btn {
+  min-height: 38px;
+  padding: 7px 12px;
+}
+
+.mini-table-wrap {
+  max-height: 280px;
+  overflow: auto;
+  border-top: 1px solid var(--eden-line);
 }
 
 .notice-form,
@@ -1385,12 +1507,21 @@ body[data-active-view="history"] .archive-summary {
 }
 
 .notice-form {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  padding: 0 16px 16px;
 }
 
 .notice-form .btn {
-  min-width: 120px;
+  justify-self: start;
+  min-width: 132px;
+  min-height: 38px;
+  padding: 7px 12px;
+}
+
+.notice-form textarea {
+  min-height: 132px;
+  resize: vertical;
 }
 
 .task-form {
@@ -2532,7 +2663,9 @@ mark {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent !important;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.16);
+  font-weight: 900;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.24);
+  filter: saturate(1.25) contrast(1.15);
 }
 
 .guide-topic-grid {
@@ -2598,18 +2731,6 @@ mark {
   background:
     linear-gradient(135deg, rgba(223, 232, 215, 0.44), rgba(255, 255, 255, 0.82)),
     rgba(251, 250, 245, 0.8);
-}
-
-.guide-screenshot {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-height: 340px;
-  object-fit: cover;
-  object-position: top left;
-  border: 1px solid var(--eden-line);
-  border-radius: 8px;
-  background: var(--eden-paper);
-  box-shadow: 0 12px 32px rgba(23, 61, 42, 0.12);
 }
 
 .guide-snapshot > span {
@@ -3821,9 +3942,8 @@ body.theme-dark .transcript-icon {
 
 .file-send-form {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(410px, 1fr) auto;
+  grid-template-columns: 1fr;
   gap: 12px;
-  align-items: end;
   padding: 0 16px 16px;
 }
 
@@ -3841,8 +3961,9 @@ body.theme-dark .transcript-icon {
 }
 
 .email-template-controls {
-  display: flex;
-  align-items: end;
+  display: grid;
+  grid-template-columns: auto minmax(240px, 320px);
+  align-items: center;
   gap: 10px;
   min-width: 0;
 }
@@ -3868,7 +3989,7 @@ body.theme-dark .transcript-icon {
 .file-send-actions {
   display: flex;
   gap: 8px;
-  align-items: end;
+  align-items: center;
 }
 
 .file-send-actions .btn {
@@ -3880,6 +4001,83 @@ body.theme-dark .transcript-icon {
 
 .file-send-message:empty {
   display: none;
+}
+
+.selected-email-files {
+  padding: 0 16px 12px;
+}
+
+.email-service-test {
+  padding: 0 16px 16px;
+}
+
+.test-email-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.test-email-form .form-control {
+  max-width: 320px;
+}
+
+.email-delivery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.email-delivery-grid h3 {
+  margin: 0 0 8px;
+  color: var(--eden-forest);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+}
+
+.admin-mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-mini-item {
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+}
+
+.admin-mini-item.has-warning {
+  border-color: rgba(190, 63, 63, 0.42);
+}
+
+.admin-mini-item p {
+  margin: 0;
+  color: var(--eden-muted);
+  font-size: 0.85rem;
+}
+
+.maintenance-results {
+  padding: 0 16px 16px;
+}
+
+.maintenance-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.app-settings-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  padding: 0 16px 8px;
+}
+
+.app-settings-panel .form-note {
+  padding: 0 16px 16px;
 }
 
 .file-manager-actions .btn {
@@ -3982,11 +4180,16 @@ body.theme-dark .managed-file-card,
 body.theme-dark .attachment-drop-zone,
 body.theme-dark .attachment-item,
 body.theme-dark .course-picker-row.is-selected,
-body.theme-dark .markdown-guide {
+body.theme-dark .markdown-guide,
+body.theme-dark .admin-status-grid div,
+body.theme-dark .system-health-card,
+body.theme-dark .cors-info-card,
+body.theme-dark .admin-mini-item {
   background: rgba(28, 31, 20, 0.94);
 }
 
-body.theme-dark .linked-course-badge {
+body.theme-dark .linked-course-badge,
+body.theme-dark .cors-info-card li {
   background: #2f411e;
   color: #e8e2d7;
 }
@@ -4056,6 +4259,7 @@ body.theme-dark .markdown-guide code {
   .requirement-builder,
   .curriculum-workspace,
   .log-workspace,
+  .administration-dashboard,
   .transcript-workspace,
   .transcript-form-grid,
   .overview-dashboard,
@@ -4089,6 +4293,9 @@ body.theme-dark .markdown-guide code {
   .notice-form,
   .task-form,
   .file-send-form,
+  .email-template-controls,
+  .email-delivery-grid,
+  .app-settings-form,
   .file-selector-grid,
   .email-template-editor-grid {
     align-items: stretch;

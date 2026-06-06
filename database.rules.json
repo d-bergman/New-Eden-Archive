@@ -67,6 +67,21 @@
       ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
     },
 
+    "appSettings": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+
+    "backupHistory": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+
+    "emailDeliveries": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).exists()"
+    },
+
     "activityLog": {
       ".read": "auth != null",
       ".write": "auth != null"
