@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.9";
+  const appVersion = "1.6.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -514,7 +514,7 @@ Please contact the school office if you need anything else.`,
     });
 
     els.courseCatalogSearch.addEventListener("input", (event) => {
-      state.courseSearch = event.target.value.trim().toLowerCase();
+      state.courseSearch = event.target.value;
       state.coursePage = 1;
       renderCourses();
     });
@@ -6291,16 +6291,22 @@ function addProgramBuilderCurriculum(curriculumName) {
     }
   }
 
-  async function syncCurriculumRowsForCourse(course, previousCourseId = "") {
+async function syncCurriculumRowsForCourse(course, previousCourseId = "") {
+  const normalizeCourseName = (value) => stripCredit(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
   const currentId = String(course.id || "");
   const oldId = String(previousCourseId || "");
-  const courseName = String(course.name || "").toLowerCase();
+  const courseName = normalizeCourseName(course.name);
 
   const changedRows = [];
 
   state.curriculum = state.curriculum.map((row) => {
     const rowCourseId = String(row.courseId || "");
-    const rowCourseName = stripCredit(row.courseLabel).toLowerCase();
+    const rowCourseName = normalizeCourseName(row.courseLabel || row.name || "");
 
     const matchesCourse =
       rowCourseId === currentId ||
@@ -7236,7 +7242,7 @@ function addProgramBuilderCurriculum(curriculumName) {
   }
 
   function courseCatalogQuery() {
-    return state.courseSearch || state.search;
+  return String(state.courseSearch || state.search || "").trim().toLowerCase();
   }
 
   function filteredPrograms() {

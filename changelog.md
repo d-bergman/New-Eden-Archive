@@ -1,5 +1,39 @@
 # New Eden Dashboard Changelog
 
+## V1.6.0 - 2026-06-08 3:32 PM CT - Curriculum Synchronization Fixes
+
+### Summary
+
+Resolved curriculum synchronization issues discovered during curriculum auditing and improved Course Catalog search behavior.
+
+### Fixes
+
+### Curriculum Requirement Synchronization
+
+- Fixed an issue where curriculum requirements could display outdated course information after a course was edited.
+- Course updates now synchronize associated curriculum requirement records.
+- Course ID, course name, and credit changes are now reflected within curriculum requirements.
+
+Example:
+
+- Updating "Longevity Medicine" from Credit 1 to Credit 2 now correctly updates all curriculum requirement references.
+
+### Course Catalog Search
+
+- Fixed a search input issue that prevented normal entry of spaces and capitalized text.
+- Search normalization now occurs during filtering rather than modifying user input.
+- Search field behavior now matches standard text entry expectations.
+
+### Data Integrity Improvements
+
+- Improved course matching logic when synchronizing curriculum requirements.
+- Added stronger course name normalization to improve detection of existing curriculum references.
+- Reduced risk of stale curriculum requirement data after catalog maintenance.
+
+### Notes
+
+This release focuses exclusively on curriculum consistency and Course Catalog usability improvements identified during administrative testing.
+
 ## V1.5.9 - 2026-06-08 3:00 PM CT - Course Validation and Program Builder Fixes
 
 ### Summary
