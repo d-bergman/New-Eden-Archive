@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.5.8";
+  const appVersion = "1.5.9";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -86,6 +86,7 @@ Please contact the school office if you need anything else.`,
     description: "",
     notes: "",
     curriculums: [],
+    search: "",
   };
   const staffDirectory = [
     { uid: "staff:darren", name: "Darren" },
@@ -407,8 +408,8 @@ Please contact the school office if you need anything else.`,
     programBuilderStatus: document.querySelector("#programBuilderStatus"),
     programBuilderDescription: document.querySelector("#programBuilderDescription"),
     programBuilderNotes: document.querySelector("#programBuilderNotes"),
-    programBuilderCurriculumName: document.querySelector("#programBuilderCurriculumName"),
-    addProgramBuilderCurriculum: document.querySelector("#addProgramBuilderCurriculum"),
+    programBuilderCurriculumSearch: document.querySelector("#programBuilderCurriculumSearch"),
+    programBuilderCurriculumPicker: document.querySelector("#programBuilderCurriculumPicker"),
     programBuilderCurriculumList: document.querySelector("#programBuilderCurriculumList"),
     programBuilderCurriculumCount: document.querySelector("#programBuilderCurriculumCount"),
     saveProgramBuilder: document.querySelector("#saveProgramBuilder"),
@@ -897,13 +898,11 @@ Please contact the school office if you need anything else.`,
       button.addEventListener("click", () => els.curriculumBuilderDialog.close("cancel"));
     });
 
-    els.addProgramBuilderCurriculum.addEventListener("click", addProgramBuilderCurriculum);
-    els.programBuilderCurriculumName.addEventListener("keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        addProgramBuilderCurriculum();
-      }
+    els.programBuilderCurriculumSearch?.addEventListener("input", (event) => {
+    programBuilder.search = event.target.value.trim().toLowerCase();
+    renderProgramBuilder();
     });
+    
     els.saveProgramBuilder.addEventListener("click", (event) => {
       event.preventDefault();
       saveProgramBuilder();
@@ -4586,35 +4585,144 @@ Please contact the school office if you need anything else.`,
     els.programFilter.innerHTML = programOptions;
   }
 
-  function openCourseEditor(index) {
-    if (!state.admin) return;
-    const course = index == null ? { id: "", credit: credits()[0] || "1", name: "", comment: "" } : state.courses[index];
-    openEditor(index == null ? "Add Course" : "Edit Course", [
-      field("id", "Course ID", course.id),
-      field("credit", "Credit", course.credit, "select", credits()),
-      field("name", "Course Name", course.name),
-      field("comment", "Comment", course.comment, "textarea"),
-    ], async (values) => {
-      const duplicate = findDuplicateCourseId(values.id, index);
-      if (duplicate) {
-        return {
-          ok: false,
-          field: "id",
-          message: "This course number is already in use. Please enter a unique course number.",
-          disableUntilChange: true,
-        };
-      }
-      values._docId = courseDocId(values);
-      const previousDocId = course._docId;
-      const previousCourseId = course.id;
-      if (index == null) state.courses.push(values);
-      else state.courses[index] = values;
-      await persistCourse(values, previousDocId, previousCourseId);
-      await writeActivity(index == null ? "Added Course" : "Edited Course", "Course", `${values.id} ${values.name}`.trim(), values.comment || "");
-      render();
-      return { ok: true };
-    });
+function openCourseEditor(index) {
+  if (!state.admin) return;
+  const course = index == null ? { id: "", credit: credits()[0] || "1", name: "", comment: "" } : state.courses[index];
+
+  openEditor(index == null ? "Add Course" : "Edit Course", [
+    field("id", "Course ID", course.id),
+    field("credit", "Credit", course.credit, "select", credits()),
+    field("name", "Course Name", course.name),
+    field("comment", "Comment", course.comment, "textarea"),
+  ], async (values) => {
+    const creditPrefix = String(values.credit || "").trim();
+    const courseId = String(values.id || "").trim();
+
+    if (creditPrefix && courseId && !courseId.startsWith(creditPrefix)) {
+      return {
+        ok: false,
+        field: "id",
+        message: `Course ID must start with ${creditPrefix} when Credit ${creditPrefix} is selected.`,
+        disableUntilChange: true,
+      };
+    }
+
+    const duplicate = findDuplicateCourseId(values.id, index);
+    if (duplicate) {
+      return {
+        ok: false,
+        field: "id",
+        message: "This course number is already in use. Please enter a unique course number.",
+        disableUntilChange: true,
+      };
+    }
+
+    values._docId = courseDocId(values);
+    const previousDocId = course._docId;
+    const previousCourseId = course.id;
+
+    if (index == null) state.courses.push(values);
+    else state.courses[index] = values;
+
+    await persistCourse(values, previousDocId, previousCourseId);
+
+    if (index != null) {
+      await syncCurriculumRowsForCourse(values, previousCourseId);
+    }
+
+    await writeActivity(index == null ? "Added Course" : "Edited Course", "Course", `${values.id} ${values.name}`.trim(), values.comment || "");
+    render();
+    return { ok: true };
+  });
+
+  attachCourseIdSuggestionHelper();
+}
+
+function numericCourseIdValue(courseId) {
+  const match = String(courseId || "").match(/\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function courseIdSuggestionForCredit(credit) {
+  const ids = state.courses
+    .filter((course) => String(course.credit) === String(credit))
+    .map((course) => numericCourseIdValue(course.id))
+    .filter((id) => Number.isFinite(id))
+    .sort((a, b) => a - b);
+
+  if (!ids.length) {
+    return {
+      lastId: "",
+      nextId: "",
+      message: `No existing Course ID found for Credit ${credit}.`,
+    };
   }
+
+  const highestId = ids[ids.length - 1];
+
+  const sequences = [];
+  let currentSequence = [ids[0]];
+
+  for (let i = 1; i < ids.length; i += 1) {
+    const previous = ids[i - 1];
+    const current = ids[i];
+
+    if (current - previous <= 10) {
+      currentSequence.push(current);
+    } else {
+      sequences.push(currentSequence);
+      currentSequence = [current];
+    }
+  }
+
+  sequences.push(currentSequence);
+
+  const mainSequence = sequences.reduce((best, sequence) => {
+    if (sequence.length > best.length) return sequence;
+    return best;
+  }, []);
+
+  const lastSequenceId = mainSequence[mainSequence.length - 1];
+  const suggestedNext = lastSequenceId + 1;
+
+  if (highestId !== lastSequenceId) {
+    return {
+      lastId: lastSequenceId,
+      nextId: suggestedNext,
+      message: `Credit ${credit} sequence ends at ${lastSequenceId} · Suggested: ${suggestedNext} · Highest outlier: ${highestId}`,
+    };
+  }
+
+  return {
+    lastId: lastSequenceId,
+    nextId: suggestedNext,
+    message: `Credit ${credit} last ID: ${lastSequenceId} · Next suggested: ${suggestedNext}`,
+  };
+}
+
+function attachCourseIdSuggestionHelper() {
+  const idField = els.editForm?.querySelector('[name="id"]');
+  const creditField = els.editForm?.querySelector('[name="credit"]');
+
+  if (!idField || !creditField) return;
+
+  let helper = els.editForm.querySelector("#courseIdSuggestionHelper");
+
+  if (!helper) {
+    helper = document.createElement("small");
+    helper.id = "courseIdSuggestionHelper";
+    helper.className = "form-note course-id-suggestion-helper";
+    idField.insertAdjacentElement("afterend", helper);
+  }
+
+  const updateHelper = () => {
+    const suggestion = courseIdSuggestionForCredit(creditField.value);
+    helper.textContent = suggestion.message;
+  };
+
+  creditField.addEventListener("change", updateHelper);
+  updateHelper();
+}
 
   function openCurriculumEditor(index) {
     if (!state.admin) return;
@@ -5051,87 +5159,110 @@ Please contact the school office if you need anything else.`,
     els.programBuilderStatus.value = programBuilder.status;
     els.programBuilderDescription.value = programBuilder.description;
     els.programBuilderNotes.value = programBuilder.notes;
-    els.programBuilderCurriculumName.value = "";
+    programBuilder.search = "";
+    if (els.programBuilderCurriculumSearch) els.programBuilderCurriculumSearch.value = "";
     renderProgramBuilder();
     els.programBuilderDialog.showModal();
     setTimeout(() => els.programBuilderName.focus(), 0);
   }
 
-  function renderProgramBuilder() {
-    const programName = els.programBuilderName.value.trim() || programBuilder.name || "Program";
-    programBuilder.curriculums.sort((a, b) => naturalCompare(programShortName(a.name), programShortName(b.name)));
-    els.programBuilderCurriculumCount.textContent = programBuilder.curriculums.length;
-    els.programBuilderCurriculumList.innerHTML = programBuilder.curriculums.map((curriculum, index) => `
-      <div class="selected-requirement-row">
-        <span class="requirement-order">${index + 1}</span>
+function renderProgramBuilder() {
+  const programName = els.programBuilderName.value.trim() || programBuilder.name || "Program";
+  const selectedNames = new Set(programBuilder.curriculums.map((item) => item.name));
+
+  const availableCurriculums = programs()
+    .filter((curriculum) => !selectedNames.has(curriculum.name))
+    .filter((curriculum) => {
+      if (!programBuilder.search) return true;
+      const haystack = [
+        curriculum.name,
+        programShortName(curriculum.name),
+        curriculum.code,
+        curriculum.section,
+        curriculum.status,
+      ].join(" ").toLowerCase();
+      return haystack.includes(programBuilder.search);
+    })
+    .sort((a, b) => naturalCompare(programShortName(a.name), programShortName(b.name)))
+    .slice(0, 18);
+
+  if (els.programBuilderCurriculumPicker) {
+    els.programBuilderCurriculumPicker.innerHTML = availableCurriculums.map((curriculum) => `
+      <button class="course-picker-row" type="button" data-add-builder-curriculum="${escapeAttr(curriculum.name)}">
         <span>
           <strong>${escapeHtml(programShortName(curriculum.name))}</strong>
-          <small>${escapeHtml(curriculum.code || programCode(curriculum.name, programName))} &bull; ${escapeHtml(curriculum.status || "Active")}</small>
+          <small>${escapeHtml(curriculum.code || programCode(curriculum.name, curriculum.section))} &bull; ${escapeHtml(curriculum.section || "No program")} &bull; ${escapeHtml(curriculum.status || "Active")}</small>
         </span>
-        <span class="requirement-row-actions">
-          <button class="table-action" type="button" data-edit-builder-curriculum="${escapeAttr(curriculum.name)}" aria-label="Edit curriculum">
-            <i class="bi bi-pencil"></i>
-          </button>
-          <button class="table-action" type="button" data-remove-builder-curriculum="${escapeAttr(curriculum.name)}" aria-label="Remove curriculum">
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </span>
-      </div>
-    `).join("") || `<div class="empty-state">Add curriculums that belong under ${escapeHtml(programName)}.</div>`;
+        <i class="bi bi-plus-circle"></i>
+      </button>
+    `).join("") || `<div class="empty-state">No available curriculums match the search.</div>`;
 
-    els.programBuilderCurriculumList.querySelectorAll("[data-edit-builder-curriculum]").forEach((button) => {
+    els.programBuilderCurriculumPicker.querySelectorAll("[data-add-builder-curriculum]").forEach((button) => {
       button.addEventListener("click", () => {
-        const curriculum = programBuilder.curriculums.find((item) => item.name === button.dataset.editBuilderCurriculum);
-        if (!curriculum) return;
-        els.programBuilderDialog.close();
-        openProgramEditor(curriculum.name);
-      });
-    });
-
-    els.programBuilderCurriculumList.querySelectorAll("[data-remove-builder-curriculum]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        const curriculum = programBuilder.curriculums.find((item) => item.name === button.dataset.removeBuilderCurriculum);
-        if (!curriculum) return;
-        els.programBuilderDialog.close();
-        const confirmed = await confirmAction({
-          eyebrow: "Programs",
-          title: "Remove Curriculum",
-          message: `Remove "${programShortName(curriculum.name)}" from this program builder? Requirement rows will be removed when you save.`,
-          confirmText: "Remove",
-        });
-        if (confirmed) {
-          programBuilder.curriculums = programBuilder.curriculums.filter((item) => item.name !== curriculum.name);
-        }
-        renderProgramBuilder();
-        els.programBuilderDialog.showModal();
+        addProgramBuilderCurriculum(button.dataset.addBuilderCurriculum);
       });
     });
   }
 
-  function addProgramBuilderCurriculum() {
-    const programName = els.programBuilderName.value.trim();
-    const curriculumName = els.programBuilderCurriculumName.value.trim();
-    if (!programName || !curriculumName) return;
+  programBuilder.curriculums.sort((a, b) => naturalCompare(programShortName(a.name), programShortName(b.name)));
+  els.programBuilderCurriculumCount.textContent = programBuilder.curriculums.length;
 
-    const fullName = curriculumFullName(programName, curriculumName);
-    if (programBuilder.curriculums.some((curriculum) => curriculum.name.toLowerCase() === fullName.toLowerCase())) {
-      els.programBuilderCurriculumName.value = "";
-      return;
-    }
+  els.programBuilderCurriculumList.innerHTML = programBuilder.curriculums.map((curriculum, index) => `
+    <div class="selected-requirement-row">
+      <span class="requirement-order">${index + 1}</span>
+      <span>
+        <strong>${escapeHtml(programShortName(curriculum.name))}</strong>
+        <small>${escapeHtml(curriculum.code || programCode(curriculum.name, programName))} &bull; ${escapeHtml(curriculum.status || "Active")}</small>
+      </span>
+      <span class="requirement-row-actions">
+        <button class="table-action" type="button" data-edit-builder-curriculum="${escapeAttr(curriculum.name)}" aria-label="Edit curriculum">
+          <i class="bi bi-pencil"></i>
+        </button>
+        <button class="table-action" type="button" data-remove-builder-curriculum="${escapeAttr(curriculum.name)}" aria-label="Remove curriculum">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </span>
+    </div>
+  `).join("") || `<div class="empty-state">Select existing curriculums that belong under ${escapeHtml(programName)}.</div>`;
 
-    const record = normalizePrograms([{
-      section: programName,
-      name: fullName,
-      code: programCode(fullName, programName),
-      status: "Active",
-      version: "v1.0",
-      description: "",
-      notes: "",
-    }])[0];
-    programBuilder.curriculums.push(record);
-    els.programBuilderCurriculumName.value = "";
-    renderProgramBuilder();
-  }
+  els.programBuilderCurriculumList.querySelectorAll("[data-edit-builder-curriculum]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const curriculum = programBuilder.curriculums.find((item) => item.name === button.dataset.editBuilderCurriculum);
+      if (!curriculum) return;
+      els.programBuilderDialog.close();
+      openProgramEditor(curriculum.name);
+    });
+  });
+
+  els.programBuilderCurriculumList.querySelectorAll("[data-remove-builder-curriculum]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const curriculum = programBuilder.curriculums.find((item) => item.name === button.dataset.removeBuilderCurriculum);
+      if (!curriculum) return;
+      els.programBuilderDialog.close();
+      const confirmed = await confirmAction({
+        eyebrow: "Programs",
+        title: "Remove Curriculum",
+        message: `Remove "${programShortName(curriculum.name)}" from this program builder? Requirement rows will be removed when you save.`,
+        confirmText: "Remove",
+      });
+      if (confirmed) {
+        programBuilder.curriculums = programBuilder.curriculums.filter((item) => item.name !== curriculum.name);
+      }
+      renderProgramBuilder();
+      els.programBuilderDialog.showModal();
+    });
+  });
+}
+
+function addProgramBuilderCurriculum(curriculumName) {
+  const curriculum = programs().find((item) => item.name === curriculumName);
+  if (!curriculum) return;
+
+  if (programBuilder.curriculums.some((item) => item.name === curriculum.name)) return;
+
+  programBuilder.curriculums.push({ ...curriculum });
+  renderProgramBuilder();
+}
 
   async function saveProgramBuilder() {
     if (!state.admin) return;
@@ -6159,6 +6290,40 @@ Please contact the school office if you need anything else.`,
       await set(dbRef(firebaseState.db, `courseIds/${course._docId}`), course._docId);
     }
   }
+
+  async function syncCurriculumRowsForCourse(course, previousCourseId = "") {
+  const currentId = String(course.id || "");
+  const oldId = String(previousCourseId || "");
+  const courseName = String(course.name || "").toLowerCase();
+
+  const changedRows = [];
+
+  state.curriculum = state.curriculum.map((row) => {
+    const rowCourseId = String(row.courseId || "");
+    const rowCourseName = stripCredit(row.courseLabel).toLowerCase();
+
+    const matchesCourse =
+      rowCourseId === currentId ||
+      rowCourseId === oldId ||
+      rowCourseName === courseName;
+
+    if (!matchesCourse) return row;
+
+    const updatedRow = {
+      ...row,
+      courseId: course.id,
+      credit: course.credit,
+      courseLabel: courseLabel(course),
+    };
+
+    changedRows.push(updatedRow);
+    return updatedRow;
+  });
+
+  if (canWriteCloud() && changedRows.length) {
+    await Promise.all(changedRows.map((row) => persistCurriculumRow(row)));
+  }
+}
 
   async function persistProgram(program) {
     if (!canWriteCloud()) return;

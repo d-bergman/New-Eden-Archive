@@ -2334,6 +2334,14 @@ mark {
   font-size: 0.88rem;
 }
 
+.course-id-suggestion-helper {
+  display: block;
+  margin-top: 5px;
+  color: var(--eden-muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

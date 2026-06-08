@@ -1,5 +1,33 @@
 # New Eden Dashboard Changelog
 
+## V1.5.9 - 2026-06-08 3:00 PM CT - Course Validation and Program Builder Fixes
+
+### Summary
+
+- Fixed important course/catalog consistency issues and cleaned up the Program Builder curriculum selection workflow. Update done manually by Darren.
+
+### New Features
+
+- Added Course ID helper text in the Add/Edit Course modal.
+- The helper now shows the selected credit group’s current sequence, suggested next Course ID, and highest outlier when needed.
+- Added Course ID validation so the Course ID must begin with the selected credit number.
+- Example: Credit 2 courses must use an ID beginning with 2.
+
+### Fixes
+
+- Fixed curriculum requirement rows not updating after a course record is edited.
+- Editing a course now syncs matching curriculum requirement rows so course name, course ID, and credit changes stay current across curriculums.
+- Fixed the Program Builder curriculum selection area.
+- Replaced the free-text curriculum entry behavior with a searchable existing-curriculum picker.
+- Program Builder now allows selecting existing curriculums instead of accidentally creating fake curriculum names from typed text.
+- Cleaned up the Program Builder right pane so selected curriculums display properly with a count and removal controls.
+
+### Notes
+
+- This release includes Darren’s manual fixes completed with ChatGPT OpenAI while Codex was on cooldown.
+- The Course ID helper is display-only and does not auto-fill the Course ID field.
+- Older/high outlier Course IDs are still shown for awareness, but the suggested ID follows the main active sequence.
+
 ## V1.5.8 - 2026-06-05 7:54 PM CT - Administration Control Center
 
 ### Summary

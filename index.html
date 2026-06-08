@@ -885,7 +885,7 @@
             </div>
           <p>New Eden Dashboard - Archive & Realtime Database</p>
             <p>WebApp Made by Darren Bergman</p>
-          <p>Version <span id="appVersion">1.5.8</span></p>
+          <p>Version <span id="appVersion">1.5.9</span></p>
           </footer>
         </div>
       </main>
@@ -1212,22 +1212,20 @@
           </section>
 
           <section class="builder-pane">
-            <div class="builder-pane-header">
-              <h3>Curriculums</h3>
-              <span id="programBuilderCurriculumCount">0</span>
-            </div>
-            <div class="curriculum-builder-add">
-              <label class="form-label">
-                Curriculum Name
-                <input class="form-control" id="programBuilderCurriculumName" placeholder="Associate Degree in Naturopathy (ADN) Program" />
-              </label>
-              <button class="btn btn-outline-eden" id="addProgramBuilderCurriculum" type="button">
-                <i class="bi bi-plus-circle"></i>
-                Add Curriculum
-              </button>
-            </div>
-            <div class="selected-requirements" id="programBuilderCurriculumList"></div>
-          </section>
+          <div class="builder-pane-header">
+            <h3>Curriculums</h3>
+            <span id="programBuilderCurriculumCount">0</span>
+          </div>
+
+          <label class="form-label">
+            Search Existing Curriculums
+            <input class="form-control" id="programBuilderCurriculumSearch" type="search" placeholder="Search by curriculum name, code, or program" />
+          </label>
+
+          <div class="course-picker" id="programBuilderCurriculumPicker"></div>
+
+          <div class="selected-requirements" id="programBuilderCurriculumList"></div>
+</section>
         </div>
 
         <div class="modal-actions">
