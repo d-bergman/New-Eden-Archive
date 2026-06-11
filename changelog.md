@@ -1,5 +1,27 @@
 # New Eden Dashboard Changelog
 
+## V1.7.1 - 2026-06-11 12:00 PM CT - Transcript Layout and UI Alignment Hotfix
+
+### Summary
+
+- Tightened the official transcript PDF design so it follows the provided concept more closely while keeping the corrected contact information and removing the Academic Standing block.
+
+### Transcript Generator
+
+- Reworked the transcript header so the New Eden title is drawn crisply instead of relying on a squeezed image asset.
+- Added the missing official title treatment, leaf accents, transcript-begins banner, graduation divider, bottom quote panel, seal, and signature layout.
+- Kept the corrected transcript contact information: `Info@newedenschool.com` and `(219) 230-6102`.
+- Kept only Total Credit Hours and GPA in the summary band.
+- Compressed the bottom transcript section so the seal, quote panel, and signature fit cleanly on a standard one-page transcript.
+
+### UI Polish
+
+- Fixed required `*` placement in generated modals such as Add Course, Edit Course, Add Curriculum, and Add Program.
+- Improved status badge centering for Active, Inactive, and Archived states.
+- Reworked Email Dispatch form layout into clearer rows for student email, email template controls, and file/send actions.
+- Reduced the Send Test Email button footprint and aligned it with the test email input.
+- Adjusted Staff Status rows so online/offline status and last-login timestamps do not overlap on narrower dashboard modules.
+
 ## V1.7.0 - 2026-06-10 9:51 PM CT - Transcript Redesign and Validation Release
 
 ### Summary
