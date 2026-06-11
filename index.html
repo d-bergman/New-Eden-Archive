@@ -328,7 +328,7 @@
                 <select class="form-select catalog-credit-filter" id="courseCreditFilter" aria-label="Filter courses by credit"></select>
               </div>
               <div class="table-responsive archive-table-wrap">
-                <table class="table archive-table align-middle mb-0">
+                <table class="table archive-table course-catalog-table align-middle mb-0">
                   <thead>
                     <tr>
                       <th><button class="sort-header" type="button" data-course-sort="id">ID <i class="bi bi-chevron-expand"></i></button></th>
@@ -492,24 +492,31 @@
                   <h3>Student Details</h3>
                   <div class="transcript-form-grid">
                     <label class="form-label">
-                      Full Name
-                      <input class="form-control" id="transcriptStudentName" placeholder="John Smith" />
+                      Full Name <span class="required-mark">*</span>
+                      <input class="form-control" id="transcriptStudentName" placeholder="John Smith" required />
                     </label>
                     <label class="form-label">
-                      Student ID
-                      <input class="form-control" id="transcriptStudentId" placeholder="NES201989563" />
+                      Student ID <span class="required-mark">*</span>
+                      <input class="form-control" id="transcriptStudentId" placeholder="NES201989563" required />
                     </label>
                     <label class="form-label">
-                      Date of Birth
-                      <input class="form-control" id="transcriptDob" type="date" />
+                      Date of Birth <span class="required-mark">*</span>
+                      <input class="form-control" id="transcriptDob" type="date" required />
+                      <small class="field-error" id="transcriptDobError"></small>
                     </label>
                     <label class="form-label">
-                      Attended From
-                      <input class="form-control" id="transcriptFrom" type="date" />
+                      Attended From <span class="required-mark">*</span>
+                      <input class="form-control" id="transcriptFrom" type="date" required />
+                      <small class="field-error" id="transcriptFromError"></small>
                     </label>
                     <label class="form-label">
-                      Attended To
-                      <input class="form-control" id="transcriptTo" type="date" />
+                      Attended To <span class="required-mark">*</span>
+                      <input class="form-control" id="transcriptTo" type="date" required />
+                      <small class="field-error" id="transcriptToError"></small>
+                    </label>
+                    <label class="form-label transcript-form-wide">
+                      Curriculum Name
+                      <input class="form-control" id="transcriptCurriculumName" placeholder="Optional custom transcript curriculum name" />
                     </label>
                     <label class="transcript-check">
                       <input class="form-check-input" id="transcriptGraduated" type="checkbox" checked />
@@ -716,13 +723,14 @@
                 <div class="email-dispatch-summary" id="emailDispatchSummary"></div>
                 <form class="file-send-form admin-only" id="fileSendForm">
                   <label class="form-label">
-                    Student Email
+                    Student Email <span class="required-mark">*</span>
                     <input class="form-control" id="studentEmail" type="email" placeholder="student@example.com" required />
+                    <small class="field-error" id="studentEmailError"></small>
                   </label>
                   <div class="email-template-controls">
                     <button class="btn btn-outline-eden" id="editEmailTemplates" type="button">
                       <i class="bi bi-envelope-paper"></i>
-                      Email Templates
+                      Add/Edit Email Templates
                     </button>
                     <select class="form-select" id="emailTemplateSelect" aria-label="Choose email dispatch template"></select>
                   </div>
@@ -741,8 +749,12 @@
                 <p class="form-note file-send-message" id="fileSendMessage" aria-live="polite"></p>
                 <div class="email-service-test">
                   <form id="testEmailForm" class="test-email-form admin-only">
-                    <input class="form-control" id="testEmailAddress" type="email" placeholder="test@example.com" aria-label="Test email address" />
-                    <button class="btn btn-outline-eden" type="submit">Send Test Email</button>
+                    <label class="form-label">
+                      Test Email <span class="required-mark">*</span>
+                      <input class="form-control" id="testEmailAddress" type="email" placeholder="test@example.com" aria-label="Test email address" required />
+                      <small class="field-error" id="testEmailError"></small>
+                    </label>
+                    <button class="btn btn-outline-eden" id="sendTestEmailButton" type="submit">Send Test Email</button>
                   </form>
                 </div>
                 <div class="email-delivery-grid">
@@ -885,7 +897,7 @@
             </div>
           <p>New Eden Dashboard - Archive & Realtime Database</p>
             <p>WebApp Made by Darren Bergman</p>
-          <p>Version <span id="appVersion">1.6.0</span></p>
+          <p>Version <span id="appVersion">1.7.0</span></p>
           </footer>
         </div>
       </main>
@@ -1120,11 +1132,11 @@
           <section class="builder-pane">
             <h3 class="builder-section-title">Curriculum Details</h3>
             <label class="form-label">
-              Program
+              Program <span class="required-mark">*</span>
               <select class="form-select" id="curriculumBuilderProgram" required></select>
             </label>
             <label class="form-label">
-              Curriculum Name
+              Curriculum Name <span class="required-mark">*</span>
               <input class="form-control" id="curriculumBuilderName" placeholder="Associate Degree in Naturopathy (ADN) Program" required />
             </label>
             <label class="form-label">
@@ -1190,7 +1202,7 @@
           <section class="builder-pane">
             <h3 class="builder-section-title">Program</h3>
             <label class="form-label">
-              Program Name
+              Program Name <span class="required-mark">*</span>
               <input class="form-control" id="programBuilderName" name="name" placeholder="Traditional Naturopathy" required />
             </label>
             <label class="form-label">

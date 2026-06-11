@@ -1,5 +1,66 @@
 # New Eden Dashboard Changelog
 
+## V1.7.0 - 2026-06-10 9:51 PM CT - Transcript Redesign and Validation Release
+
+### Summary
+
+- Completed Bhumika's latest testing-log fixes in one larger release and prepared the dashboard for the next Student Composite, enrollment agreement, and acceptance letter generator work.
+
+### Transcript Generator
+
+- Rebuilt the generated transcript PDF around the New Eden official transcript concept image.
+- Switched the transcript header to the new transparent no-tagline New Eden logo asset.
+- Kept the existing seal and signature assets in the transcript output.
+- Corrected transcript contact information to `Info@newedenschool.com` and `(219) 230-6102`.
+- Removed the Academic Standing block from the transcript bottom area.
+- Kept Total Credit Hours and GPA as the primary transcript summary blocks.
+- Added an optional Curriculum Name field for manually assembled transcripts.
+- Transcript PDF saves now use the manual curriculum name when provided, otherwise they use the imported curriculum name.
+- Save PDF actions are disabled until student details, dates, transcript rows, and all percent fields are complete.
+- Added date validation so Date of Birth must be before Attended From, and Attended From must be before Attended To.
+
+### Courses
+
+- Added stricter Course ID validation so course numbers must be exactly four numeric digits.
+- Added direct numeric input constraints to the Course ID field in the Add/Edit Course modal.
+- Kept duplicate Course ID validation and credit-prefix validation in place.
+- Set the Courses table to fixed column widths so sorting by course name no longer causes the table columns to jump.
+
+### Curriculums
+
+- Added required-field handling for Curriculum Name.
+- Save Curriculum is disabled until required fields are filled.
+- Fixed the Curriculum overview panel so edited version values refresh correctly.
+- Added distinct status colors for Inactive and Archived curriculum states.
+- Improved required-course table column sizing to reduce horizontal overflow.
+
+### Programs
+
+- Added required-field handling for Program Name.
+- Save Program is disabled until required fields are filled.
+- Fixed Program Builder save behavior so selected existing curriculums are attached under the target program without duplicating the program prefix.
+- Preserved the existing searchable curriculum picker workflow for adding curriculums to a program.
+- Added distinct status colors for Inactive and Archived program states.
+
+### Administration
+
+- Added email validation for Student Email and Test Email fields.
+- Disabled Send and Send Test Email buttons until valid email addresses are entered.
+- Reworked Email Dispatch into cleaner rows: student email, template controls, then file/send actions.
+- Renamed the email template button to `Add/Edit Email Templates`.
+- Added required-field markers to dashboard fields that must be completed.
+
+### Layout and Polish
+
+- Removed the extra border line from reusable section headings.
+- Center-aligned overview list icons with their text.
+- Improved Staff Status responsiveness so status and timestamps no longer overlap names on smaller screens.
+- Updated the visible footer version to V1.7.0.
+
+### Notes
+
+- Future planned additions are shelved for a later release: Student Composite with Pipeline CRM lookup, enrollment agreement generator, and acceptance letter generator.
+
 ## V1.6.0 - 2026-06-08 3:32 PM CT - Curriculum Synchronization Fixes
 
 ### Summary

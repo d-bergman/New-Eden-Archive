@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.6.0";
+  const appVersion = "1.7.0";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -280,6 +280,8 @@ Please contact the school office if you need anything else.`,
     failedDeliveryList: document.querySelector("#failedDeliveryList"),
     testEmailForm: document.querySelector("#testEmailForm"),
     testEmailAddress: document.querySelector("#testEmailAddress"),
+    testEmailError: document.querySelector("#testEmailError"),
+    sendTestEmailButton: document.querySelector("#sendTestEmailButton"),
     maintenanceResults: document.querySelector("#maintenanceResults"),
     appSettingsForm: document.querySelector("#appSettingsForm"),
     transcriptFilenameFormat: document.querySelector("#transcriptFilenameFormat"),
@@ -290,6 +292,7 @@ Please contact the school office if you need anything else.`,
     fileManagerPagination: document.querySelector("#fileManagerPagination"),
     fileSendForm: document.querySelector("#fileSendForm"),
     studentEmail: document.querySelector("#studentEmail"),
+    studentEmailError: document.querySelector("#studentEmailError"),
     editEmailTemplates: document.querySelector("#editEmailTemplates"),
     emailTemplateSelect: document.querySelector("#emailTemplateSelect"),
     emailTemplateEditorSelect: document.querySelector("#emailTemplateEditorSelect"),
@@ -315,8 +318,12 @@ Please contact the school office if you need anything else.`,
     transcriptStudentName: document.querySelector("#transcriptStudentName"),
     transcriptStudentId: document.querySelector("#transcriptStudentId"),
     transcriptDob: document.querySelector("#transcriptDob"),
+    transcriptDobError: document.querySelector("#transcriptDobError"),
     transcriptFrom: document.querySelector("#transcriptFrom"),
+    transcriptFromError: document.querySelector("#transcriptFromError"),
     transcriptTo: document.querySelector("#transcriptTo"),
+    transcriptToError: document.querySelector("#transcriptToError"),
+    transcriptCurriculumName: document.querySelector("#transcriptCurriculumName"),
     transcriptGraduated: document.querySelector("#transcriptGraduated"),
     printTranscript: document.querySelector("#printTranscript"),
     importTranscriptPdf: document.querySelector("#importTranscriptPdf"),
@@ -344,6 +351,7 @@ Please contact the school office if you need anything else.`,
     requirementTableCreditFilter: document.querySelector("#requirementTableCreditFilter"),
     programTitle: document.querySelector("#programTitle"),
     programCode: document.querySelector("#programCode"),
+    programVersion: document.querySelector("#programVersion"),
     requiredCount: document.querySelector("#requiredCount"),
     programDirectory: document.querySelector("#programDirectory"),
     versionTimeline: document.querySelector("#versionTimeline"),
@@ -751,6 +759,8 @@ Please contact the school office if you need anything else.`,
       event.preventDefault();
       prepareStudentFileEmail();
     });
+    els.studentEmail?.addEventListener("input", validateAdministrationEmailControls);
+    els.testEmailAddress?.addEventListener("input", validateAdministrationEmailControls);
     els.progressInfoButton?.addEventListener("click", openProgressInfoDialog);
     els.progressInfoContent?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-achievement-page]");
@@ -790,6 +800,7 @@ Please contact the school office if you need anything else.`,
       const row = state.transcriptRows.find((item) => item.key === input.dataset.transcriptPercent);
       if (row) row.percent = input.value;
       renderTranscriptTotals();
+      validateTranscriptControls();
     });
 
     els.transcriptCourseRows?.addEventListener("click", (event) => {
@@ -815,6 +826,18 @@ Please contact the school office if you need anything else.`,
     els.transcriptPdfFile?.addEventListener("change", (event) => {
       const file = event.target.files?.[0];
       if (file) importTranscriptPdf(file);
+    });
+
+    [
+      els.transcriptStudentName,
+      els.transcriptStudentId,
+      els.transcriptDob,
+      els.transcriptFrom,
+      els.transcriptTo,
+      els.transcriptCurriculumName,
+    ].forEach((input) => {
+      input?.addEventListener("input", validateTranscriptControls);
+      input?.addEventListener("change", validateTranscriptControls);
     });
 
     els.saveTranscriptDraft?.addEventListener("click", saveTranscriptDraft);
@@ -888,6 +911,10 @@ Please contact the school office if you need anything else.`,
       curriculumBuilder.search = event.target.value.trim().toLowerCase();
       renderCurriculumBuilder();
     });
+    [els.curriculumBuilderProgram, els.curriculumBuilderName].forEach((input) => {
+      input?.addEventListener("input", validateCurriculumBuilder);
+      input?.addEventListener("change", validateCurriculumBuilder);
+    });
 
     els.saveCurriculumBuilder.addEventListener("click", (event) => {
       event.preventDefault();
@@ -902,6 +929,8 @@ Please contact the school office if you need anything else.`,
     programBuilder.search = event.target.value.trim().toLowerCase();
     renderProgramBuilder();
     });
+    els.programBuilderName?.addEventListener("input", validateProgramBuilder);
+    els.programBuilderName?.addEventListener("change", validateProgramBuilder);
     
     els.saveProgramBuilder.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1746,14 +1775,15 @@ Please contact the school office if you need anything else.`,
 
   async function prepareStudentFileEmail() {
     const email = els.studentEmail?.value.trim() || "";
+    validateAdministrationEmailControls();
     const template = activeEmailTemplate();
     const subject = template.subject || defaultStudentEmailTemplate.subject;
     const bodyMarkdown = template.bodyMarkdown || defaultStudentEmailTemplate.bodyMarkdown;
     const selectedFiles = fileManagerState.emailSelectedFileIds
       .map((docId) => fileManagerState.records.find((file) => file._docId === docId))
       .filter(Boolean);
-    if (!email || !selectedFiles.length) {
-      if (els.fileSendMessage) els.fileSendMessage.textContent = "Enter a student email and select at least one file.";
+    if (!email || !isValidEmail(email) || !selectedFiles.length) {
+      if (els.fileSendMessage) els.fileSendMessage.textContent = "Enter a valid student email and select at least one file.";
       return;
     }
     if (!subject || !bodyMarkdown) {
@@ -1991,6 +2021,7 @@ Please contact the school office if you need anything else.`,
     renderTranscriptCoursePicker();
     renderTranscriptRows();
     renderTranscriptDrafts();
+    validateTranscriptControls();
   }
 
   function renderTranscriptCoursePicker() {
@@ -2066,6 +2097,77 @@ Please contact the school office if you need anything else.`,
     const totalCredits = state.transcriptRows.reduce((sum, row) => sum + Number(row.credit || 0), 0);
     if (els.transcriptTotalCredits) els.transcriptTotalCredits.textContent = String(totalCredits);
     if (els.transcriptGpa) els.transcriptGpa.textContent = transcriptGpa(state.transcriptRows);
+    validateTranscriptControls();
+  }
+
+  function validateTranscriptControls() {
+    const nameOk = Boolean(els.transcriptStudentName?.value.trim());
+    const idOk = Boolean(els.transcriptStudentId?.value.trim());
+    const dob = els.transcriptDob?.value || "";
+    const from = els.transcriptFrom?.value || "";
+    const to = els.transcriptTo?.value || "";
+    const dobOk = Boolean(dob);
+    const fromOk = Boolean(from);
+    const toOk = Boolean(to);
+    const dobBeforeFrom = !dob || !from || dob <= from;
+    const fromBeforeTo = !from || !to || from <= to;
+    const rowsOk = Boolean(state.transcriptRows.length);
+    const percentsOk = state.transcriptRows.every((row) => String(row.percent || "").trim());
+
+    setFieldError(els.transcriptDob, els.transcriptDobError, dobBeforeFrom ? "" : "Date of birth must be before or on Attended From.");
+    setFieldError(els.transcriptFrom, els.transcriptFromError, dobBeforeFrom ? "" : "Attended From must be after Date of Birth.");
+    setFieldError(els.transcriptTo, els.transcriptToError, fromBeforeTo ? "" : "Attended To must be after or on Attended From.");
+
+    const canSave = nameOk && idOk && dobOk && fromOk && toOk && dobBeforeFrom && fromBeforeTo && rowsOk && percentsOk;
+    [
+      els.printTranscript,
+      els.saveTranscriptToComputer,
+      els.saveTranscriptToFileManager,
+      els.saveTranscriptBoth,
+    ].forEach((button) => {
+      if (button) button.disabled = !canSave;
+    });
+    if (els.saveTranscriptDraft) {
+      els.saveTranscriptDraft.disabled = !(nameOk && idOk && rowsOk);
+    }
+    return canSave;
+  }
+
+  function setFieldError(input, errorEl, message) {
+    if (input) input.classList.toggle("is-invalid", Boolean(message));
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.hidden = !message;
+    }
+  }
+
+  function isValidEmail(value) {
+    const email = String(value || "").trim();
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  function validateAdministrationEmailControls() {
+    const studentEmail = els.studentEmail?.value.trim() || "";
+    const testEmail = els.testEmailAddress?.value.trim() || "";
+    const studentMessage = !studentEmail ? "" : isValidEmail(studentEmail) ? "" : "Enter a valid student email address.";
+    const testMessage = !testEmail ? "" : isValidEmail(testEmail) ? "" : "Enter a valid test email address.";
+    setFieldError(els.studentEmail, els.studentEmailError, studentMessage);
+    setFieldError(els.testEmailAddress, els.testEmailError, testMessage);
+    const sendButton = els.fileSendForm?.querySelector('button[type="submit"]');
+    if (sendButton) sendButton.disabled = !studentEmail || Boolean(studentMessage);
+    if (els.sendTestEmailButton) els.sendTestEmailButton.disabled = !testEmail || Boolean(testMessage);
+  }
+
+  function validateCurriculumBuilder() {
+    const ok = Boolean(els.curriculumBuilderProgram?.value.trim()) && Boolean(els.curriculumBuilderName?.value.trim());
+    if (els.saveCurriculumBuilder) els.saveCurriculumBuilder.disabled = !ok;
+    return ok;
+  }
+
+  function validateProgramBuilder() {
+    const ok = Boolean(els.programBuilderName?.value.trim());
+    if (els.saveProgramBuilder) els.saveProgramBuilder.disabled = !ok;
+    return ok;
   }
 
   async function saveTranscriptDraft() {
@@ -2108,6 +2210,7 @@ Please contact the school office if you need anything else.`,
   }
 
   function currentTranscriptDraft() {
+    const manualProgram = els.transcriptCurriculumName?.value.trim() || "";
     return {
       studentName: els.transcriptStudentName?.value.trim() || "",
       studentId: els.transcriptStudentId?.value.trim() || "",
@@ -2115,7 +2218,8 @@ Please contact the school office if you need anything else.`,
       attendedFrom: els.transcriptFrom?.value || "",
       attendedTo: els.transcriptTo?.value || "",
       graduated: Boolean(els.transcriptGraduated?.checked),
-      program: state.transcriptSelectedProgram || "",
+      program: manualProgram || state.transcriptSelectedProgram || "",
+      importedProgram: state.transcriptSelectedProgram || "",
       rows: state.transcriptRows.map((row) => ({ ...row })),
       totalCredits: Number(els.transcriptTotalCredits?.textContent || 0),
       gpa: els.transcriptGpa?.textContent || "0.0",
@@ -2133,7 +2237,8 @@ Please contact the school office if you need anything else.`,
     if (els.transcriptFrom) els.transcriptFrom.value = draft.attendedFrom || "";
     if (els.transcriptTo) els.transcriptTo.value = draft.attendedTo || "";
     if (els.transcriptGraduated) els.transcriptGraduated.checked = draft.graduated !== false;
-    state.transcriptSelectedProgram = draft.program || state.transcriptSelectedProgram;
+    if (els.transcriptCurriculumName) els.transcriptCurriculumName.value = draft.program || "";
+    state.transcriptSelectedProgram = draft.importedProgram || draft.program || state.transcriptSelectedProgram;
     state.activeTranscriptDraftId = draft._docId;
     state.transcriptRows = (draft.rows || []).map((row) => ({
       ...row,
@@ -2254,11 +2359,11 @@ Please contact the school office if you need anything else.`,
   }
 
   function openTranscriptSaveDialog() {
-    if (!state.transcriptRows.length) {
+    if (!validateTranscriptControls()) {
       alertAction({
         eyebrow: "Transcripts",
-        title: "No Courses Added",
-        message: "Add courses manually or import a curriculum before generating the transcript.",
+        title: "Transcript Not Ready",
+        message: "Complete student information, correct date order, add courses, and fill every Percent field before saving the transcript PDF.",
         confirmText: "OK",
       });
       return;
@@ -2267,11 +2372,11 @@ Please contact the school office if you need anything else.`,
   }
 
   async function saveTranscriptPdf(destination) {
-    if (!state.transcriptRows.length) {
+    if (!validateTranscriptControls()) {
       await alertAction({
         eyebrow: "Transcripts",
-        title: "No Courses Added",
-        message: "Add courses manually or import a curriculum before generating the transcript.",
+        title: "Transcript Not Ready",
+        message: "Complete student information, correct date order, add courses, and fill every Percent field before saving the transcript PDF.",
         confirmText: "OK",
       });
       return;
@@ -2579,8 +2684,10 @@ Please contact the school office if you need anything else.`,
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 36;
-    const logoUrl = new URL("assets/transcript/logo.jpg", window.location.href).href;
+    const margin = 28;
+    const innerLeft = 46;
+    const innerRight = pageWidth - 46;
+    const logoUrl = new URL("assets/transcript/logo-no-tagline-transparent.png", window.location.href).href;
     const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
     const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
     const [logoData, sealData, signatureData] = await Promise.all([
@@ -2589,101 +2696,171 @@ Please contact the school office if you need anything else.`,
       imageToDataUrl(signatureUrl),
     ]);
     const text = (value) => String(value || "");
-    const centerText = (value, y, size = 8, style = "normal") => {
+    const darkGreen = "#0f3f27";
+    const softGreen = "#edf3e8";
+    const gold = "#b79a4a";
+    const gray = "#30352f";
+    const programName = transcriptDisplayProgram();
+    const today = new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+    const attended = `${dateIsoForTranscript(els.transcriptFrom?.value) || "NA"} to ${dateIsoForTranscript(els.transcriptTo?.value) || "NA"}`;
+
+    const drawFrame = () => {
+      doc.setDrawColor(darkGreen);
+      doc.setLineWidth(2);
+      doc.rect(18, 18, pageWidth - 36, pageHeight - 36);
+      doc.setLineWidth(0.7);
+      doc.rect(24, 24, pageWidth - 48, pageHeight - 48);
+      doc.setDrawColor(gold);
+      doc.setLineWidth(0.45);
+      doc.line(36, 30, pageWidth - 36, 30);
+      doc.line(36, pageHeight - 30, pageWidth - 36, pageHeight - 30);
+    };
+
+    const centerText = (value, y, size = 8, style = "normal", color = gray) => {
       doc.setFont("times", style);
       doc.setFontSize(size);
+      doc.setTextColor(color);
       doc.text(text(value), pageWidth / 2, y, { align: "center" });
     };
-    const divider = (y) => {
-      doc.setLineDashPattern([4, 3], 0);
-      doc.line(margin, y, pageWidth - margin, y);
-      doc.line(margin, y + 28, pageWidth - margin, y + 28);
+
+    const dashedLine = (y) => {
+      doc.setDrawColor("#263b2d");
+      doc.setLineDashPattern([3, 3], 0);
+      doc.line(innerLeft, y, innerRight, y);
       doc.setLineDashPattern([], 0);
     };
-    const tableHeader = (y) => {
+
+    const drawHeader = (pageNumber, totalPages = 1) => {
+      drawFrame();
+      doc.addImage(logoData, "PNG", innerLeft, 34, 250, 58);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.8);
+      doc.setTextColor("#1e2c22");
+      doc.text([
+        "9783 E 116th St PMB 1104",
+        "Fishers, IN 46037",
+        "www.newedenschoolofnaturalhealth.org",
+        "Info@newedenschool.com",
+        "(219) 230-6102",
+      ], innerRight, 43, { align: "right", lineHeightFactor: 1.2 });
+
+      doc.setDrawColor("#d9c98f");
+      doc.setLineWidth(0.6);
+      doc.line(innerLeft + 72, 117, innerLeft + 180, 117);
+      doc.line(innerRight - 180, 117, innerRight - 72, 117);
+      centerText("OFFICIAL TRANSCRIPT", 126, 21, "bold", darkGreen);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.7);
+      doc.setTextColor("#222");
+      doc.text([
+        `Name: ${els.transcriptStudentName?.value || ""}`,
+        `Student ID: ${els.transcriptStudentId?.value || ""}`,
+        `Date of Birth: ${dateLongForTranscript(els.transcriptDob?.value)}`,
+      ], innerLeft, 152, { lineHeightFactor: 1.42 });
+      doc.text([`Date Created: ${today}`, `Page: ${pageNumber} of ${totalPages}`], innerRight, 152, { align: "right", lineHeightFactor: 1.42 });
+
+      dashedLine(206);
+      doc.setFillColor(darkGreen);
+      doc.roundedRect(188, 196, 220, 20, 6, 6, "F");
+      centerText("NEW EDEN SCHOOL TRANSCRIPT BEGINS", 210, 8.4, "bold", "#ffffff");
+
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(9);
-      doc.text("Subj", margin, y);
-      doc.text("Num", margin + 48, y);
-      doc.text("Title", margin + 92, y);
-      doc.text("Cr", pageWidth - 150, y, { align: "center" });
-      doc.text("Per", pageWidth - 105, y, { align: "center" });
-      doc.text("Grade", pageWidth - margin, y, { align: "right" });
-      doc.line(margin, y + 5, pageWidth - margin, y + 5);
+      doc.setFontSize(8.1);
+      doc.setTextColor(darkGreen);
+      doc.text("PROGRAM", innerLeft + 16, 236);
+      doc.text("ATTENDED FROM/TO", innerRight, 236, { align: "right" });
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor("#111");
+      doc.text(doc.splitTextToSize(programName, 360), innerLeft + 16, 249);
+      doc.text(attended, innerRight, 249, { align: "right" });
     };
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.addImage(logoData, "JPEG", margin, 28, 150, 63);
-    doc.text(["9783 E 116th St PMB 1104", "Fishers, IN 46037", "www.newedenschoolofnaturalhealth.org"], pageWidth - margin, 42, { align: "right" });
+    const tableHeader = (y) => {
+      doc.setFillColor(darkGreen);
+      doc.rect(innerLeft, y - 12, innerRight - innerLeft, 18, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7.5);
+      doc.setTextColor("#ffffff");
+      doc.text("SUBJ", innerLeft + 12, y);
+      doc.text("NUM", innerLeft + 64, y);
+      doc.text("TITLE", innerLeft + 114, y);
+      doc.text("CR", innerRight - 138, y, { align: "center" });
+      doc.text("PER", innerRight - 86, y, { align: "center" });
+      doc.text("GRADE", innerRight - 28, y, { align: "center" });
+      doc.setTextColor("#111");
+    };
 
-    const today = new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
-    const attended = `${dateForTranscript(els.transcriptFrom?.value) || "NA"}/${dateForTranscript(els.transcriptTo?.value) || "NA"}`;
-    let y = 122;
-    doc.text([
-      `Name: ${els.transcriptStudentName?.value || ""}`,
-      `Student ID: ${els.transcriptStudentId?.value || ""}`,
-      `Date of Birth: ${dateLongForTranscript(els.transcriptDob?.value)}`,
-    ], margin, y);
-    doc.text(`Date Created: ${today}`, pageWidth - margin, y, { align: "right" });
-
-    y += 44;
-    centerText("****************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS***************************************", y, 7);
-    y += 18;
-    divider(y);
-    doc.setFont("helvetica", "bold");
-    doc.text("Program", margin, y + 11);
-    doc.text("Attended From/To", pageWidth - margin, y + 11, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.text(text(state.transcriptSelectedProgram), margin, y + 23);
-    doc.text(attended, pageWidth - margin, y + 23, { align: "right" });
-
-    y += 52;
+    drawHeader(1, 1);
+    let y = 282;
     tableHeader(y);
-    y += 20;
+    y += 18;
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
+    doc.setFontSize(7.8);
+    doc.setTextColor("#111");
     state.transcriptRows.forEach((row) => {
-      if (y > pageHeight - 120) {
+      if (y > pageHeight - 192) {
         doc.addPage();
-        y = 48;
+        drawHeader(doc.getNumberOfPages(), doc.getNumberOfPages());
+        y = 282;
         tableHeader(y);
-        y += 20;
+        y += 18;
         doc.setFont("helvetica", "normal");
-        doc.setFontSize(8.5);
+        doc.setFontSize(7.8);
       }
-      const titleLines = doc.splitTextToSize(text(row.name), pageWidth - 260);
-      doc.text("NES", margin, y);
-      doc.text(text(row.courseId), margin + 48, y);
-      doc.text(titleLines, margin + 92, y);
-      doc.text(text(row.credit), pageWidth - 150, y, { align: "center" });
-      doc.text(formatTranscriptPercent(row.percent), pageWidth - 105, y, { align: "center" });
-      doc.text(transcriptGrade(row.percent), pageWidth - margin, y, { align: "right" });
-      y += Math.max(14, titleLines.length * 10);
+      const titleLines = doc.splitTextToSize(text(row.name), 318);
+      const rowHeight = Math.max(14, titleLines.length * 9 + 4);
+      doc.setDrawColor("#d8d2c2");
+      doc.setLineWidth(0.35);
+      doc.line(innerLeft, y + 5, innerRight, y + 5);
+      doc.text("NES", innerLeft + 12, y);
+      doc.text(text(row.courseId), innerLeft + 64, y);
+      doc.text(titleLines, innerLeft + 114, y);
+      doc.text(text(row.credit), innerRight - 138, y, { align: "center" });
+      doc.text(formatTranscriptPercent(row.percent), innerRight - 86, y, { align: "center" });
+      doc.text(transcriptGrade(row.percent), innerRight - 28, y, { align: "center" });
+      y += rowHeight;
     });
 
-    y += 14;
-    if (y > pageHeight - 150) {
+    if (y > pageHeight - 178) {
       doc.addPage();
-      y = 48;
+      drawHeader(doc.getNumberOfPages(), doc.getNumberOfPages());
+      y = 312;
     }
-    divider(y);
-    doc.setFont("helvetica", "bold");
-    doc.text("Total Credit Hours", margin, y + 11);
-    doc.text("GPA", pageWidth - margin, y + 11, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.text(text(els.transcriptTotalCredits?.textContent || "0"), margin, y + 23);
-    doc.text(text(els.transcriptGpa?.textContent || "0.0"), pageWidth - margin, y + 23, { align: "right" });
-    y += 48;
-    centerText(els.transcriptGraduated?.checked ? "Graduated" : "Not Graduated", y, 10, "bold");
+
     y += 18;
-    centerText("********************************************************END OF PAGE********************************************************", y, 7);
-    y += 26;
-    doc.addImage(sealData, "PNG", margin, y, 108, 108);
-    doc.addImage(signatureData, "PNG", pageWidth - 205, y + 24, 170, 55);
+    doc.setDrawColor("#d9c98f");
+    doc.setLineWidth(0.75);
+    doc.rect(innerLeft, y, innerRight - innerLeft, 42);
+    doc.setFillColor(softGreen);
+    doc.rect(innerLeft, y, innerRight - innerLeft, 42, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(gray);
+    doc.text("TOTAL CREDIT HOURS", innerLeft + 56, y + 17);
+    doc.text("GRADE POINT AVERAGE (GPA)", pageWidth / 2 + 52, y + 17);
+    doc.setFont("times", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(darkGreen);
+    doc.text(text(els.transcriptTotalCredits?.textContent || "0"), innerLeft + 56, y + 34);
+    doc.text(text(els.transcriptGpa?.textContent || "0.0"), pageWidth / 2 + 52, y + 34);
+
+    y += 66;
+    dashedLine(y);
+    centerText(els.transcriptGraduated?.checked ? "GRADUATED" : "NOT GRADUATED", y + 14, 14, "bold", darkGreen);
+    doc.setFillColor(darkGreen);
+    doc.roundedRect(238, y + 25, 120, 15, 4, 4, "F");
+    centerText("END OF TRANSCRIPT", y + 36, 7.5, "bold", "#ffffff");
+
+    y += 56;
+    doc.addImage(sealData, "PNG", innerLeft, y, 92, 92);
+    doc.addImage(signatureData, "PNG", innerRight - 175, y + 22, 145, 48);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.text(["Donna DeSantis", "Administration and Records"], pageWidth - margin, y + 90, { align: "right" });
+    doc.setFontSize(8);
+    doc.setTextColor(gray);
+    doc.text(["Donna DeSantis", "Administration and Records"], innerRight - 10, y + 80, { align: "right" });
+    centerText("Empowering individuals to achieve optimal health through natural wisdom, education, and purpose.", y + 48, 8, "italic", "#55715f");
+    centerText("This transcript is official when bearing the seal and signature of the Administrator and Records.", pageHeight - 38, 7, "italic", "#555");
     return doc.output("blob");
   }
 
@@ -2750,7 +2927,7 @@ Please contact the school office if you need anything else.`,
     }
     const transcriptWindow = window.open("", "_blank", "width=900,height=1100");
     if (!transcriptWindow) return;
-    const logoUrl = new URL("assets/transcript/logo.jpg", window.location.href).href;
+    const logoUrl = new URL("assets/transcript/logo-no-tagline-transparent.png", window.location.href).href;
     const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
     const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
     const rows = state.transcriptRows.map((row) => `
@@ -2764,7 +2941,7 @@ Please contact the school office if you need anything else.`,
       </tr>
     `).join("");
     const today = new Date().toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
-    const attended = `${dateForTranscript(els.transcriptFrom?.value) || "NA"}/${dateForTranscript(els.transcriptTo?.value) || "NA"}`;
+    const attended = `${dateIsoForTranscript(els.transcriptFrom?.value) || "NA"} to ${dateIsoForTranscript(els.transcriptTo?.value) || "NA"}`;
     const html = `<!doctype html>
       <html>
         <head>
@@ -2794,7 +2971,9 @@ Please contact the school office if you need anything else.`,
             <div class="right">
               9783 E 116th St PMB 1104<br />
               Fishers, IN 46037<br />
-              www.newedenschoolofnaturalhealth.org
+              www.newedenschoolofnaturalhealth.org<br />
+              Info@newedenschool.com<br />
+              (219) 230-6102
             </div>
           </div>
           <br />
@@ -2808,7 +2987,7 @@ Please contact the school office if you need anything else.`,
           </div>
           <p class="center">****************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS***************************************</p>
           <div class="row divider">
-            <div><strong>Program</strong><br />${escapeHtml(state.transcriptSelectedProgram || "")}</div>
+            <div><strong>Program</strong><br />${escapeHtml(transcriptDisplayProgram())}</div>
             <div class="right"><strong>Attended From/To</strong><br />${escapeHtml(attended)}</div>
           </div>
           <table>
@@ -2850,11 +3029,19 @@ Please contact the school office if you need anything else.`,
     return String(value || "").replaceAll("/", ".");
   }
 
+  function dateIsoForTranscript(value) {
+    return value ? String(value).slice(0, 10) : "";
+  }
+
   function dateLongForTranscript(value) {
     if (!value) return "";
     const date = new Date(`${value}T00:00:00`);
     if (Number.isNaN(date.getTime())) return value;
     return date.toLocaleDateString([], { month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function transcriptDisplayProgram() {
+    return els.transcriptCurriculumName?.value.trim() || state.transcriptSelectedProgram || "";
   }
 
   function matchTranscriptField(text, pattern) {
@@ -2921,6 +3108,7 @@ Please contact the school office if you need anything else.`,
     renderEmailDispatchCenter();
     renderMaintenanceResults();
     renderAppSettings();
+    validateAdministrationEmailControls();
   }
 
   function renderBackupCenter() {
@@ -4106,6 +4294,11 @@ Please contact the school office if you need anything else.`,
       : "Choose a curriculum to review its required courses and credits.";
     els.programTitle.textContent = programShortName(state.selectedProgram);
     els.programCode.textContent = program?.code || programCode(state.selectedProgram, section);
+    const statusContainer = els.programCode?.closest(".program-meta")?.querySelector("span:nth-child(2)");
+    if (statusContainer) {
+      statusContainer.innerHTML = `<small>Status</small>${statusBadge(program?.status || "Active", "status-pill")}`;
+    }
+    if (els.programVersion) els.programVersion.textContent = program?.version || "v1.0";
     els.requiredCount.textContent = rows.length;
     if (els.removeCurriculumButton) els.removeCurriculumButton.disabled = !state.selectedProgram || !state.admin;
     els.requirementTableSearch.value = state.requirementSearch;
@@ -4191,7 +4384,7 @@ Please contact the school office if you need anything else.`,
                 <span class="badge rounded-pill text-bg-sage">Program</span>
               </div>
               <div class="program-meta">
-                <span><small>Status</small><strong class="status-pill">${escapeHtml(category.status || "Active")}</strong></span>
+                <span><small>Status</small>${statusBadge(category.status || "Active", "status-pill")}</span>
                 <span><small>Curriculums</small><strong>${curriculums.length}</strong></span>
                 <span><small>Total Credits</small><strong>${totalCredits}</strong></span>
               </div>
@@ -4254,7 +4447,7 @@ Please contact the school office if you need anything else.`,
                   <tr>
                     <td>${escapeHtml(programShortName(program.name))}</td>
                     <td>${escapeHtml(program.code || programCode(program.name, program.section))}</td>
-                    <td><span class="status-badge">${escapeHtml(program.status || "Active")}</span></td>
+                    <td>${statusBadge(program.status || "Active")}</td>
                     <td class="text-end">
                       <div class="course-row-actions">
                         <button class="btn btn-sm btn-outline-eden" data-program="${escapeAttr(program.name)}" type="button">Requirements</button>
@@ -4590,13 +4783,30 @@ function openCourseEditor(index) {
   const course = index == null ? { id: "", credit: credits()[0] || "1", name: "", comment: "" } : state.courses[index];
 
   openEditor(index == null ? "Add Course" : "Edit Course", [
-    field("id", "Course ID", course.id),
-    field("credit", "Credit", course.credit, "select", credits()),
-    field("name", "Course Name", course.name),
+    field("id", "Course ID", course.id, "text", [], true),
+    field("credit", "Credit", course.credit, "select", credits(), true),
+    field("name", "Course Name", course.name, "text", [], true),
     field("comment", "Comment", course.comment, "textarea"),
   ], async (values) => {
     const creditPrefix = String(values.credit || "").trim();
     const courseId = String(values.id || "").trim();
+
+    if (!/^\d{4}$/.test(courseId)) {
+      return {
+        ok: false,
+        field: "id",
+        message: "Course ID must be exactly 4 numeric digits.",
+        disableUntilChange: true,
+      };
+    }
+
+    if (!String(values.name || "").trim()) {
+      return {
+        ok: false,
+        field: "name",
+        message: "Course Name is required.",
+      };
+    }
 
     if (creditPrefix && courseId && !courseId.startsWith(creditPrefix)) {
       return {
@@ -4705,6 +4915,9 @@ function attachCourseIdSuggestionHelper() {
   const creditField = els.editForm?.querySelector('[name="credit"]');
 
   if (!idField || !creditField) return;
+  idField.inputMode = "numeric";
+  idField.pattern = "\\d{4}";
+  idField.maxLength = 4;
 
   let helper = els.editForm.querySelector("#courseIdSuggestionHelper");
 
@@ -4777,6 +4990,7 @@ function attachCourseIdSuggestionHelper() {
     curriculumBuilder.search = "";
     curriculumBuilder.rows = [];
     renderCurriculumBuilder();
+    validateCurriculumBuilder();
     els.curriculumBuilderDialog.showModal();
     setTimeout(() => els.curriculumBuilderName.focus(), 0);
   }
@@ -4821,6 +5035,7 @@ function attachCourseIdSuggestionHelper() {
     `).join("") || `<div class="empty-state">No course requirements selected yet.</div>`;
 
     els.curriculumBuilderSelectedCount.textContent = curriculumBuilder.rows.length;
+    validateCurriculumBuilder();
 
     els.curriculumBuilderCoursePicker.querySelectorAll("[data-add-curriculum-requirement]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -4873,6 +5088,7 @@ function attachCourseIdSuggestionHelper() {
 
   async function saveCurriculumBuilder() {
     if (!state.admin) return;
+    if (!validateCurriculumBuilder()) return;
     const section = els.curriculumBuilderProgram.value.trim();
     const shortName = els.curriculumBuilderName.value.trim();
     if (!section) {
@@ -5079,11 +5295,18 @@ function attachCourseIdSuggestionHelper() {
     const existing = programCategories().find((category) => category.name === programName);
     if (!existing) return;
     openEditor("Edit Program", [
-      field("name", "Program Name", existing.name),
+      field("name", "Program Name", existing.name, "text", [], true),
       field("status", "Status", existing.status || "Active", "select", ["Active", "Inactive", "Archived"]),
       field("description", "Description", existing.description || "", "textarea"),
       field("notes", "Notes", existing.notes || "", "textarea"),
     ], async (values) => {
+      if (!String(values.name || "").trim()) {
+        return {
+          ok: false,
+          field: "name",
+          message: "Program Name is required.",
+        };
+      }
       const oldName = existing.name;
       const nextCategory = normalizeProgramCategories([{
         ...existing,
@@ -5252,6 +5475,8 @@ function renderProgramBuilder() {
       els.programBuilderDialog.showModal();
     });
   });
+
+  validateProgramBuilder();
 }
 
 function addProgramBuilderCurriculum(curriculumName) {
@@ -5266,6 +5491,7 @@ function addProgramBuilderCurriculum(curriculumName) {
 
   async function saveProgramBuilder() {
     if (!state.admin) return;
+    if (!validateProgramBuilder()) return;
     if (!els.programBuilderName.value.trim()) {
       els.programBuilderName.reportValidity();
       return;
@@ -5289,15 +5515,18 @@ function addProgramBuilderCurriculum(curriculumName) {
     const nextCurriculums = programBuilder.curriculums.map((curriculum) => normalizePrograms([{
       ...curriculum,
       section: nextCategory.name,
-      name: curriculumFullName(nextCategory.name, curriculum.name),
-      code: curriculum.code || programCode(curriculum.name, nextCategory.name),
+      name: curriculumFullName(nextCategory.name, programShortName(curriculum.name)),
+      code: curriculum.code || programCode(programShortName(curriculum.name), nextCategory.name),
     }])[0]);
-    const curriculumNameMap = new Map(programBuilder.curriculums.map((curriculum) => [
-      curriculum.name,
-      curriculumFullName(nextCategory.name, curriculum.name),
-    ]));
+    const curriculumNameMap = new Map(programBuilder.curriculums.map((curriculum) => {
+      const shortName = programShortName(curriculum.name);
+      return [curriculum.name, curriculumFullName(nextCategory.name, shortName)];
+    }));
     const nextNames = new Set(nextCurriculums.map((curriculum) => curriculum.name));
-    const removedCurriculums = oldCurriculums.filter((curriculum) => !nextNames.has(curriculumFullName(nextCategory.name, curriculum.name)));
+    const removedCurriculums = oldCurriculums.filter((curriculum) => {
+      const expectedNextName = curriculumFullName(nextCategory.name, programShortName(curriculum.name));
+      return !nextNames.has(expectedNextName);
+    });
     const movedRows = [];
 
     if (oldName && oldName !== nextCategory.name) {
@@ -5374,14 +5603,21 @@ function addProgramBuilderCurriculum(curriculumName) {
     const programOptions = programCategories().map((category) => category.name);
 
     openEditor(existing ? "Edit Curriculum" : "Add Curriculum", [
-      field("section", "Program", program.section, "select", programOptions.length ? programOptions : sections()),
-      field("name", "Curriculum Name", program.name),
+      field("section", "Program", program.section, "select", programOptions.length ? programOptions : sections(), true),
+      field("name", "Curriculum Name", program.name, "text", [], true),
       field("code", "Curriculum Code", program.code || programCode(program.name, program.section)),
       field("status", "Status", program.status || "Active", "select", ["Active", "Inactive", "Archived"]),
       field("version", "Version", program.version || "v1.0"),
       field("description", "Description", programDescription(program, program.section), "textarea"),
       field("notes", "Notes", program.notes || "", "textarea"),
     ], async (values) => {
+      if (!String(values.name || "").trim()) {
+        return {
+          ok: false,
+          field: "name",
+          message: "Curriculum Name is required.",
+        };
+      }
       const record = normalizePrograms([{ ...program, ...values }])[0];
       const oldName = program.name;
       const index = state.programRecords.findIndex((item) => item._docId === record._docId || item.name === oldName);
@@ -5417,8 +5653,8 @@ function addProgramBuilderCurriculum(curriculumName) {
     els.editFields.innerHTML = fields.map((item) => {
       if (item.type === "select") {
         return `
-          <label>${escapeHtml(item.label)}
-            <select name="${escapeAttr(item.name)}">
+          <label>${escapeHtml(item.label)}${item.required ? ' <span class="required-mark">*</span>' : ""}
+            <select name="${escapeAttr(item.name)}" ${item.required ? "required" : ""}>
               ${item.options.map((option) => {
                 const value = typeof option === "object" ? option.value : option;
                 const label = typeof option === "object" ? option.label : option;
@@ -5429,11 +5665,21 @@ function addProgramBuilderCurriculum(curriculumName) {
         `;
       }
       if (item.type === "textarea") {
-        return `<label>${escapeHtml(item.label)}<textarea name="${escapeAttr(item.name)}" rows="3">${escapeHtml(item.value || "")}</textarea></label>`;
+        return `<label>${escapeHtml(item.label)}${item.required ? ' <span class="required-mark">*</span>' : ""}<textarea name="${escapeAttr(item.name)}" rows="3" ${item.required ? "required" : ""}>${escapeHtml(item.value || "")}</textarea></label>`;
       }
-      return `<label>${escapeHtml(item.label)}<input name="${escapeAttr(item.name)}" value="${escapeAttr(item.value || "")}" /></label>`;
+      return `<label>${escapeHtml(item.label)}${item.required ? ' <span class="required-mark">*</span>' : ""}<input name="${escapeAttr(item.name)}" value="${escapeAttr(item.value || "")}" ${item.required ? "required" : ""} /></label>`;
     }).join("");
     els.editDialog.showModal();
+    const updateEditSaveState = () => {
+      const requiredFields = Array.from(els.editForm.querySelectorAll("[required]"));
+      const requiredOk = requiredFields.every((fieldEl) => String(fieldEl.value || "").trim());
+      if (els.confirmEdit) els.confirmEdit.disabled = !requiredOk;
+    };
+    els.editForm.querySelectorAll("input, select, textarea").forEach((fieldEl) => {
+      fieldEl.addEventListener("input", updateEditSaveState);
+      fieldEl.addEventListener("change", updateEditSaveState);
+    });
+    updateEditSaveState();
     document.querySelector("#cancelEdit")?.addEventListener("click", () => {
       els.editForm.onsubmit = null;
       els.editDialog.close("cancel");
@@ -5475,8 +5721,8 @@ function addProgramBuilderCurriculum(curriculumName) {
     };
   }
 
-  function field(name, label, value, type = "text", options = []) {
-    return { name, label, value, type, options };
+  function field(name, label, value, type = "text", options = [], required = false) {
+    return { name, label, value, type, options, required };
   }
 
   async function initFirebase() {
@@ -6590,7 +6836,8 @@ async function syncCurriculumRowsForCourse(course, previousCourseId = "") {
   async function sendTestEmail() {
     if (!state.admin) return;
     const email = els.testEmailAddress?.value.trim() || "";
-    if (!email) {
+    validateAdministrationEmailControls();
+    if (!email || !isValidEmail(email)) {
       els.testEmailAddress?.focus();
       return;
     }
@@ -7399,6 +7646,16 @@ async function syncCurriculumRowsForCourse(course, previousCourseId = "") {
     const sourceText = programShortName(programName) || section || "Program";
     const letters = sourceText.replace(/[^A-Za-z ]/g, "").split(/\s+/).filter(Boolean);
     return letters.slice(0, 3).map((word) => word[0]).join("").toUpperCase() || "NEA";
+  }
+
+  function statusBadge(status = "Active", baseClass = "status-badge") {
+    const normalized = String(status || "Active").trim() || "Active";
+    const className = normalized.toLowerCase() === "inactive"
+      ? "status-inactive"
+      : normalized.toLowerCase() === "archived"
+        ? "status-archived"
+        : "";
+    return `<strong class="${baseClass}${className ? ` ${className}` : ""}">${escapeHtml(normalized)}</strong>`;
   }
 
   function programDescription(program, section) {

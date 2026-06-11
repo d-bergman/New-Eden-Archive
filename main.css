@@ -1152,6 +1152,85 @@ body[data-active-view="history"] .archive-summary {
   background: rgba(223, 232, 215, 0.34);
 }
 
+.course-catalog-table {
+  table-layout: fixed;
+}
+
+.course-catalog-table th:nth-child(1),
+.course-catalog-table td:nth-child(1) {
+  width: 110px;
+}
+
+.course-catalog-table th:nth-child(2),
+.course-catalog-table td:nth-child(2) {
+  width: 90px;
+}
+
+.course-catalog-table th:nth-child(3),
+.course-catalog-table td:nth-child(3) {
+  width: 36%;
+}
+
+.course-catalog-table th:nth-child(4),
+.course-catalog-table td:nth-child(4) {
+  width: auto;
+}
+
+.course-catalog-table th:nth-child(5),
+.course-catalog-table td:nth-child(5) {
+  width: 150px;
+}
+
+.program-curriculum-table {
+  table-layout: fixed;
+}
+
+.program-curriculum-table th:nth-child(1),
+.program-curriculum-table td:nth-child(1) {
+  width: 18%;
+}
+
+.program-curriculum-table th:nth-child(2),
+.program-curriculum-table td:nth-child(2) {
+  width: 48%;
+}
+
+.program-curriculum-table th:nth-child(3),
+.program-curriculum-table td:nth-child(3) {
+  width: 12%;
+}
+
+.program-curriculum-table th:nth-child(4),
+.program-curriculum-table td:nth-child(4) {
+  width: 22%;
+  text-align: right;
+}
+
+.program-structure-table {
+  table-layout: fixed;
+}
+
+.program-structure-table th:nth-child(1),
+.program-structure-table td:nth-child(1) {
+  width: 44%;
+}
+
+.program-structure-table th:nth-child(2),
+.program-structure-table td:nth-child(2) {
+  width: 14%;
+}
+
+.program-structure-table th:nth-child(3),
+.program-structure-table td:nth-child(3) {
+  width: 16%;
+}
+
+.program-structure-table th:nth-child(4),
+.program-structure-table td:nth-child(4) {
+  width: 26%;
+  text-align: right;
+}
+
 .status-pill,
 .status-badge {
   display: inline-flex;
@@ -1163,6 +1242,18 @@ body[data-active-view="history"] .archive-summary {
   color: #276037;
   font-size: 0.82rem;
   font-weight: 800;
+}
+
+.status-pill.status-inactive,
+.status-badge.status-inactive {
+  background: #b94a48;
+  color: #fff;
+}
+
+.status-pill.status-archived,
+.status-badge.status-archived {
+  background: #d9822b;
+  color: #211407;
 }
 
 .table-action {
@@ -1204,6 +1295,7 @@ body[data-active-view="history"] .archive-summary {
 
 .course-row-actions {
   display: inline-flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   white-space: nowrap;
@@ -1608,6 +1700,23 @@ body[data-active-view="history"] .archive-summary {
   font-weight: 750;
 }
 
+.required-mark,
+.field-error {
+  color: #b3261e;
+}
+
+.field-error {
+  display: block;
+  min-height: 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.field-error:empty,
+.field-error[hidden] {
+  display: none;
+}
+
 .is-invalid {
   border-color: #dc3545 !important;
   box-shadow: 0 0 0 0.18rem rgba(220, 53, 69, 0.14) !important;
@@ -1638,6 +1747,10 @@ body[data-active-view="history"] .archive-summary {
   justify-content: space-between;
   gap: 16px;
   padding: 16px 20px;
+}
+
+.program-heading,
+.required-header {
   border-bottom: 1px solid var(--eden-line);
 }
 
@@ -3065,6 +3178,7 @@ body.theme-dark .guide-topic-button small {
 .overview-list-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: 9px;
   padding: 8px 10px;
   border: 1px solid var(--eden-line);
@@ -3951,7 +4065,7 @@ body.theme-dark .transcript-icon {
 .file-send-form {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 10px;
   padding: 0 16px 16px;
 }
 
@@ -3970,10 +4084,11 @@ body.theme-dark .transcript-icon {
 
 .email-template-controls {
   display: grid;
-  grid-template-columns: auto minmax(240px, 320px);
+  grid-template-columns: minmax(220px, auto) minmax(220px, 360px);
   align-items: center;
   gap: 10px;
   min-width: 0;
+  justify-content: start;
 }
 
 .email-template-controls .btn {
@@ -3998,6 +4113,7 @@ body.theme-dark .transcript-icon {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .file-send-actions .btn {
@@ -4341,6 +4457,15 @@ body.theme-dark .markdown-guide code {
   .email-template-controls,
   .file-send-actions {
     flex-wrap: wrap;
+  }
+
+  .overview-user-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .overview-user-row > :nth-child(3),
+  .overview-user-row > :nth-child(4) {
+    grid-column: 2;
   }
 }
 
