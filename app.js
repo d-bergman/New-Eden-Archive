@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.7.1";
+  const appVersion = "1.7.2";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -2684,9 +2684,10 @@ Please contact the school office if you need anything else.`,
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
-    const innerLeft = 42;
-    const innerRight = pageWidth - 42;
-    const logoUrl = new URL("assets/transcript/logo.jpg", window.location.href).href;
+    const innerLeft = 38;
+    const innerRight = pageWidth - 38;
+    const totalPagesToken = "{total_pages_count_string}";
+    const logoUrl = new URL("assets/transcript/logo-no-tagline-mark.png", window.location.href).href;
     const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
     const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
     const [logoData, sealData, signatureData] = await Promise.all([
@@ -2708,35 +2709,40 @@ Please contact the school office if you need anything else.`,
       doc.setFillColor("#ffffff");
       doc.rect(0, 0, pageWidth, pageHeight, "F");
       doc.setDrawColor(darkGreen);
-      doc.setLineWidth(5);
-      doc.rect(17, 17, pageWidth - 34, pageHeight - 34);
-      doc.setLineWidth(0.9);
-      doc.rect(26, 26, pageWidth - 52, pageHeight - 52);
+      doc.setLineWidth(7);
+      doc.rect(18, 18, pageWidth - 36, pageHeight - 36);
+      doc.setLineWidth(1.2);
+      doc.rect(27, 27, pageWidth - 54, pageHeight - 54);
       doc.setDrawColor(gold);
-      doc.setLineWidth(0.45);
-      doc.line(36, 31, pageWidth - 36, 31);
-      doc.line(36, pageHeight - 31, pageWidth - 36, pageHeight - 31);
-      [["tl", 28, 28], ["tr", pageWidth - 58, 28], ["bl", 28, pageHeight - 58], ["br", pageWidth - 58, pageHeight - 58]].forEach((corner) => {
-        const [, x, y] = corner;
+      doc.setLineWidth(0.55);
+      doc.line(37, 32, pageWidth - 37, 32);
+      doc.line(37, pageHeight - 32, pageWidth - 37, pageHeight - 32);
+      const cut = 27;
+      const drawCorner = (x, y, sx, sy) => {
+        doc.setFillColor("#ffffff");
+        doc.roundedRect(x, y, cut, cut, 8, 8, "F");
         doc.setDrawColor(darkGreen);
-        doc.setLineWidth(1.2);
-        doc.roundedRect(x, y, 30, 30, 8, 8);
-        doc.setDrawColor("#ffffff");
-        doc.setLineWidth(2.2);
-        if (corner[0] === "tl") {
-          doc.line(x + 8, y, x + 30, y);
-          doc.line(x, y + 8, x, y + 30);
-        } else if (corner[0] === "tr") {
-          doc.line(x, y, x + 22, y);
-          doc.line(x + 30, y + 8, x + 30, y + 30);
-        } else if (corner[0] === "bl") {
-          doc.line(x, y + 30, x + 22, y + 30);
-          doc.line(x, y, x, y + 22);
+        doc.setLineWidth(1.1);
+        const x2 = x + cut;
+        const y2 = y + cut;
+        if (sx < 0 && sy < 0) {
+          doc.line(x + 8, y, x2, y);
+          doc.line(x, y + 8, x, y2);
+        } else if (sx > 0 && sy < 0) {
+          doc.line(x, y, x2 - 8, y);
+          doc.line(x2, y + 8, x2, y2);
+        } else if (sx < 0 && sy > 0) {
+          doc.line(x + 8, y2, x2, y2);
+          doc.line(x, y, x, y2 - 8);
         } else {
-          doc.line(x + 8, y + 30, x + 30, y + 30);
-          doc.line(x + 30, y, x + 30, y + 22);
+          doc.line(x, y2, x2 - 8, y2);
+          doc.line(x2, y, x2, y2 - 8);
         }
-      });
+      };
+      drawCorner(22, 22, -1, -1);
+      drawCorner(pageWidth - 49, 22, 1, -1);
+      drawCorner(22, pageHeight - 49, -1, 1);
+      drawCorner(pageWidth - 49, pageHeight - 49, 1, 1);
     };
 
     const centerText = (value, y, size = 8, style = "normal", color = gray) => {
@@ -2761,10 +2767,10 @@ Please contact the school office if you need anything else.`,
 
     const leafMark = (x, y, size = 9) => {
       doc.setFillColor(gold);
-      doc.ellipse(x, y, size * 0.42, size * 0.72, "F");
+      doc.ellipse(x, y, size * 0.58, size * 0.28, "F");
       doc.setDrawColor("#ffffff");
       doc.setLineWidth(0.45);
-      doc.line(x - size * 0.12, y + size * 0.45, x + size * 0.2, y - size * 0.46);
+      doc.line(x - size * 0.45, y + size * 0.08, x + size * 0.46, y - size * 0.08);
     };
 
     const circleIcon = (x, y, icon, radius = 16) => {
@@ -2791,21 +2797,21 @@ Please contact the school office if you need anything else.`,
 
     const drawHeader = (pageNumber, totalPages = 1) => {
       drawFrame();
-      doc.addImage(logoData, "JPEG", innerLeft + 12, 36, 94, 54);
+      doc.addImage(logoData, "PNG", innerLeft + 22, 40, 74, 50);
       doc.setFont("times", "normal");
-      doc.setFontSize(31);
+      doc.setFontSize(30);
       doc.setTextColor(darkGreen);
       doc.text("NEW EDEN", innerLeft + 118, 58);
-      horizontalRule(innerLeft + 122, innerLeft + 188, 69);
-      horizontalRule(innerLeft + 274, innerLeft + 338, 69);
-      doc.setFontSize(10.5);
+      horizontalRule(innerLeft + 118, innerLeft + 190, 70);
+      horizontalRule(innerLeft + 276, innerLeft + 348, 70);
+      doc.setFontSize(10.3);
       doc.setTextColor(gold);
-      doc.text("SCHOOL OF", innerLeft + 202, 73, { align: "center" });
-      doc.setFontSize(12);
+      doc.text("SCHOOL OF", innerLeft + 233, 74, { align: "center" });
+      doc.setFontSize(12.2);
       doc.setTextColor(darkGreen);
-      doc.text("NATURAL HEALTH & HERBAL STUDIES", innerLeft + 118, 90);
+      doc.text("NATURAL HEALTH & HERBAL STUDIES", innerLeft + 118, 92);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9.5);
+      doc.setFontSize(9.2);
       doc.setTextColor("#1e2c22");
       doc.text([
         "9783 E 116th St PMB 1104",
@@ -2813,13 +2819,13 @@ Please contact the school office if you need anything else.`,
         "www.newedenschoolofnaturalhealth.org",
         "Info@newedenschool.com",
         "(219) 230-6102",
-      ], innerRight - 10, 46, { align: "right", lineHeightFactor: 1.3 });
+      ], innerRight - 6, 45, { align: "right", lineHeightFactor: 1.32 });
 
-      horizontalRule(innerLeft + 48, innerLeft + 190, 132);
-      horizontalRule(innerRight - 190, innerRight - 48, 132);
-      leafMark(pageWidth / 2 - 118, 132, 8);
-      leafMark(pageWidth / 2 + 118, 132, 8);
-      centerText("OFFICIAL TRANSCRIPT", 139, 23, "bold", darkGreen);
+      horizontalRule(innerLeft + 64, innerLeft + 194, 141);
+      horizontalRule(innerRight - 194, innerRight - 64, 141);
+      leafMark(pageWidth / 2 - 112, 141, 8);
+      leafMark(pageWidth / 2 + 112, 141, 8);
+      centerText("OFFICIAL TRANSCRIPT", 148, 22, "bold", darkGreen);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.setTextColor("#222");
@@ -2827,28 +2833,28 @@ Please contact the school office if you need anything else.`,
         `Name: ${els.transcriptStudentName?.value || ""}`,
         `Student ID: ${els.transcriptStudentId?.value || ""}`,
         `Date of Birth: ${dateLongForTranscript(els.transcriptDob?.value)}`,
-      ], innerLeft + 4, 161, { lineHeightFactor: 1.55 });
-      doc.text([`Date Created: ${today}`, `Page: ${pageNumber} of ${totalPages}`], innerRight - 4, 161, { align: "right", lineHeightFactor: 1.55 });
+      ], innerLeft + 5, 173, { lineHeightFactor: 1.55 });
+      doc.text([`Date Created: ${today}`, `Page: ${pageNumber} of ${totalPages}`], innerRight - 5, 173, { align: "right", lineHeightFactor: 1.55 });
 
-      dashedLine(208);
+      dashedLine(214);
       doc.setFillColor(darkGreen);
-      doc.roundedRect(176, 196, 244, 22, 8, 8, "F");
-      centerText("NEW EDEN SCHOOL TRANSCRIPT BEGINS", 211, 10, "bold", "#ffffff");
+      doc.roundedRect(188, 202, 220, 22, 8, 8, "F");
+      centerText("TRANSCRIPT BEGINS", 217, 10, "bold", "#ffffff");
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.setTextColor(darkGreen);
-      leafMark(innerLeft + 8, 237, 8);
-      doc.text("PROGRAM", innerLeft + 22, 239);
-      doc.text("ATTENDED FROM/TO", innerRight - 4, 239, { align: "right" });
+      leafMark(innerLeft + 8, 246, 8);
+      doc.text("PROGRAM", innerLeft + 22, 248);
+      doc.text("ATTENDED FROM/TO", innerRight - 4, 248, { align: "right" });
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8.3);
       doc.setTextColor("#111");
-      doc.text(doc.splitTextToSize(programName, 370), innerLeft + 22, 254);
-      doc.text(attended, innerRight - 4, 254, { align: "right" });
+      doc.text(doc.splitTextToSize(programName, 370), innerLeft + 22, 263);
+      doc.text(attended, innerRight - 4, 263, { align: "right" });
       doc.setDrawColor(paleGold);
       doc.setLineWidth(0.5);
-      doc.line(innerLeft, 270, innerRight, 270);
+      doc.line(innerLeft, 278, innerRight, 278);
     };
 
     const tableHeader = (y) => {
@@ -2866,8 +2872,8 @@ Please contact the school office if you need anything else.`,
       doc.setTextColor("#111");
     };
 
-    drawHeader(1, 1);
-    let y = 292;
+    drawHeader(1, totalPagesToken);
+    let y = 300;
     tableHeader(y);
     y += 18;
     doc.setFont("helvetica", "normal");
@@ -2876,8 +2882,8 @@ Please contact the school office if you need anything else.`,
     state.transcriptRows.forEach((row) => {
       if (y > pageHeight - 218) {
         doc.addPage();
-        drawHeader(doc.getNumberOfPages(), doc.getNumberOfPages());
-        y = 292;
+        drawHeader(doc.getNumberOfPages(), totalPagesToken);
+        y = 300;
         tableHeader(y);
         y += 18;
         doc.setFont("helvetica", "normal");
@@ -2903,55 +2909,63 @@ Please contact the school office if you need anything else.`,
       y = 322;
     }
 
-    y += 22;
+    y += 18;
     doc.setFillColor(softGreen);
-    doc.rect(innerLeft, y, innerRight - innerLeft, 48, "F");
+    doc.rect(innerLeft, y, innerRight - innerLeft, 52, "F");
     doc.setDrawColor(paleGold);
     doc.setLineWidth(0.7);
-    doc.rect(innerLeft, y, innerRight - innerLeft, 48);
-    doc.line(pageWidth / 2, y + 8, pageWidth / 2, y + 40);
-    circleIcon(innerLeft + 28, y + 24, "cap", 14);
-    circleIcon(pageWidth / 2 + 30, y + 24, "chart", 14);
+    doc.rect(innerLeft, y, innerRight - innerLeft, 52);
+    doc.line(pageWidth / 2, y + 9, pageWidth / 2, y + 43);
+    circleIcon(innerLeft + 28, y + 26, "cap", 15);
+    circleIcon(pageWidth / 2 + 30, y + 26, "chart", 15);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.8);
     doc.setTextColor(gray);
-    doc.text("TOTAL CREDIT HOURS", innerLeft + 58, y + 18);
-    doc.text("GRADE POINT AVERAGE (GPA)", pageWidth / 2 + 58, y + 18);
+    doc.text("TOTAL CREDIT HOURS", innerLeft + 58, y + 20);
+    doc.text("GRADE POINT AVERAGE (GPA)", pageWidth / 2 + 58, y + 20);
     doc.setFont("times", "bold");
     doc.setFontSize(16.5);
     doc.setTextColor(darkGreen);
-    doc.text(text(els.transcriptTotalCredits?.textContent || "0"), innerLeft + 58, y + 36);
-    doc.text(text(els.transcriptGpa?.textContent || "0.0"), pageWidth / 2 + 58, y + 36);
+    doc.text(text(els.transcriptTotalCredits?.textContent || "0"), innerLeft + 58, y + 40);
+    doc.text(text(els.transcriptGpa?.textContent || "0.0"), pageWidth / 2 + 58, y + 40);
 
-    y += 62;
+    y += 64;
     dashedLine(y);
-    leafMark(pageWidth / 2 - 48, y + 8, 8);
-    leafMark(pageWidth / 2 + 48, y + 8, 8);
+    leafMark(pageWidth / 2 - 48, y + 9, 8);
+    leafMark(pageWidth / 2 + 48, y + 9, 8);
     centerText(els.transcriptGraduated?.checked ? "GRADUATED" : "NOT GRADUATED", y + 12, 15, "bold", darkGreen);
     doc.setFillColor(darkGreen);
-    doc.roundedRect(226, y + 23, 144, 16, 4, 4, "F");
-    centerText("END OF TRANSCRIPT", y + 35, 8.5, "bold", "#ffffff");
+    doc.roundedRect(226, y + 25, 144, 16, 4, 4, "F");
+    centerText("END OF TRANSCRIPT", y + 37, 8.5, "bold", "#ffffff");
 
-    y += 46;
-    doc.addImage(sealData, "PNG", innerLeft + 14, y, 82, 82);
-    doc.setFillColor("#f9faf6");
-    doc.roundedRect(pageWidth / 2 - 102, y + 4, 204, 68, 5, 5, "FD");
+    y += 50;
+    doc.addImage(sealData, "PNG", innerLeft + 18, y, 84, 84);
+    doc.setFillColor("#fbfbf7");
+    doc.setDrawColor("#e2ddcd");
+    doc.roundedRect(pageWidth / 2 - 105, y + 2, 210, 72, 5, 5, "FD");
+    doc.setDrawColor("#eef0e8");
+    doc.setLineWidth(0.8);
+    doc.ellipse(pageWidth / 2 - 70, y + 41, 21, 33);
+    doc.ellipse(pageWidth / 2 + 70, y + 41, 21, 33);
     doc.setTextColor("#1b5a37");
-    leafMark(pageWidth / 2, y + 10, 7);
-    centerText("Empowering individuals", y + 28, 8.2, "italic", darkGreen);
-    centerText("to achieve optimal health", y + 40, 8.2, "italic", darkGreen);
-    centerText("through natural wisdom,", y + 52, 8.2, "italic", darkGreen);
-    centerText("education, and purpose.", y + 64, 8.2, "italic", darkGreen);
-    leafMark(pageWidth / 2, y + 77, 7);
-    doc.addImage(signatureData, "PNG", innerRight - 164, y + 19, 136, 27);
+    leafMark(pageWidth / 2, y + 9, 7);
+    centerText("Empowering individuals", y + 27, 8.2, "italic", darkGreen);
+    centerText("to achieve optimal health", y + 39, 8.2, "italic", darkGreen);
+    centerText("through natural wisdom,", y + 51, 8.2, "italic", darkGreen);
+    centerText("education, and purpose.", y + 63, 8.2, "italic", darkGreen);
+    leafMark(pageWidth / 2, y + 76, 7);
+    doc.addImage(signatureData, "PNG", innerRight - 166, y + 18, 136, 28);
     doc.setDrawColor("#222");
     doc.setLineWidth(0.6);
-    doc.line(innerRight - 166, y + 52, innerRight - 24, y + 52);
+    doc.line(innerRight - 168, y + 52, innerRight - 24, y + 52);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.2);
     doc.setTextColor(gray);
     doc.text(["Donna DeSantis", "Administration and Records"], innerRight - 95, y + 67, { align: "center", lineHeightFactor: 1.25 });
     centerText("This transcript is official when bearing the seal and signature of the Administrator and Records.", pageHeight - 38, 7, "italic", "#555");
+    if (typeof doc.putTotalPages === "function") {
+      doc.putTotalPages(totalPagesToken);
+    }
     return doc.output("blob");
   }
 
@@ -3018,7 +3032,7 @@ Please contact the school office if you need anything else.`,
     }
     const transcriptWindow = window.open("", "_blank", "width=900,height=1100");
     if (!transcriptWindow) return;
-    const logoUrl = new URL("assets/transcript/logo-no-tagline-transparent.png", window.location.href).href;
+    const logoUrl = new URL("assets/transcript/logo-no-tagline-mark.png", window.location.href).href;
     const sealUrl = new URL("assets/transcript/seal1.png", window.location.href).href;
     const signatureUrl = new URL("assets/transcript/signature.png", window.location.href).href;
     const rows = state.transcriptRows.map((row) => `
@@ -3043,7 +3057,7 @@ Please contact the school office if you need anything else.`,
             .row { display: flex; justify-content: space-between; gap: 24px; }
             .right { text-align: right; }
             .center { text-align: center; }
-            .logo { width: 210px; max-height: 88px; object-fit: contain; object-position: left top; }
+            .logo { width: 98px; max-height: 72px; object-fit: contain; object-position: left top; }
             .divider { margin: 14px 0; padding: 7px 0; border-top: 1.5px dashed #111; border-bottom: 1.5px dashed #111; }
             table { width: 100%; border-collapse: collapse; margin-top: 12px; }
             th, td { padding: 2px 4px; vertical-align: top; }
@@ -3076,7 +3090,7 @@ Please contact the school office if you need anything else.`,
             </div>
             <div class="right">Date Created: ${escapeHtml(today)}</div>
           </div>
-          <p class="center">****************************************NEW EDEN SCHOOL TRANSCRIPT BEGINS***************************************</p>
+          <p class="center">****************************************TRANSCRIPT BEGINS***************************************</p>
           <div class="row divider">
             <div><strong>Program</strong><br />${escapeHtml(transcriptDisplayProgram())}</div>
             <div class="right"><strong>Attended From/To</strong><br />${escapeHtml(attended)}</div>

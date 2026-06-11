@@ -1,5 +1,21 @@
 # New Eden Dashboard Changelog
 
+## V1.7.2 - 2026-06-11 2:25 PM CT - Transcript Fidelity and Administration Layout Hotfix
+
+### Summary
+
+- Tightened the transcript PDF and dashboard layout issues found during testing.
+
+### Fixed
+
+- Reworked Staff Status rows back into a compact layout while keeping narrow-card responsiveness.
+- Moved Announcements and Task Board to the top of Administration and moved Backup Center lower in the dashboard flow.
+- Collapsed Recent Deliveries and Failed Deliveries behind an expandable Administration detail panel.
+- Tightened Email Dispatch form rows so template controls, file buttons, and test email controls line up more cleanly.
+- Updated the transcript PDF generator to better match the approved transcript concept, including the top title block, contact area, double border, corner cutouts, transcript start banner, summary band, graduated section, seal, quote panel, signature block, and footer note.
+- Changed the transcript banner from New Eden School Transcript Begins to Transcript Begins.
+- Added a cropped no-tagline transcript logo mark so the requested logo asset renders without squeezing.
+
 ## V1.7.1 - 2026-06-11 12:00 PM CT - Transcript Layout and UI Alignment Hotfix
 
 ### Summary

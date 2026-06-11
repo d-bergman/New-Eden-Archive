@@ -656,7 +656,7 @@
 
           <section class="view" id="administrationView">
             <div class="administration-dashboard">
-              <article class="archive-panel administration-panel">
+              <article class="archive-panel administration-panel backup-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Backups</p>
@@ -692,7 +692,7 @@
                 </div>
               </article>
 
-              <article class="archive-panel administration-panel">
+              <article class="archive-panel administration-panel health-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Health</p>
@@ -757,19 +757,22 @@
                     <button class="btn btn-outline-eden" id="sendTestEmailButton" type="submit">Send Test Email</button>
                   </form>
                 </div>
-                <div class="email-delivery-grid">
-                  <div>
-                    <h3>Recent Deliveries</h3>
-                    <div id="recentDeliveryList" class="admin-mini-list"></div>
+                <details class="email-delivery-details">
+                  <summary>Recent and Failed Deliveries</summary>
+                  <div class="email-delivery-grid">
+                    <div>
+                      <h3>Recent Deliveries</h3>
+                      <div id="recentDeliveryList" class="admin-mini-list"></div>
+                    </div>
+                    <div>
+                      <h3>Failed Deliveries</h3>
+                      <div id="failedDeliveryList" class="admin-mini-list"></div>
+                    </div>
                   </div>
-                  <div>
-                    <h3>Failed Deliveries</h3>
-                    <div id="failedDeliveryList" class="admin-mini-list"></div>
-                  </div>
-                </div>
+                </details>
               </article>
 
-              <article class="archive-panel administration-panel">
+              <article class="archive-panel administration-panel notices-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Notices</p>
@@ -787,7 +790,7 @@
                 <div class="notice-list" id="noticeList"></div>
               </article>
 
-              <article class="archive-panel administration-panel">
+              <article class="archive-panel administration-panel tasks-panel">
                 <div class="section-heading compact-heading">
                   <div>
                     <p class="eyebrow">Tasks</p>
@@ -897,7 +900,7 @@
             </div>
           <p>New Eden Dashboard - Archive & Realtime Database</p>
             <p>WebApp Made by Darren Bergman</p>
-          <p>Version <span id="appVersion">1.7.1</span></p>
+          <p>Version <span id="appVersion">1.7.2</span></p>
           </footer>
         </div>
       </main>
