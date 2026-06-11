@@ -1,5 +1,21 @@
 # New Eden Dashboard Changelog
 
+## V1.7.4 - 2026-06-11 3:34 PM CT - Transcript Detail Alignment Hotfix
+
+### Summary
+
+- Tightened the official transcript PDF after Darren's visual review of the V1.7.3 output.
+
+### Transcript Generator
+
+- Reduced the certificate border weight so the dark green backing no longer overwhelms the page.
+- Replaced the angular ornament marks with cleaner leaf-shaped accents for the official title, program label, and graduation area.
+- Added a real outer table box with vertical column guides so transcript rows sit inside a certificate-style table.
+- Kept the metric section boxed and aligned with the transcript table block.
+- Re-centered the seal area and improved footer spacing between the seal, quote panel, signature, and official note.
+- Right-aligned the page count block and kept the header title group centered.
+- Removed the old unused transcript `logo.jpg` asset after Darren deleted it from the project.
+
 ## V1.7.3 - 2026-06-11 3:05 PM CT - Transcript Certificate Refinement Hotfix
 
 ### Summary
