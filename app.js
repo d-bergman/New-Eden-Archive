@@ -9,7 +9,7 @@
     appId: "1:717052013385:web:eb7fa648642d3701624898",
   };
   const firebaseVersion = "12.13.0";
-  const appVersion = "1.7.2";
+  const appVersion = "1.7.3";
   const firebaseDisabled = new URLSearchParams(window.location.search).has("nofirebase");
   const adminKey = "new-eden-admin-preview";
   const firebaseState = {
@@ -2697,7 +2697,7 @@ Please contact the school office if you need anything else.`,
     ]);
     const text = (value) => String(value || "");
     const darkGreen = "#0f3f27";
-    const softGreen = "#edf3e8";
+    const softGreen = "#f0f4eb";
     const gold = "#b79a4a";
     const paleGold = "#d9c98f";
     const gray = "#30352f";
@@ -2706,43 +2706,50 @@ Please contact the school office if you need anything else.`,
     const attended = `${dateIsoForTranscript(els.transcriptFrom?.value) || "NA"} to ${dateIsoForTranscript(els.transcriptTo?.value) || "NA"}`;
 
     const drawFrame = () => {
-      doc.setFillColor("#ffffff");
+      const sheetX = 17;
+      const sheetY = 17;
+      const sheetW = pageWidth - 34;
+      const sheetH = pageHeight - 34;
+      const borderX = 27;
+      const borderY = 27;
+      const borderW = pageWidth - 54;
+      const borderH = pageHeight - 54;
+      doc.setFillColor(darkGreen);
       doc.rect(0, 0, pageWidth, pageHeight, "F");
+      doc.setFillColor("#fffefb");
+      doc.rect(sheetX, sheetY, sheetW, sheetH, "F");
+      doc.setFillColor(darkGreen);
+      const notch = 23;
+      doc.circle(sheetX, sheetY, notch, "F");
+      doc.circle(sheetX + sheetW, sheetY, notch, "F");
+      doc.circle(sheetX, sheetY + sheetH, notch, "F");
+      doc.circle(sheetX + sheetW, sheetY + sheetH, notch, "F");
       doc.setDrawColor(darkGreen);
-      doc.setLineWidth(7);
-      doc.rect(18, 18, pageWidth - 36, pageHeight - 36);
-      doc.setLineWidth(1.2);
-      doc.rect(27, 27, pageWidth - 54, pageHeight - 54);
+      doc.setLineWidth(5.5);
+      doc.rect(22, 22, pageWidth - 44, pageHeight - 44);
+      doc.setLineWidth(1.25);
+      doc.rect(borderX, borderY, borderW, borderH);
       doc.setDrawColor(gold);
-      doc.setLineWidth(0.55);
-      doc.line(37, 32, pageWidth - 37, 32);
-      doc.line(37, pageHeight - 32, pageWidth - 37, pageHeight - 32);
-      const cut = 27;
-      const drawCorner = (x, y, sx, sy) => {
-        doc.setFillColor("#ffffff");
-        doc.roundedRect(x, y, cut, cut, 8, 8, "F");
+      doc.setLineWidth(0.6);
+      doc.line(37, 33, pageWidth - 37, 33);
+      doc.line(37, pageHeight - 33, pageWidth - 37, pageHeight - 33);
+
+      const corner = (x, y, flipX, flipY) => {
+        const h = 25 * flipX;
+        const v = 25 * flipY;
         doc.setDrawColor(darkGreen);
-        doc.setLineWidth(1.1);
-        const x2 = x + cut;
-        const y2 = y + cut;
-        if (sx < 0 && sy < 0) {
-          doc.line(x + 8, y, x2, y);
-          doc.line(x, y + 8, x, y2);
-        } else if (sx > 0 && sy < 0) {
-          doc.line(x, y, x2 - 8, y);
-          doc.line(x2, y + 8, x2, y2);
-        } else if (sx < 0 && sy > 0) {
-          doc.line(x + 8, y2, x2, y2);
-          doc.line(x, y, x, y2 - 8);
-        } else {
-          doc.line(x, y2, x2 - 8, y2);
-          doc.line(x2, y, x2, y2 - 8);
-        }
+        doc.setLineWidth(1.2);
+        doc.line(x, y + v * 0.42, x, y + v);
+        doc.line(x + h * 0.42, y, x + h, y);
+        doc.setDrawColor("#d8cd9a");
+        doc.setLineWidth(0.55);
+        doc.line(x + h * 0.62, y + v * 0.12, x + h * 0.96, y + v * 0.12);
+        doc.line(x + h * 0.12, y + v * 0.62, x + h * 0.12, y + v * 0.96);
       };
-      drawCorner(22, 22, -1, -1);
-      drawCorner(pageWidth - 49, 22, 1, -1);
-      drawCorner(22, pageHeight - 49, -1, 1);
-      drawCorner(pageWidth - 49, pageHeight - 49, 1, 1);
+      corner(31, 31, 1, 1);
+      corner(pageWidth - 31, 31, -1, 1);
+      corner(31, pageHeight - 31, 1, -1);
+      corner(pageWidth - 31, pageHeight - 31, -1, -1);
     };
 
     const centerText = (value, y, size = 8, style = "normal", color = gray) => {
@@ -2767,10 +2774,24 @@ Please contact the school office if you need anything else.`,
 
     const leafMark = (x, y, size = 9) => {
       doc.setFillColor(gold);
-      doc.ellipse(x, y, size * 0.58, size * 0.28, "F");
-      doc.setDrawColor("#ffffff");
+      doc.triangle(x - size * 0.55, y, x, y - size * 0.46, x + size * 0.52, y - size * 0.05, "F");
+      doc.triangle(x - size * 0.55, y, x, y + size * 0.46, x + size * 0.52, y - size * 0.05, "F");
+      doc.setDrawColor("#fffdf6");
       doc.setLineWidth(0.45);
-      doc.line(x - size * 0.45, y + size * 0.08, x + size * 0.46, y - size * 0.08);
+      doc.line(x - size * 0.42, y + size * 0.12, x + size * 0.42, y - size * 0.08);
+    };
+
+    const drawFaintBranch = (x, y, flip = 1) => {
+      doc.setDrawColor("#eef0e8");
+      doc.setLineWidth(1);
+      doc.line(x, y + 44, x + 30 * flip, y + 12);
+      doc.line(x + 8 * flip, y + 35, x + 27 * flip, y + 34);
+      doc.line(x + 15 * flip, y + 26, x + 32 * flip, y + 21);
+      doc.line(x + 22 * flip, y + 18, x + 38 * flip, y + 11);
+      doc.setDrawColor("#f2f3ec");
+      for (const [lx, ly] of [[10, 36], [18, 28], [26, 20], [33, 13]]) {
+        doc.ellipse(x + lx * flip, y + ly, 5, 10);
+      }
     };
 
     const circleIcon = (x, y, icon, radius = 16) => {
@@ -2797,19 +2818,20 @@ Please contact the school office if you need anything else.`,
 
     const drawHeader = (pageNumber, totalPages = 1) => {
       drawFrame();
-      doc.addImage(logoData, "PNG", innerLeft + 22, 40, 74, 50);
+      const titleCenter = innerLeft + 230;
+      doc.addImage(logoData, "PNG", innerLeft + 30, 42, 82, 56);
       doc.setFont("times", "normal");
-      doc.setFontSize(30);
+      doc.setFontSize(31);
       doc.setTextColor(darkGreen);
-      doc.text("NEW EDEN", innerLeft + 118, 58);
-      horizontalRule(innerLeft + 118, innerLeft + 190, 70);
-      horizontalRule(innerLeft + 276, innerLeft + 348, 70);
+      doc.text("NEW EDEN", titleCenter, 59, { align: "center" });
+      horizontalRule(titleCenter - 104, titleCenter - 36, 72);
+      horizontalRule(titleCenter + 36, titleCenter + 104, 72);
       doc.setFontSize(10.3);
       doc.setTextColor(gold);
-      doc.text("SCHOOL OF", innerLeft + 233, 74, { align: "center" });
+      doc.text("SCHOOL OF", titleCenter, 76, { align: "center" });
       doc.setFontSize(12.2);
       doc.setTextColor(darkGreen);
-      doc.text("NATURAL HEALTH & HERBAL STUDIES", innerLeft + 118, 92);
+      doc.text("NATURAL HEALTH & HERBAL STUDIES", titleCenter, 94, { align: "center" });
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9.2);
       doc.setTextColor("#1e2c22");
@@ -2821,10 +2843,10 @@ Please contact the school office if you need anything else.`,
         "(219) 230-6102",
       ], innerRight - 6, 45, { align: "right", lineHeightFactor: 1.32 });
 
-      horizontalRule(innerLeft + 64, innerLeft + 194, 141);
-      horizontalRule(innerRight - 194, innerRight - 64, 141);
-      leafMark(pageWidth / 2 - 112, 141, 8);
-      leafMark(pageWidth / 2 + 112, 141, 8);
+      horizontalRule(innerLeft + 64, pageWidth / 2 - 104, 142);
+      horizontalRule(pageWidth / 2 + 104, innerRight - 64, 142);
+      leafMark(pageWidth / 2 - 94, 142, 8);
+      leafMark(pageWidth / 2 + 94, 142, 8);
       centerText("OFFICIAL TRANSCRIPT", 148, 22, "bold", darkGreen);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
@@ -2838,7 +2860,7 @@ Please contact the school office if you need anything else.`,
 
       dashedLine(214);
       doc.setFillColor(darkGreen);
-      doc.roundedRect(188, 202, 220, 22, 8, 8, "F");
+      doc.roundedRect(196, 202, 204, 22, 8, 8, "F");
       centerText("TRANSCRIPT BEGINS", 217, 10, "bold", "#ffffff");
 
       doc.setFont("helvetica", "bold");
@@ -2935,33 +2957,37 @@ Please contact the school office if you need anything else.`,
     leafMark(pageWidth / 2 + 48, y + 9, 8);
     centerText(els.transcriptGraduated?.checked ? "GRADUATED" : "NOT GRADUATED", y + 12, 15, "bold", darkGreen);
     doc.setFillColor(darkGreen);
-    doc.roundedRect(226, y + 25, 144, 16, 4, 4, "F");
+    doc.roundedRect(220, y + 25, 156, 16, 4, 4, "F");
     centerText("END OF TRANSCRIPT", y + 37, 8.5, "bold", "#ffffff");
 
     y += 50;
-    doc.addImage(sealData, "PNG", innerLeft + 18, y, 84, 84);
+    doc.addImage(sealData, "PNG", innerLeft + 18, y - 2, 86, 86);
     doc.setFillColor("#fbfbf7");
     doc.setDrawColor("#e2ddcd");
-    doc.roundedRect(pageWidth / 2 - 105, y + 2, 210, 72, 5, 5, "FD");
-    doc.setDrawColor("#eef0e8");
-    doc.setLineWidth(0.8);
-    doc.ellipse(pageWidth / 2 - 70, y + 41, 21, 33);
-    doc.ellipse(pageWidth / 2 + 70, y + 41, 21, 33);
+    doc.roundedRect(pageWidth / 2 - 112, y + 1, 224, 78, 5, 5, "FD");
+    drawFaintBranch(pageWidth / 2 - 100, y + 9, 1);
+    drawFaintBranch(pageWidth / 2 + 100, y + 9, -1);
+    doc.setDrawColor("#d7d2bf");
+    doc.setLineWidth(0.5);
+    doc.line(pageWidth / 2 - 80, y + 12, pageWidth / 2 - 8, y + 12);
+    doc.line(pageWidth / 2 + 8, y + 12, pageWidth / 2 + 80, y + 12);
+    doc.line(pageWidth / 2 - 80, y + 70, pageWidth / 2 - 8, y + 70);
+    doc.line(pageWidth / 2 + 8, y + 70, pageWidth / 2 + 80, y + 70);
     doc.setTextColor("#1b5a37");
-    leafMark(pageWidth / 2, y + 9, 7);
-    centerText("Empowering individuals", y + 27, 8.2, "italic", darkGreen);
-    centerText("to achieve optimal health", y + 39, 8.2, "italic", darkGreen);
-    centerText("through natural wisdom,", y + 51, 8.2, "italic", darkGreen);
-    centerText("education, and purpose.", y + 63, 8.2, "italic", darkGreen);
-    leafMark(pageWidth / 2, y + 76, 7);
-    doc.addImage(signatureData, "PNG", innerRight - 166, y + 18, 136, 28);
+    leafMark(pageWidth / 2, y + 12, 7);
+    centerText("Empowering individuals", y + 30, 8.4, "italic", darkGreen);
+    centerText("to achieve optimal health", y + 42, 8.4, "italic", darkGreen);
+    centerText("through natural wisdom,", y + 54, 8.4, "italic", darkGreen);
+    centerText("education, and purpose.", y + 66, 8.4, "italic", darkGreen);
+    leafMark(pageWidth / 2, y + 78, 7);
+    doc.addImage(signatureData, "PNG", innerRight - 158, y + 18, 136, 28);
     doc.setDrawColor("#222");
     doc.setLineWidth(0.6);
-    doc.line(innerRight - 168, y + 52, innerRight - 24, y + 52);
+    doc.line(innerRight - 160, y + 52, innerRight - 20, y + 52);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.2);
     doc.setTextColor(gray);
-    doc.text(["Donna DeSantis", "Administration and Records"], innerRight - 95, y + 67, { align: "center", lineHeightFactor: 1.25 });
+    doc.text(["Donna DeSantis", "Administration and Records"], innerRight - 90, y + 67, { align: "center", lineHeightFactor: 1.25 });
     centerText("This transcript is official when bearing the seal and signature of the Administrator and Records.", pageHeight - 38, 7, "italic", "#555");
     if (typeof doc.putTotalPages === "function") {
       doc.putTotalPages(totalPagesToken);

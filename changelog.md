@@ -1,5 +1,19 @@
 # New Eden Dashboard Changelog
 
+## V1.7.3 - 2026-06-11 3:05 PM CT - Transcript Certificate Refinement Hotfix
+
+### Summary
+
+- Refined the generated transcript PDF so it more closely follows the approved certificate concept.
+
+### Transcript Generator
+
+- Rebuilt the transcript page frame as a white certificate sitting on a dark green backing, with stronger ticket-style corner treatment and thinner inner border lines.
+- Re-centered the New Eden header lockup so the school name, `SCHOOL OF`, and subtitle align as one title group.
+- Replaced the simple oval accents with sharper leaf-style ornaments.
+- Reworked the bottom graduation area, quote panel, seal, and signature spacing to better match the reference layout.
+- Added faint branch artwork inside the quote panel so it reads closer to the concept image.
+
 ## V1.7.2 - 2026-06-11 2:25 PM CT - Transcript Fidelity and Administration Layout Hotfix
 
 ### Summary
